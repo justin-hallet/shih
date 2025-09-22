@@ -14,7 +14,7 @@ export class Player extends BaseEntity {
   public maxShield: number;
   public weaponLevel: number;
   public invulnerableTime: number;
-  
+
   // Movement constraints
   public maxSpeed: number;
   public acceleration: number;
@@ -22,7 +22,7 @@ export class Player extends BaseEntity {
 
   constructor(position = { x: 0, y: 0, z: 0 }, scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
-    
+
     // Player stats
     this.maxHealth = 100;
     this.health = this.maxHealth;
@@ -32,16 +32,16 @@ export class Player extends BaseEntity {
     this.shield = 0;
     this.weaponLevel = 1;
     this.invulnerableTime = 0;
-    
+
     // Movement properties
     this.maxSpeed = 10.0;
     this.acceleration = 20.0;
     this.deceleration = 15.0;
     this.weight = 1.5;
-    
+
     // Collision
     this.collisionBounds = { radius: 0.8 };
-    
+
     // Start active
     this.state = EntityState.ACTIVE;
     this.createMesh();
@@ -49,14 +49,13 @@ export class Player extends BaseEntity {
 
   private createMesh(): void {
     if (!this.scene) return;
-    
+
     // Create a simple Harrier representation (will be replaced with proper model later)
     const geometry = new THREE.ConeGeometry(0.3, 1.2, 8);
-    const material = new THREE.MeshBasicMaterial({ 
+    const material = new THREE.MeshLambertMaterial({
       color: 0x00ff00,
-      wireframe: false 
     });
-    
+
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.x = Math.PI / 2; // Point forward
     this.scene.add(this.mesh);
@@ -67,7 +66,7 @@ export class Player extends BaseEntity {
     // Handle invulnerability
     if (this.invulnerableTime > 0) {
       this.invulnerableTime -= deltaTime;
-      
+
       // Flicker effect during invulnerability
       if (this.mesh) {
         this.mesh.visible = Math.floor(this.invulnerableTime * 10) % 2 === 0;
@@ -75,17 +74,13 @@ export class Player extends BaseEntity {
     } else if (this.mesh) {
       this.mesh.visible = true;
     }
-    
+
     // Apply deceleration if no input
     this.applyDeceleration(deltaTime);
-    
+
     // Clamp velocity to max speed
-    const speed = Math.sqrt(
-      this.velocity.x ** 2 + 
-      this.velocity.y ** 2 + 
-      this.velocity.z ** 2
-    );
-    
+    const speed = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2 + this.velocity.z ** 2);
+
     if (speed > this.maxSpeed) {
       const scale = this.maxSpeed / speed;
       this.velocity.x *= scale;
@@ -96,7 +91,7 @@ export class Player extends BaseEntity {
 
   private applyDeceleration(deltaTime: number): void {
     const decel = this.deceleration * deltaTime;
-    
+
     this.velocity.x = this.lerp(this.velocity.x, 0, decel);
     this.velocity.y = this.lerp(this.velocity.y, 0, decel);
     this.velocity.z = this.lerp(this.velocity.z, 0, decel);
@@ -126,11 +121,11 @@ export class Player extends BaseEntity {
   // Combat methods
   public shoot(): boolean {
     if (this.ammo <= 0 || this.state !== EntityState.ACTIVE) return false;
-    
+
     this.ammo--;
     this.animationType = AnimationType.ATTACKING;
     this.animationFrame = 0;
-    
+
     return true;
   }
 
@@ -149,16 +144,16 @@ export class Player extends BaseEntity {
   // Override damage to handle shield
   public override takeDamage(damage: number): void {
     if (this.invulnerableTime > 0) return;
-    
+
     let actualDamage = damage;
-    
+
     // Shield absorbs damage first
     if (this.shield > 0) {
       const shieldAbsorbed = Math.min(this.shield, damage);
       this.shield -= shieldAbsorbed;
       actualDamage -= shieldAbsorbed;
     }
-    
+
     if (actualDamage > 0) {
       super.takeDamage(actualDamage);
       // Grant brief invulnerability

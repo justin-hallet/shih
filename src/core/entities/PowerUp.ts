@@ -16,8 +16,16 @@ export class PowerUp extends BaseEntity {
   public bobSpeed: number;
   private bobTimer: number;
 
-  constructor(powerUpType: PowerUpSubType, position = { x: 0, y: 0, z: 0 }, scene?: THREE.Scene) {
-    super(EntityType.POWERUP, powerUpType, position, scene);
+  constructor(
+    powerUpType: PowerUpSubType,
+    position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+    scene?: THREE.Scene,
+  ) {
+    const posVec =
+      position instanceof THREE.Vector3
+        ? position
+        : new THREE.Vector3(position.x, position.y, position.z);
+    super(EntityType.POWERUP, powerUpType, posVec, scene);
 
     this.powerUpType = powerUpType;
     this.value = 1;
@@ -89,7 +97,7 @@ export class PowerUp extends BaseEntity {
       case PowerUpSubType.AMMO:
         // Ammo box
         geometry = new THREE.BoxGeometry(0.6, 0.4, 0.3);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0xffff00, // Yellow
           transparent: true,
           opacity: 0.9,
@@ -99,7 +107,7 @@ export class PowerUp extends BaseEntity {
       case PowerUpSubType.SHIELD:
         // Shield orb
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0x00aaff, // Blue
           transparent: true,
           opacity: 0.7,
@@ -109,7 +117,7 @@ export class PowerUp extends BaseEntity {
       case PowerUpSubType.LIFE:
         // Life/heart shape (simplified as diamond)
         geometry = new THREE.OctahedronGeometry(0.6);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0xff0088, // Pink/Red
           transparent: true,
           opacity: 0.8,
@@ -119,7 +127,7 @@ export class PowerUp extends BaseEntity {
       case PowerUpSubType.SPEED:
         // Speed boost (lightning bolt shape, simplified as thin diamond)
         geometry = new THREE.ConeGeometry(0.2, 1.0, 4);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0x88ff00, // Bright Green
           transparent: true,
           opacity: 0.9,
@@ -129,7 +137,7 @@ export class PowerUp extends BaseEntity {
       case PowerUpSubType.WEAPON_UPGRADE:
         // Weapon upgrade (star/plus shape)
         geometry = new THREE.DodecahedronGeometry(0.7);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0xff8800, // Orange
           transparent: true,
           opacity: 0.8,
@@ -138,7 +146,7 @@ export class PowerUp extends BaseEntity {
 
       default:
         geometry = new THREE.SphereGeometry(0.3);
-        material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        material = new THREE.MeshLambertMaterial({ color: 0xffffff });
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -200,7 +208,7 @@ export class PowerUp extends BaseEntity {
     }
   }
 
-  private updatePlayerAttraction(_deltaTime: number): void {
+  private updatePlayerAttraction(deltaTime: number): void {
     // This would typically get the player from EntityManager
     // For now, we'll implement basic magnetic behavior
 
@@ -216,7 +224,7 @@ export class PowerUp extends BaseEntity {
 
       if (distance > 0.5) {
         // Move towards player
-        const moveSpeed = this.attractionSpeed * _deltaTime;
+        const moveSpeed = this.attractionSpeed * deltaTime;
         this.velocity.x += (dx / distance) * moveSpeed;
         this.velocity.y += (dy / distance) * moveSpeed;
         this.velocity.z += (dz / distance) * moveSpeed;
@@ -234,9 +242,10 @@ export class PowerUp extends BaseEntity {
         // Pulsing shield effect
         if (
           this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
+          this.mesh.material instanceof THREE.MeshLambertMaterial
         ) {
           this.mesh.material.opacity = 0.6 + Math.sin(time * 4.0) * 0.2;
+          this.mesh.material.transparent = true;
         }
         break;
 
@@ -250,9 +259,10 @@ export class PowerUp extends BaseEntity {
         // Rapid flickering for speed
         if (
           this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
+          this.mesh.material instanceof THREE.MeshLambertMaterial
         ) {
           this.mesh.material.opacity = 0.8 + Math.sin(time * 20.0) * 0.2;
+          this.mesh.material.transparent = true;
         }
         break;
 
@@ -261,9 +271,10 @@ export class PowerUp extends BaseEntity {
         const glow = 0.7 + Math.sin(time * 3.0) * 0.3;
         if (
           this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
+          this.mesh.material instanceof THREE.MeshLambertMaterial
         ) {
           this.mesh.material.opacity = glow;
+          this.mesh.material.transparent = true;
         }
         break;
     }
@@ -327,7 +338,7 @@ export class PowerUp extends BaseEntity {
       // Create collection effect
       if (
         this.mesh instanceof THREE.Mesh &&
-        this.mesh.material instanceof THREE.MeshBasicMaterial
+        this.mesh.material instanceof THREE.MeshLambertMaterial
       ) {
         this.mesh.material.color.setHex(0xffffff);
         this.mesh.scale.setScalar(1.5);

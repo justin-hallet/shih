@@ -130,19 +130,19 @@ export class Enemy extends BaseEntity {
       case EnemySubType.GRUNT:
         // Simple grunt representation
         geometry = new THREE.CapsuleGeometry(0.3, 1.0, 4, 8);
-        material = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+        material = new THREE.MeshLambertMaterial({ color: 0xff4444 });
         break;
 
       case EnemySubType.SOLDIER:
         // Soldier representation (larger capsule)
         geometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
-        material = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+        material = new THREE.MeshLambertMaterial({ color: 0xff6600 });
         break;
 
       case EnemySubType.FLYER:
         // Flying enemy (diamond shape)
         geometry = new THREE.OctahedronGeometry(0.6);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0xff00ff,
           transparent: true,
           opacity: 0.9,
@@ -152,13 +152,13 @@ export class Enemy extends BaseEntity {
       case EnemySubType.TANK:
         // Tank representation (large box)
         geometry = new THREE.BoxGeometry(2.5, 1.5, 3.0);
-        material = new THREE.MeshBasicMaterial({ color: 0x666666 });
+        material = new THREE.MeshLambertMaterial({ color: 0x666666 });
         break;
 
       case EnemySubType.BOSS:
         // Boss representation (large imposing shape)
         geometry = new THREE.DodecahedronGeometry(2.0);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0x880000,
           wireframe: false,
         });
@@ -167,7 +167,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.DRAGON:
         // Dragon representation (elongated diamond)
         geometry = new THREE.ConeGeometry(1.0, 4.0, 8);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0x00ff88,
           transparent: true,
           opacity: 0.8,
@@ -176,7 +176,7 @@ export class Enemy extends BaseEntity {
 
       default:
         geometry = new THREE.SphereGeometry(0.5);
-        material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
     }
 
     this.mesh = new THREE.Mesh(geometry, material);

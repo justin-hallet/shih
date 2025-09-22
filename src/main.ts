@@ -196,11 +196,9 @@ function applyVisualizationToScene() {
 }
 applyVisualizationToScene();
 
-let mouseX = 0,
-  mouseY = 0;
+let mouseX = 0;
 let isMouseDragging = false;
-let lastMouseX = 0,
-  lastMouseY = 0;
+let lastMouseX = 0;
 
 // Keyboard event listeners using bindings
 function handleAction(action: Action, isDown: boolean) {
@@ -254,7 +252,6 @@ window.addEventListener('mousedown', event => {
     // Left mouse button
     isMouseDragging = true;
     lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
     event.preventDefault();
   }
 });
@@ -269,14 +266,10 @@ window.addEventListener('mouseup', event => {
 window.addEventListener('mousemove', event => {
   if (isMouseDragging) {
     const deltaX = event.clientX - lastMouseX;
-    const deltaY = event.clientY - lastMouseY;
 
     mouseX += deltaX * 0.005; // Horizontal rotation sensitivity
-    mouseY += deltaY * 0.005; // Vertical rotation sensitivity
-    mouseY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, mouseY)); // Limit vertical look
 
     lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
   }
 });
 
@@ -333,16 +326,13 @@ function animate() {
 
   // Update procedural world generation
   if (player) {
-    // Rails shooter constant forward motion in camera direction (includes pitch)
-    const forwardDir = new THREE.Vector3();
-    camera.getWorldDirection(forwardDir);
-    forwardDir.normalize();
+    // Rails shooter constant forward motion parallel to the floor (yaw only)
+    const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
     if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
     const currentSpeed = scene.userData['railsSpeed'];
     player.position.addScaledVector(forwardDir, currentSpeed * deltaTime);
     // Cache the last travel direction and speed for consistent projectile emission
-    const horizontalForward = new THREE.Vector3(forwardDir.x, 0, forwardDir.z).normalize();
-    scene.userData['lastForwardDir'] = { x: horizontalForward.x, y: 0, z: horizontalForward.z };
+    scene.userData['lastForwardDir'] = { x: forwardDir.x, y: 0, z: forwardDir.z };
     scene.userData['lastRailsSpeed'] = currentSpeed;
     // Space Harrier perspective: Allow manual altitude control
     // (Removed fixed altitude - now controlled by Q/E keys)
@@ -362,7 +352,7 @@ function animate() {
     // Calculate camera position based on mouse rotation
     const cameraX = player.position.x + Math.sin(mouseX) * cameraDistance;
     const cameraZ = player.position.z + Math.cos(mouseX) * cameraDistance;
-    const cameraY = player.position.y + cameraHeight + Math.sin(mouseY) * 10;
+    const cameraY = player.position.y + cameraHeight; // keep camera above, pitch not used for motion
 
     camera.position.set(cameraX, cameraY, cameraZ);
     camera.lookAt(player.position.x, player.position.y, player.position.z);

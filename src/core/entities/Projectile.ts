@@ -18,15 +18,24 @@ export class Projectile extends BaseEntity {
   public explosionRadius: number;
   public homingTarget: IEntity | null;
   public homingStrength: number;
+  // Visual growth over lifetime
+  public growthExponent: number; // 1.0 = linear, >1 grows late, <1 early
+  public growthMaxScale: number; // final scale multiplier at death
+  private baseScale: number; // initial mesh scale baseline
+  private effectScale: number; // transient effect scale from specials
 
   constructor(
     projectileType: ProjectileSubType,
     owner: 'player' | 'enemy',
-    position = { x: 0, y: 0, z: 0 },
-    direction = { x: 0, y: 0, z: -1 },
+    position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+    direction: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: -1 },
     scene?: THREE.Scene,
   ) {
-    super(EntityType.PROJECTILE, `${owner}_${projectileType}`, position, scene);
+    const posVec =
+      position instanceof THREE.Vector3
+        ? position
+        : new THREE.Vector3(position.x, position.y, position.z);
+    super(EntityType.PROJECTILE, `${owner}_${projectileType}`, posVec, scene);
 
     this.projectileType = projectileType;
     this.owner = owner;
@@ -39,9 +48,17 @@ export class Projectile extends BaseEntity {
     this.explosionRadius = 0;
     this.homingTarget = null;
     this.homingStrength = 0;
+    this.growthExponent = 2.0; // slow-start so max reached near end
+    this.growthMaxScale = 8.0;
+    this.baseScale = 1.0;
+    this.effectScale = 1.0;
 
     // Set direction
-    this.direction = { ...direction };
+    if (direction instanceof THREE.Vector3) {
+      this.direction = direction.clone();
+    } else {
+      this.direction = new THREE.Vector3(direction.x, direction.y, direction.z);
+    }
 
     // Set properties based on projectile type
     this.initializeByType();
@@ -122,16 +139,17 @@ export class Projectile extends BaseEntity {
     switch (this.projectileType) {
       case ProjectileSubType.BULLET:
         // Small bullet
-        geometry = new THREE.SphereGeometry(0.1, 6, 4);
-        material = new THREE.MeshBasicMaterial({
+        geometry = new THREE.SphereGeometry(0.15, 8, 6);
+        material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0xffff00 : 0xff4444,
         });
+        // Use default exponent (set in ctor) for late growth
         break;
 
       case ProjectileSubType.MISSILE:
         // Missile with fins
         geometry = new THREE.ConeGeometry(0.15, 0.8, 6);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ff00 : 0xff0000,
         });
         break;
@@ -139,7 +157,7 @@ export class Projectile extends BaseEntity {
       case ProjectileSubType.LASER:
         // Thin laser beam
         geometry = new THREE.CylinderGeometry(0.02, 0.02, 1.0, 4);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ffff : 0xff00ff,
           transparent: true,
           opacity: 0.9,
@@ -149,7 +167,7 @@ export class Projectile extends BaseEntity {
       case ProjectileSubType.PLASMA:
         // Glowing plasma ball
         geometry = new THREE.SphereGeometry(0.3, 8, 6);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x0088ff : 0xff8800,
           transparent: true,
           opacity: 0.8,
@@ -159,7 +177,7 @@ export class Projectile extends BaseEntity {
       case ProjectileSubType.FIREBALL:
         // Large fireball
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
-        material = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshLambertMaterial({
           color: 0xff4400,
           transparent: true,
           opacity: 0.9,
@@ -168,10 +186,11 @@ export class Projectile extends BaseEntity {
 
       default:
         geometry = new THREE.SphereGeometry(0.1);
-        material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        material = new THREE.MeshLambertMaterial({ color: 0xffffff });
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.baseScale = this.mesh.scale.x; // assume uniform scale
 
     // Orient missile and laser correctly
     if (this.projectileType === ProjectileSubType.MISSILE) {
@@ -200,6 +219,13 @@ export class Projectile extends BaseEntity {
 
     // Handle special effects
     this.updateSpecialEffects(deltaTime);
+
+    // Apply growth over lifetime (up to growthMaxScale by end of life)
+    if (this.mesh) {
+      const t = Math.max(0, Math.min(1, this.lifetime > 0 ? this.age / this.lifetime : 1));
+      const growth = 1 + (this.growthMaxScale - 1) * Math.pow(t, this.growthExponent);
+      this.mesh.scale.setScalar(this.baseScale * this.effectScale * growth);
+    }
 
     // If projectile stopped moving significantly, remove it
     const speedSq =
@@ -259,6 +285,7 @@ export class Projectile extends BaseEntity {
 
   private updateSpecialEffects(deltaTime: number): void {
     const time = Date.now() * 0.001;
+    this.effectScale = 1.0; // reset each frame
 
     switch (this.projectileType) {
       case ProjectileSubType.PLASMA:
@@ -268,8 +295,7 @@ export class Projectile extends BaseEntity {
           this.mesh.rotation.y += 3.0 * deltaTime;
 
           // Pulsing effect
-          const scale = 1.0 + Math.sin(time * 8.0) * 0.2;
-          this.mesh.scale.setScalar(scale);
+          this.effectScale = 1.0 + Math.sin(time * 8.0) * 0.2;
         }
         break;
 
@@ -353,8 +379,8 @@ export class Projectile extends BaseEntity {
   }
 
   protected override onDie(): void {
-    this.velocity = { x: 0, y: 0, z: 0 };
-    this.animationType = AnimationType.EXPLODING;
+    // Immediately mark as dead; EntityManager will remove and cleanup
+    this.state = EntityState.DEAD;
   }
 
   protected override onDestroy(): void {
