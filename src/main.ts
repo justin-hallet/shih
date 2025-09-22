@@ -6,6 +6,8 @@
 import * as THREE from 'three';
 // import { Howl } from 'howler'; // TODO: Will use for audio in Phase 5
 import * as tf from '@tensorflow/tfjs';
+import { HUD } from './components/HUD';
+import './styles/hud.css';
 
 // eslint-disable-next-line no-console
 console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
@@ -44,6 +46,15 @@ renderer.domElement.style.display = 'block';
 renderer.domElement.style.width = '100vw';
 renderer.domElement.style.height = '100vh';
 
+// Initialize HUD overlay
+let hud: HUD | null = null;
+let gameScore = 0;
+let gameStage = 1;
+
+if (appDiv) {
+  hud = new HUD(appDiv);
+}
+
 // Create a test cube to verify Three.js is working
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshBasicMaterial({
@@ -57,12 +68,45 @@ scene.add(cube);
 camera.position.z = 5;
 
 // Basic animation loop
+let frameCount = 0;
 function animate() {
   requestAnimationFrame(animate);
 
   // Rotate the cube
   cube.rotation.x += 0.01;
   cube.rotation.y += 0.01;
+
+  // Demo HUD updates (simulate gameplay)
+  frameCount++;
+
+  // Update score every 60 frames (roughly 1 second at 60fps)
+  if (frameCount % 60 === 0 && hud) {
+    gameScore += 1000 + Math.floor(Math.random() * 500);
+    hud.updateScore(gameScore);
+  }
+
+  // Change stage every 10 seconds
+  if (frameCount % 600 === 0 && hud) {
+    gameStage++;
+    hud.updateStage(gameStage);
+
+    // Add stage transition effect
+    const stageElement = document.getElementById('current-stage');
+    if (stageElement) {
+      stageElement.classList.add('stage-updated');
+      setTimeout(() => {
+        stageElement.classList.remove('stage-updated');
+      }, 1000);
+    }
+  }
+
+  // Demo: lose a life every 15 seconds (for first 3 lives)
+  if (frameCount % 900 === 0 && frameCount <= 2700 && hud) {
+    const currentLives = hud.getGameState().lives;
+    if (currentLives > 0) {
+      hud.updateLives(currentLives - 1);
+    }
+  }
 
   renderer.render(scene, camera);
 }

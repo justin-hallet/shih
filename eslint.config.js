@@ -30,7 +30,12 @@ export default [
         navigator: 'readonly',
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
         HTMLCanvasElement: 'readonly',
+        HTMLElement: 'readonly',
         WebGLRenderingContext: 'readonly',
         WebGL2RenderingContext: 'readonly',
         AudioContext: 'readonly',
@@ -69,6 +74,13 @@ export default [
 
   // Ignore patterns
   {
-    ignores: ['dist/', 'node_modules/', '*.config.*'],
+    ignores: [
+      'dist/',
+      'node_modules/',
+      '*.config.*',
+      'src/**/*.test.*',
+      'src/**/*.spec.*',
+      'src/test/**/*',
+    ],
   },
 ];
