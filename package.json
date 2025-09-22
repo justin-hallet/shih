@@ -1,0 +1,39 @@
+{
+  "name": "space-harrier-infinite-horizons",
+  "version": "0.1.0",
+  "description": "An open-world reimagining of the classic Space Harrier arcade game with procedural generation and modern 3D graphics",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,js --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,js --report-unused-disable-directives --max-warnings 0 --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "game",
+    "space-harrier",
+    "three.js",
+    "procedural-generation",
+    "pwa",
+    "typescript",
+    "webgl"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/node": "^24.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "eslint": "^9.36.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.6"
+  }
+}
