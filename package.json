@@ -28,12 +28,23 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@types/howler": "^2.2.12",
     "@types/node": "^24.5.2",
+    "@types/three": "^0.180.0",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "eslint": "^9.36.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vite": "^7.1.6"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.9.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "ammo.js": "^0.0.10",
+    "howler": "^2.2.4",
+    "react-redux": "^9.2.0",
+    "three": "^0.180.0"
   }
 }

@@ -5,7 +5,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 export default [
   // Base JavaScript recommended rules
   js.configs.recommended,
-  
+
   // TypeScript configuration
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -17,11 +17,24 @@ export default [
         project: './tsconfig.json',
       },
       globals: {
+        // Node.js globals
         console: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
+
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        WebGLRenderingContext: 'readonly',
+        WebGL2RenderingContext: 'readonly',
+        AudioContext: 'readonly',
+        webkitAudioContext: 'readonly',
       },
     },
     plugins: {
@@ -32,7 +45,7 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
-      
+
       // General code quality
       'no-console': 'warn',
       'no-debugger': 'error',
@@ -40,7 +53,7 @@ export default [
       'no-var': 'error',
     },
   },
-  
+
   // Configuration files
   {
     files: ['*.config.*', '*.rc.*'],
@@ -53,7 +66,7 @@ export default [
       },
     },
   },
-  
+
   // Ignore patterns
   {
     ignores: ['dist/', 'node_modules/', '*.config.*'],
