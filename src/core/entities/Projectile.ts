@@ -142,6 +142,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.15, 8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0xffff00 : 0xff4444,
+          emissive: new THREE.Color(0xffff66),
+          emissiveIntensity: 1.0,
         });
         // Use default exponent (set in ctor) for late growth
         break;
@@ -151,6 +153,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.ConeGeometry(0.15, 0.8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ff00 : 0xff0000,
+          emissive: new THREE.Color(0x44ff44),
+          emissiveIntensity: 0.8,
         });
         break;
 
@@ -159,6 +163,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.CylinderGeometry(0.02, 0.02, 1.0, 4);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ffff : 0xff00ff,
+          emissive: new THREE.Color(0x66ffff),
+          emissiveIntensity: 1.2,
           transparent: true,
           opacity: 0.9,
         });
@@ -169,6 +175,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.3, 8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x0088ff : 0xff8800,
+          emissive: new THREE.Color(0x4488ff),
+          emissiveIntensity: 1.0,
           transparent: true,
           opacity: 0.8,
         });
@@ -179,6 +187,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
         material = new THREE.MeshLambertMaterial({
           color: 0xff4400,
+          emissive: new THREE.Color(0xff2200),
+          emissiveIntensity: 1.2,
           transparent: true,
           opacity: 0.9,
         });
@@ -190,6 +200,7 @@ export class Projectile extends BaseEntity {
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.layers.enable(1); // Bloom layer
     this.baseScale = this.mesh.scale.x; // assume uniform scale
 
     // Orient missile and laser correctly

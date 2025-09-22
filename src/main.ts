@@ -6,6 +6,9 @@
 import * as THREE from 'three';
 // import { Howl } from 'howler'; // TODO: Will use for audio in Phase 5
 import * as tf from '@tensorflow/tfjs';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { HUD } from './components/HUD';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
@@ -30,6 +33,17 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x1e3c72); // Space Harrier blue gradient
+
+// Postprocessing: Bloom composer
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.2, // strength
+  0.8, // radius
+  0.85, // threshold
+);
+composer.addPass(bloomPass);
 
 // Add lighting for terrain visibility
 const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Soft ambient light
@@ -568,7 +582,8 @@ function animate() {
     );
   }
 
-  renderer.render(scene, camera);
+  // Use postprocessing pipeline so bloom is applied
+  composer.render();
 }
 
 // Handle window resize
@@ -576,6 +591,8 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Keep composer in sync with viewport
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Start the animation loop

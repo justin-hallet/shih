@@ -99,6 +99,8 @@ export class PowerUp extends BaseEntity {
         geometry = new THREE.BoxGeometry(0.6, 0.4, 0.3);
         material = new THREE.MeshLambertMaterial({
           color: 0xffff00, // Yellow
+          emissive: new THREE.Color(0xffee66),
+          emissiveIntensity: 1.0,
           transparent: true,
           opacity: 0.9,
         });
@@ -109,6 +111,8 @@ export class PowerUp extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
         material = new THREE.MeshLambertMaterial({
           color: 0x00aaff, // Blue
+          emissive: new THREE.Color(0x66ccff),
+          emissiveIntensity: 0.9,
           transparent: true,
           opacity: 0.7,
         });
@@ -119,6 +123,8 @@ export class PowerUp extends BaseEntity {
         geometry = new THREE.OctahedronGeometry(0.6);
         material = new THREE.MeshLambertMaterial({
           color: 0xff0088, // Pink/Red
+          emissive: new THREE.Color(0xff66aa),
+          emissiveIntensity: 1.0,
           transparent: true,
           opacity: 0.8,
         });
@@ -129,6 +135,8 @@ export class PowerUp extends BaseEntity {
         geometry = new THREE.ConeGeometry(0.2, 1.0, 4);
         material = new THREE.MeshLambertMaterial({
           color: 0x88ff00, // Bright Green
+          emissive: new THREE.Color(0xaaff66),
+          emissiveIntensity: 1.0,
           transparent: true,
           opacity: 0.9,
         });
@@ -139,6 +147,8 @@ export class PowerUp extends BaseEntity {
         geometry = new THREE.DodecahedronGeometry(0.7);
         material = new THREE.MeshLambertMaterial({
           color: 0xff8800, // Orange
+          emissive: new THREE.Color(0xffaa44),
+          emissiveIntensity: 1.0,
           transparent: true,
           opacity: 0.8,
         });
@@ -150,6 +160,7 @@ export class PowerUp extends BaseEntity {
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.layers.enable(1); // Bloom layer
     this.scene.add(this.mesh);
   }
 
