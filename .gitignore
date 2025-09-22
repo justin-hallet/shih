@@ -11,11 +11,13 @@ build/
 *.tsbuildinfo
 
 # Development
-.vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# VS Code - Keep workspace config, ignore personal settings
+.vscode/settings.json.user
 
 # Environment variables
 .env
