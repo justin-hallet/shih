@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { VitePWA } from 'vite-plugin-pwa';
+import glsl from 'vite-plugin-glsl';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   // Base URL for the app (adjust for deployment)
   base: '/',
-  
+
   // Development server configuration
   server: {
     port: 3000,
@@ -17,7 +21,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true,
-    
+
     // Optimize for PWA
     rollupOptions: {
       input: {
@@ -26,12 +30,12 @@ export default defineConfig({
       output: {
         // Code splitting for better caching
         manualChunks: {
-          'three': ['three'],
-          'vendor': ['@reduxjs/toolkit'],
+          three: ['three'],
+          vendor: ['@reduxjs/toolkit'],
         },
       },
     },
-    
+
     // Asset size warnings (important for PWA)
     chunkSizeWarningLimit: 1000,
   },
@@ -52,8 +56,76 @@ export default defineConfig({
 
   // Plugin configuration
   plugins: [
-    // Add plugins here as needed
-  ],
+    // GLSL shader support
+    glsl({
+      include: '**/*.{glsl,vs,fs,vert,frag}',
+      exclude: 'node_modules/**',
+      warnDuplicatedImports: true,
+      defaultExtension: 'glsl',
+      compress: false,
+    }),
+
+    // PWA support with service worker
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+      },
+      includeAssets: ['favicon.ico', 'manifest.json'],
+      manifest: {
+        name: 'Space Harrier: Infinite Horizons',
+        short_name: 'Space Harrier',
+        description: 'An open-world reimagining of the classic Space Harrier arcade game',
+        theme_color: '#1e3c72',
+        background_color: '#2a5298',
+        display: 'fullscreen',
+        start_url: '/',
+        icons: [
+          {
+            src: 'icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+    }),
+
+    // Static asset copying for game assets (when assets exist)
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'src/assets/models/**/*',
+          dest: 'assets/models',
+          noErrorOnMissing: true,
+        },
+        {
+          src: 'src/assets/textures/**/*',
+          dest: 'assets/textures',
+          noErrorOnMissing: true,
+        },
+        {
+          src: 'src/assets/audio/**/*',
+          dest: 'assets/audio',
+          noErrorOnMissing: true,
+        },
+      ],
+    }),
+
+    // Bundle analyzer (only in analyze mode)
+    process.env.ANALYZE &&
+      visualizer({
+        filename: 'dist/bundle-analysis.html',
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      }),
+  ].filter(Boolean),
 
   // PWA and service worker settings
   define: {
@@ -64,9 +136,6 @@ export default defineConfig({
 
   // Optimization settings
   optimizeDeps: {
-    include: [
-      'three',
-      '@reduxjs/toolkit',
-    ],
+    include: ['three', '@reduxjs/toolkit'],
   },
 });

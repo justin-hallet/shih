@@ -10,7 +10,12 @@
     "lint": "eslint src --ext ts,js --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint src --ext ts,js --report-unused-disable-directives --max-warnings 0 --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run",
+    "analyze": "ANALYZE=true vite build"
   },
   "keywords": [
     "game",
@@ -28,15 +33,27 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.8.0",
     "@types/howler": "^2.2.12",
     "@types/node": "^24.5.2",
     "@types/three": "^0.180.0",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
+    "@vitest/ui": "^3.2.4",
+    "compression": "^1.8.1",
     "eslint": "^9.36.0",
+    "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
+    "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "^5.9.2",
-    "vite": "^7.1.6"
+    "vite": "^7.1.6",
+    "vite-bundle-analyzer": "^1.2.3",
+    "vite-plugin-glsl": "^1.5.1",
+    "vite-plugin-pwa": "^1.0.3",
+    "vite-plugin-static-copy": "^3.1.2",
+    "vitest": "^3.2.4",
+    "workbox-window": "^7.3.0"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",
