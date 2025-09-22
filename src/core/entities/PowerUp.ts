@@ -15,6 +15,10 @@ export class PowerUp extends BaseEntity {
   public bobHeight: number;
   public bobSpeed: number;
   private bobTimer: number;
+  // Visual emphasis
+  public visualScale: number;
+  public jiggleAmplitude: number;
+  public jiggleFrequency: number;
 
   constructor(
     powerUpType: PowerUpSubType,
@@ -35,6 +39,9 @@ export class PowerUp extends BaseEntity {
     this.bobHeight = 0.5;
     this.bobSpeed = 2.0;
     this.bobTimer = Math.random() * Math.PI * 2; // Random start phase
+    this.visualScale = 5.6; // make power-ups larger by default
+    this.jiggleAmplitude = 0.5; // horizontal wiggle amplitude (units)
+    this.jiggleFrequency = 12.0; // wiggle speed (Hz)
 
     // Set properties based on power-up type
     this.initializeByType();
@@ -100,7 +107,7 @@ export class PowerUp extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: 0xffff00, // Yellow
           emissive: new THREE.Color(0xffee66),
-          emissiveIntensity: 1.0,
+          emissiveIntensity: 2.2,
           transparent: true,
           opacity: 0.9,
         });
@@ -112,7 +119,7 @@ export class PowerUp extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: 0x00aaff, // Blue
           emissive: new THREE.Color(0x66ccff),
-          emissiveIntensity: 0.9,
+          emissiveIntensity: 1.8,
           transparent: true,
           opacity: 0.7,
         });
@@ -124,7 +131,7 @@ export class PowerUp extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: 0xff0088, // Pink/Red
           emissive: new THREE.Color(0xff66aa),
-          emissiveIntensity: 1.0,
+          emissiveIntensity: 2.0,
           transparent: true,
           opacity: 0.8,
         });
@@ -136,7 +143,7 @@ export class PowerUp extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: 0x88ff00, // Bright Green
           emissive: new THREE.Color(0xaaff66),
-          emissiveIntensity: 1.0,
+          emissiveIntensity: 2.0,
           transparent: true,
           opacity: 0.9,
         });
@@ -148,7 +155,7 @@ export class PowerUp extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: 0xff8800, // Orange
           emissive: new THREE.Color(0xffaa44),
-          emissiveIntensity: 1.0,
+          emissiveIntensity: 2.0,
           transparent: true,
           opacity: 0.8,
         });
@@ -160,6 +167,9 @@ export class PowerUp extends BaseEntity {
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = false;
+    this.mesh.scale.setScalar(this.visualScale);
     this.mesh.layers.enable(1); // Bloom layer
     this.scene.add(this.mesh);
   }
@@ -185,6 +195,10 @@ export class PowerUp extends BaseEntity {
       // Smooth bobbing motion
       const bobOffset = Math.sin(this.bobTimer) * this.bobHeight;
       this.mesh.position.y = this.position.y + bobOffset;
+      // Horizontal jiggle/wiggle to catch the eye
+      const jiggle = Math.sin(this.bobTimer * this.jiggleFrequency) * this.jiggleAmplitude;
+      this.mesh.position.x = this.position.x + jiggle;
+      this.mesh.position.z = this.position.z + jiggle * 0.6;
     }
   }
 

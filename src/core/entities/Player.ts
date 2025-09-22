@@ -57,6 +57,8 @@ export class Player extends BaseEntity {
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = false;
     this.mesh.rotation.x = Math.PI / 2; // Point forward
     this.scene.add(this.mesh);
   }

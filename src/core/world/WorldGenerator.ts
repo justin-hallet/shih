@@ -481,6 +481,9 @@ export class WorldGenerator {
     });
 
     const surfaceMesh = new THREE.Mesh(geometry, surfaceMaterial);
+    surfaceMesh.receiveShadow = true;
+    // Explicitly keep terrain out of bloom layer
+    surfaceMesh.layers.disable(1);
     surfaceMesh.userData['isTerrain'] = true;
     surfaceMesh.userData['isTerrainSurface'] = true;
 

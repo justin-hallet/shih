@@ -30,6 +30,8 @@ tf.ready().then(() => {
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); // Increased far plane
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x1e3c72); // Space Harrier blue gradient
@@ -52,6 +54,15 @@ scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(50, 100, 50);
 directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(2048, 2048);
+directionalLight.shadow.camera.near = 1;
+directionalLight.shadow.camera.far = 1000;
+// Widen shadow camera to cover gameplay area
+(directionalLight.shadow.camera as THREE.OrthographicCamera).left = -500;
+(directionalLight.shadow.camera as THREE.OrthographicCamera).right = 500;
+(directionalLight.shadow.camera as THREE.OrthographicCamera).top = 500;
+(directionalLight.shadow.camera as THREE.OrthographicCamera).bottom = -500;
+directionalLight.shadow.bias = -0.0003;
 scene.add(directionalLight);
 
 // Replace the loading div with our Three.js canvas

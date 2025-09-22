@@ -180,6 +180,8 @@ export class Enemy extends BaseEntity {
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
   }
 

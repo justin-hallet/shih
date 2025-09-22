@@ -200,6 +200,8 @@ export class Projectile extends BaseEntity {
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = false;
     this.mesh.layers.enable(1); // Bloom layer
     this.baseScale = this.mesh.scale.x; // assume uniform scale
 
