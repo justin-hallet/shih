@@ -532,18 +532,12 @@ export class BiomeManager {
       ],
 
       powerUpRules: [
-        {
-          type: 'ammo',
-          probability: 0.8,
-          respawnTime: 25,
-          hiddenChance: 0.1,
-        },
-        {
-          type: 'speed',
-          probability: 0.3,
-          respawnTime: 50,
-          hiddenChance: 0.3,
-        },
+        // Common → Rare: Ammo, Shield, Weapon, Speed, Life
+        { type: 'ammo', probability: 0.75, respawnTime: 20, hiddenChance: 0.1 },
+        { type: 'shield', probability: 0.45, respawnTime: 40, hiddenChance: 0.2 },
+        { type: 'weapon_upgrade', probability: 0.25, respawnTime: 55, hiddenChance: 0.25 },
+        { type: 'speed', probability: 0.2, respawnTime: 50, hiddenChance: 0.2 },
+        { type: 'life', probability: 0.05, respawnTime: 150, hiddenChance: 0.7 },
       ],
     };
   }
