@@ -311,6 +311,23 @@ const shotCooldown = 0.1; // 10 bullets per second
 camera.position.set(0, 8, 12);
 camera.lookAt(0, 0, 0);
 
+// Initialize player stats and HUD (Borderlands-style bottom-left)
+const startingShield = 4; // 0-8
+const startingLives = 3; // 1-8
+const startingWeapon = 0; // 0-5
+const startingAmmo = 150; // 0-250
+const startingSpeed = (scene.userData['railsSpeed'] || 50) as number; // current rails speed
+
+player.shield = startingShield;
+player.maxShield = 8;
+player.weaponLevel = startingWeapon;
+player.ammo = startingAmmo;
+hud?.updateLives(startingLives);
+hud?.updateShieldSegments(startingShield);
+hud?.updateWeaponLevel(startingWeapon);
+hud?.updateAmmo(startingAmmo);
+hud?.updateSpeed(startingSpeed);
+
 // Game state tracking
 let frameCount = 0;
 let lastBiome: BiomeType | null = null;
@@ -387,8 +404,6 @@ function animate() {
     if (lastBiome !== currentBiome) {
       lastBiome = currentBiome;
       const biomeConfig = biomeManager.getBiome(currentBiome);
-      // eslint-disable-next-line no-console
-      console.log(`🌍 Entered ${biomeConfig?.name || currentBiome}!`);
 
       // Update stage based on biome exploration
       if (hud && biomeConfig) {
@@ -553,24 +568,8 @@ function animate() {
       `📊 World Coverage: ${loadedChunks}/${expectedChunks} chunks (${coverage}%), ${stats.chunksGenerated} total generated`,
     );
 
-    // UPDATE HUD WITH TERRAIN DEBUGGING INFO
-    const scoreElement = document.getElementById('score');
-    if (scoreElement) {
-      const playerTileX = Math.floor((player?.position.x || 0) / 200);
-      const playerTileZ = Math.floor((player?.position.z || 0) / 200);
-      const speed = Math.sqrt(
-        Math.pow(player?.velocity.x || 0, 2) + Math.pow(player?.velocity.z || 0, 2),
-      ).toFixed(1);
-
-      scoreElement.innerHTML = `
-        <div>TERRAIN DEBUG</div>
-        <div>Coverage: ${coverage}% (${loadedChunks}/${expectedChunks})</div>
-        <div>Player Tile: (${playerTileX}, ${playerTileZ})</div>
-        <div>Speed: ${speed} u/s</div>
-        <div>Chunks Generated: ${stats.chunksGenerated}</div>
-        <div>Scene Objects: ${scene.children.length}</div>
-      `;
-    }
+    // Update HUD speed readout with current rails speed
+    hud?.updateSpeed((scene.userData['railsSpeed'] || 50) as number);
     // eslint-disable-next-line no-console
     console.log(`🎯 Entities: ${entityManager.getEntityCount()} total`);
     // eslint-disable-next-line no-console

@@ -8,6 +8,10 @@ export interface GameState {
   currentScore: number;
   lives: number;
   stage: number;
+  shieldSegments: number; // 0-8
+  weaponLevel: number; // 0-5
+  ammo: number; // 0-250
+  speed: number; // 5-500
 }
 
 export class HUD {
@@ -20,6 +24,10 @@ export class HUD {
       currentScore: 0,
       lives: 3,
       stage: 1,
+      shieldSegments: 0,
+      weaponLevel: 0,
+      ammo: 0,
+      speed: 0,
     };
 
     this.hudElement = this.createHUD();
@@ -48,10 +56,27 @@ export class HUD {
       <!-- Bottom HUD Elements -->
       <div class="hud-bottom">
         <div class="hud-element hud-bottom-left">
-          <div class="lives-display" id="lives-display">
-            <span class="hud-life">♦</span>
-            <span class="hud-life">♦</span>
-            <span class="hud-life">♦</span>
+          <div id="stats-bottom-left" style="display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
+            <div class="stat" id="stat-ammo" style="display:flex; flex-direction:column; gap:4px; min-width:90px;">
+              <span class="hud-label" style="font-size:10px; opacity:0.8;">AMMO</span>
+              <span class="hud-value" id="ammo-value">0</span>
+            </div>
+            <div class="stat" id="stat-weapon" style="display:flex; flex-direction:column; gap:4px;">
+              <span class="hud-label" style="font-size:10px; opacity:0.8;">WEAPON</span>
+              <div id="weapon-segments" style="display:flex; gap:3px;"></div>
+            </div>
+            <div class="stat" id="stat-shield" style="display:flex; flex-direction:column; gap:4px;">
+              <span class="hud-label" style="font-size:10px; opacity:0.8;">SHIELD</span>
+              <div id="shield-segments" style="display:flex; gap:3px;"></div>
+            </div>
+            <div class="stat" id="stat-lives" style="display:flex; flex-direction:column; gap:4px;">
+              <span class="hud-label" style="font-size:10px; opacity:0.8;">LIVES</span>
+              <div class="lives-display" id="lives-display"></div>
+            </div>
+            <div class="stat" id="stat-speed" style="display:flex; flex-direction:column; gap:4px; min-width:90px;">
+              <span class="hud-label" style="font-size:10px; opacity:0.8;">SPEED</span>
+              <div id="speed-segments" style="display:flex; gap:3px;"></div>
+            </div>
           </div>
         </div>
         <div class="hud-element hud-bottom-right">
@@ -70,6 +95,10 @@ export class HUD {
     const currentScoreEl = document.getElementById('current-score');
     const currentStageEl = document.getElementById('current-stage');
     const livesDisplayEl = document.getElementById('lives-display');
+    const shieldSegsEl = document.getElementById('shield-segments');
+    const weaponSegsEl = document.getElementById('weapon-segments');
+    const ammoValueEl = document.getElementById('ammo-value');
+    const speedSegsEl = document.getElementById('speed-segments');
 
     if (topScoreEl) topScoreEl.textContent = this.gameState.topScore.toString();
     if (currentScoreEl) currentScoreEl.textContent = this.gameState.currentScore.toString();
@@ -85,6 +114,61 @@ export class HUD {
         livesDisplayEl.appendChild(life);
       }
     }
+
+    // Update shield segments (0-8)
+    if (shieldSegsEl) {
+      shieldSegsEl.innerHTML = '';
+      for (let i = 0; i < 8; i++) {
+        const seg = document.createElement('span');
+        const active = i < this.gameState.shieldSegments;
+        seg.style.display = 'inline-block';
+        seg.style.width = '10px';
+        seg.style.height = '6px';
+        seg.style.border = '1px solid rgba(255,255,255,0.6)';
+        seg.style.background = active ? 'linear-gradient(180deg, #35f7ff, #0aa1b2)' : 'transparent';
+        seg.style.boxShadow = active ? '0 0 6px rgba(53,247,255,0.6)' : 'none';
+        shieldSegsEl.appendChild(seg);
+      }
+    }
+
+    // Update weapon segments (0-5)
+    if (weaponSegsEl) {
+      weaponSegsEl.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const seg = document.createElement('span');
+        const active = i < this.gameState.weaponLevel;
+        seg.style.display = 'inline-block';
+        seg.style.width = '8px';
+        seg.style.height = '8px';
+        seg.style.transform = 'skewX(-20deg)';
+        seg.style.border = '1px solid rgba(255,255,255,0.6)';
+        seg.style.background = active ? 'linear-gradient(180deg, #ffea00, #ff9900)' : 'transparent';
+        seg.style.boxShadow = active ? '0 0 6px rgba(255,220,0,0.6)' : 'none';
+        weaponSegsEl.appendChild(seg);
+      }
+    }
+
+    if (ammoValueEl) ammoValueEl.textContent = `${this.gameState.ammo}`;
+    // Update speed segments (0-5)
+    if (speedSegsEl) {
+      speedSegsEl.innerHTML = '';
+      const segments = 5;
+      const filled = Math.max(
+        0,
+        Math.min(segments, Math.round((this.gameState.speed / 500) * segments)),
+      );
+      for (let i = 0; i < segments; i++) {
+        const seg = document.createElement('span');
+        const active = i < filled;
+        seg.style.display = 'inline-block';
+        seg.style.width = '16px';
+        seg.style.height = '6px';
+        seg.style.border = '1px solid rgba(255,255,255,0.6)';
+        seg.style.background = active ? 'linear-gradient(180deg, #7dff76, #2dbf24)' : 'transparent';
+        seg.style.boxShadow = active ? '0 0 6px rgba(125,255,118,0.6)' : 'none';
+        speedSegsEl.appendChild(seg);
+      }
+    }
   }
 
   // Update game state methods
@@ -98,6 +182,26 @@ export class HUD {
 
   public updateLives(lives: number): void {
     this.gameState.lives = Math.max(0, lives);
+    this.updateDisplay();
+  }
+
+  public updateShieldSegments(segments: number): void {
+    this.gameState.shieldSegments = Math.max(0, Math.min(8, Math.floor(segments)));
+    this.updateDisplay();
+  }
+
+  public updateWeaponLevel(level: number): void {
+    this.gameState.weaponLevel = Math.max(0, Math.min(5, Math.floor(level)));
+    this.updateDisplay();
+  }
+
+  public updateAmmo(ammo: number): void {
+    this.gameState.ammo = Math.max(0, Math.min(250, Math.floor(ammo)));
+    this.updateDisplay();
+  }
+
+  public updateSpeed(speed: number): void {
+    this.gameState.speed = Math.max(5, Math.min(500, speed));
     this.updateDisplay();
   }
 
