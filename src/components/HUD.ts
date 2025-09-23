@@ -80,6 +80,10 @@ export class HUD {
           </div>
         </div>
         <div class="hud-element hud-bottom-right">
+          <div class="hud-fps" style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin-bottom:6px;">
+            <span class="hud-label" style="font-size:10px; opacity:0.8;">FPS</span>
+            <span class="hud-value" id="fps-value">0</span>
+          </div>
           <span class="hud-label">STAGE</span>
           <span class="hud-value" id="current-stage">1</span>
         </div>
@@ -212,6 +216,11 @@ export class HUD {
 
   public getGameState(): GameState {
     return { ...this.gameState };
+  }
+
+  public updateFPS(fps: number): void {
+    const fpsEl = document.getElementById('fps-value');
+    if (fpsEl) fpsEl.textContent = fps.toString();
   }
 
   public destroy(): void {

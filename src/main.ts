@@ -215,7 +215,8 @@ type Action =
   | 'set_weapon_5'
   | 'toggle_debug_obstacles'
   | 'toggle_debug_enemies'
-  | 'toggle_debug_powerups';
+  | 'toggle_debug_powerups'
+  | 'switch_model';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -252,6 +253,8 @@ const KeyBindings: Record<string, Action> = {
   Digit6: 'toggle_debug_obstacles',
   Digit7: 'toggle_debug_enemies',
   Digit8: 'toggle_debug_powerups',
+  // Model switching
+  KeyM: 'switch_model',
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -314,6 +317,10 @@ function handleAction(action: Action, isDown: boolean) {
       const flag = !(scene.userData['debugPowerUps'] || false);
       scene.userData['debugPowerUps'] = flag;
       applyDebugBloomOverride(EntityType.POWERUP, flag, 0x00ff00, false); // bright green
+    } else if (action === 'switch_model') {
+      if (player) {
+        (player as any).switchToNextModel();
+      }
     }
   }
 }
@@ -452,6 +459,9 @@ let distanceTraveled = 0;
 const lastPlayerPosition = new THREE.Vector3(0, 5, 0);
 
 const clock = new THREE.Clock();
+let fpsAccumulator = 0;
+let fpsFrames = 0;
+let fpsLastReport = 0;
 
 // Function to toggle terrain visualization
 function toggleTerrainVisualization() {
@@ -479,6 +489,8 @@ function animate() {
 
   const deltaTime = clock.getDelta();
   frameCount++;
+  fpsAccumulator += deltaTime;
+  fpsFrames++;
 
   // Update all entities
   entityManager.update(deltaTime);
@@ -490,6 +502,9 @@ function animate() {
     if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
     const currentSpeed = scene.userData['railsSpeed'];
     player.position.addScaledVector(forwardDir, currentSpeed * deltaTime);
+
+    // Update player rotation to match movement direction
+    (player as any).setRotation(mouseX);
     // Cache the last travel direction and speed for consistent projectile emission
     scene.userData['lastForwardDir'] = { x: forwardDir.x, y: 0, z: forwardDir.z };
     scene.userData['lastRailsSpeed'] = currentSpeed;
@@ -541,6 +556,10 @@ function animate() {
     const moveSpeed = 100; // Units per second (strafe)
     const flySpeed = 50; // Vertical movement speed
 
+    // Calculate ground distance for animation logic (used throughout this block)
+    const terrainHeight = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
+    const groundDistance = player.position.y - terrainHeight;
+
     // Immediate turning left/right (A/Left, D/Right) by adjusting orbit angle (same path as mouse)
     if (actionDown['turn_left']) {
       mouseX += turnRate * deltaTime;
@@ -549,19 +568,46 @@ function animate() {
       mouseX -= turnRate * deltaTime;
     }
 
-    // Strafe (Q/E)
+    // Strafe (Q/E) and update animation state
+    let isStrafing = false;
+    let strafeDirection: 'left' | 'right' | null = null;
+
     if (actionDown['strafe_left']) {
       const left = new THREE.Vector3(-1, 0, 0);
       left.applyQuaternion(camera.quaternion);
       left.multiplyScalar(moveSpeed * deltaTime);
       player.position.add(left);
+      isStrafing = true;
+      strafeDirection = 'left';
     }
     if (actionDown['strafe_right']) {
       const right = new THREE.Vector3(1, 0, 0);
       right.applyQuaternion(camera.quaternion);
       right.multiplyScalar(moveSpeed * deltaTime);
       player.position.add(right);
+      isStrafing = true;
+      strafeDirection = 'right';
     }
+
+    // Also consider turning as strafing when near ground
+    if (!isStrafing && groundDistance < 2.0) {
+      if (actionDown['turn_left']) {
+        isStrafing = true;
+        strafeDirection = 'left';
+      } else if (actionDown['turn_right']) {
+        isStrafing = true;
+        strafeDirection = 'right';
+      }
+    }
+
+    // Track vertical movement for jump animation
+    const isAscending = actionDown['ascend'] || false;
+    const isDescending = actionDown['descend'] || false;
+
+    // Update player animation states
+    (player as any).setStrafing(isStrafing, strafeDirection);
+    (player as any).setGroundDistance(groundDistance);
+    (player as any).setVerticalMovement(isAscending, isDescending);
 
     // Up/down (W/Up and S/Down)
     if (actionDown['ascend']) {
@@ -625,11 +671,13 @@ function animate() {
     // UPDATE HUD WITH MANUAL CONTROL INFO
     const stageElement = document.getElementById('stage');
     if (stageElement) {
+      const currentModel = (player as any).getCurrentModelName();
       stageElement.innerHTML = `
         MANUAL FLIGHT<br>
         POS: (${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})<br>
         TILE: (${playerTileX}, ${playerTileZ})<br>
-        CONTROLS: WASD + Q/E or Space/Shift<br>
+        MODEL: ${currentModel.toUpperCase()}<br>
+        CONTROLS: WASD + Q/E or Space/Shift + M=Model<br>
         DISPLAY: O=Wireframe(${showWireframe ? 'ON' : 'OFF'}) F=Surface(${showSurface ? 'ON' : 'OFF'})
       `;
     }
@@ -644,10 +692,11 @@ function animate() {
       const lastDirObj = scene.userData['lastForwardDir'] || { x: 0, y: 0, z: -1 };
       const forward = new THREE.Vector3(lastDirObj.x, 0, lastDirObj.z).normalize();
 
-      // Offset spawn a bit ahead of player
+      // Offset spawn a bit ahead of player and at chest height
+      const playerHeight = 7.2; // Approximate height of scaled player model (180 * 0.04)
       const spawnPos = {
         x: player.position.x + forward.x * 0.6,
-        y: player.position.y, // constant height
+        y: player.position.y + playerHeight * 0.6, // 60% of player height for chest/weapon level
         z: player.position.z + forward.z * 0.6,
       };
 
@@ -692,6 +741,14 @@ function animate() {
       const explorationBonus = gameStage * 500; // Bonus for discovering new biomes
       gameScore = distanceScore + explorationBonus;
       hud.updateScore(gameScore);
+    }
+
+    // FPS update roughly once per second
+    if (fpsAccumulator - fpsLastReport >= 1.0) {
+      const fps = Math.max(1, Math.round(fpsFrames / (fpsAccumulator - fpsLastReport)));
+      hud.updateFPS(fps);
+      fpsLastReport = fpsAccumulator;
+      fpsFrames = 0;
     }
 
     // Add stage transition effect when entering new biomes

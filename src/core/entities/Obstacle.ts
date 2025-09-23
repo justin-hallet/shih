@@ -11,8 +11,16 @@ export class Obstacle extends BaseEntity {
   public destructible: boolean;
   public rotationSpeed: number;
 
-  constructor(obstacleType: ObstacleSubType, position = { x: 0, y: 0, z: 0 }, scene?: THREE.Scene) {
-    super(EntityType.OBSTACLE, obstacleType, position, scene);
+  constructor(
+    obstacleType: ObstacleSubType,
+    position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+    scene?: THREE.Scene,
+  ) {
+    const pos =
+      position instanceof THREE.Vector3
+        ? position
+        : new THREE.Vector3(position.x, position.y, position.z);
+    super(EntityType.OBSTACLE, obstacleType, pos, scene);
 
     this.obstacleType = obstacleType;
     this.destructible = this.getDestructibleByType(obstacleType);
@@ -112,49 +120,88 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.TREE:
         // Simple tree representation
         geometry = new THREE.CylinderGeometry(0.2, 0.3, 3, 8);
-        material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0x00cc66, // bright green
+          emissive: new THREE.Color(0x008844),
+          emissiveIntensity: 0.4,
+        });
         break;
 
       case ObstacleSubType.ROCK:
         // Rock representation
         geometry = new THREE.DodecahedronGeometry(1.5);
-        material = new THREE.MeshLambertMaterial({ color: 0x808080 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0x3399ff, // bright blue
+          emissive: new THREE.Color(0x1a4d80),
+          emissiveIntensity: 0.45,
+        });
         break;
 
       case ObstacleSubType.PILLAR:
         // Pillar representation
         geometry = new THREE.CylinderGeometry(1, 1, 8, 8);
-        material = new THREE.MeshLambertMaterial({ color: 0xc0c0c0 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0xaa66ff, // bright purple
+          emissive: new THREE.Color(0x6b2fbf),
+          emissiveIntensity: 0.45,
+        });
         break;
 
       case ObstacleSubType.VEHICLE:
         // Vehicle representation
         geometry = new THREE.BoxGeometry(2, 1, 3);
-        material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0xff5533, // brighter red-orange
+          emissive: new THREE.Color(0xaa2200),
+          emissiveIntensity: 0.45,
+        });
         break;
 
       case ObstacleSubType.BUILDING:
         // Building representation
         geometry = new THREE.BoxGeometry(6, 12, 6);
-        material = new THREE.MeshLambertMaterial({ color: 0x404040 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0x00e5ff, // bright cyan
+          emissive: new THREE.Color(0x0088aa),
+          emissiveIntensity: 0.5,
+        });
         break;
 
       case ObstacleSubType.CRYSTAL:
         // Crystal representation
         geometry = new THREE.OctahedronGeometry(1);
         material = new THREE.MeshLambertMaterial({
-          color: 0x00ffff,
+          color: 0xff66ff, // hot pink
+          emissive: new THREE.Color(0xff99ff),
+          emissiveIntensity: 1.0,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.85,
         });
         break;
 
       default:
         geometry = new THREE.BoxGeometry(1, 1, 1);
-        material = new THREE.MeshLambertMaterial({ color: 0x808080 });
+        material = new THREE.MeshLambertMaterial({
+          color: 0xffaa00, // bright orange
+          emissive: new THREE.Color(0xcc6600),
+          emissiveIntensity: 0.45,
+        });
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    // Make obstacles twice as big (uniform scale)
+    this.mesh.scale.multiplyScalar(2);
+    // Update collision bounds to match visual scale
+    if (this.collisionBounds) {
+      if (typeof this.collisionBounds.radius === 'number') {
+        this.collisionBounds.radius *= 2;
+      }
+      if (this.collisionBounds.box) {
+        this.collisionBounds.box.width *= 2;
+        this.collisionBounds.box.height *= 2;
+        this.collisionBounds.box.depth *= 2;
+      }
+    }
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
@@ -173,7 +220,8 @@ export class Obstacle extends BaseEntity {
     }
   }
 
-  protected override onTakeDamage(_damage: number): void {
+  protected override onTakeDamage(damage: number): void {
+    void damage;
     if (!this.destructible) return;
 
     // Visual feedback for damage
@@ -199,7 +247,7 @@ export class Obstacle extends BaseEntity {
 
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
-    this.velocity = { x: 0, y: 0, z: 0 };
+    this.velocity.set(0, 0, 0);
   }
 
   protected override onDestroy(): void {

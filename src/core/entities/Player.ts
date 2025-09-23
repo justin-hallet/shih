@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { BaseEntity } from '../Entity';
 import { EntityType, AnimationType, EntityState } from '../types';
 
@@ -20,7 +21,29 @@ export class Player extends BaseEntity {
   public acceleration: number;
   public deceleration: number;
 
-  constructor(position = { x: 0, y: 0, z: 0 }, scene?: THREE.Scene) {
+  // Animation properties
+  private mixer?: THREE.AnimationMixer;
+  private animations: Map<string, THREE.AnimationAction> = new Map();
+  private currentAnimation: string = 'running';
+  private isModelLoaded: boolean = false;
+
+  // Rotation tracking
+  private currentRotationY: number = 0;
+
+  // Animation state tracking
+  private isNearGround: boolean = true;
+  private isStrafing: boolean = false;
+  private strafeDirection: 'left' | 'right' | null = null;
+  private lastGroundState: boolean = true;
+  private transitionTimer: number = 0;
+  private isAscending: boolean = false;
+  private isDescending: boolean = false;
+
+  // Model switching
+  private availableModels: string[] = ['bot', 'female', 'racer', 'mouse', 'machine'];
+  private currentModelIndex: number = 0;
+
+  constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
     // Player stats
@@ -50,7 +73,156 @@ export class Player extends BaseEntity {
   private createMesh(): void {
     if (!this.scene) return;
 
-    // Create a simple Harrier representation (will be replaced with proper model later)
+    // Load all animation models
+    this.loadAnimationModels();
+  }
+
+  private async loadAnimationModels(): Promise<void> {
+    const loader = new FBXLoader();
+
+    // Base model with skin (T-pose) - use current selected model
+    const currentModel = this.availableModels[this.currentModelIndex];
+    const baseModelFile = `/src/assets/models/${currentModel}.fbx`;
+
+    // Animation files (no skin, animations only)
+    const animationFiles = [
+      { name: 'running', file: '/src/assets/models/running.fbx' },
+      { name: 'jump', file: '/src/assets/models/jump.fbx' },
+      { name: 'flying', file: '/src/assets/models/flying.fbx' },
+      { name: 'strafe_left', file: '/src/assets/models/strafe-left.fbx' },
+      { name: 'strafe_right', file: '/src/assets/models/strafe-right.fbx' },
+    ];
+
+    try {
+      // Load the base T-pose model with skin
+      const baseFbx = await this.loadFBXModel(loader, baseModelFile);
+      this.setupBaseMesh(baseFbx);
+
+      // Load all animations from separate files
+      for (const animFile of animationFiles) {
+        try {
+          const fbx = await this.loadFBXModel(loader, animFile.file);
+          if (fbx.animations && fbx.animations.length > 0) {
+            // Fix bone naming mismatch between base model and animations
+            const fixedClip = this.fixAnimationBoneNames(fbx.animations[0], baseFbx);
+
+            // Create animation action using the base mesh's mixer
+            const action = this.mixer!.clipAction(fixedClip);
+            this.animations.set(animFile.name, action);
+          }
+        } catch (error) {
+          // Silently continue if animation fails to load
+        }
+      }
+
+      // Start with running animation if available, otherwise stay in T-pose
+      if (this.animations.has('running')) {
+        this.playAnimation('running');
+      }
+      this.isModelLoaded = true;
+    } catch {
+      this.createFallbackMesh();
+    }
+  }
+
+  private loadFBXModel(loader: FBXLoader, path: string): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+      loader.load(
+        path,
+        fbx => resolve(fbx),
+        () => {
+          // Loading progress - no logging needed
+        },
+        error => reject(error),
+      );
+    });
+  }
+
+  private setupBaseMesh(fbx: THREE.Group): void {
+    // Scale the model to fit the scene
+    fbx.scale.setScalar(0.04);
+
+    // Orient the model so we see the back (character runs forward)
+    fbx.rotation.y = -this.currentRotationY;
+
+    // Position the model correctly
+    fbx.position.set(0, 0, 0);
+
+    // Enable shadows
+    fbx.traverse(child => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+
+    // Set up animation mixer
+    this.mixer = new THREE.AnimationMixer(fbx);
+
+    this.mesh = fbx;
+    this.scene!.add(this.mesh);
+  }
+
+  private fixAnimationBoneNames(
+    sourceClip: THREE.AnimationClip,
+    targetModel: THREE.Group,
+  ): THREE.AnimationClip {
+    // Create a mapping of available bones in the target model
+    const targetBones = new Set<string>();
+    targetModel.traverse(child => {
+      if (child.type === 'Bone' || child.name.includes('mixamorig')) {
+        targetBones.add(child.name);
+      }
+    });
+
+    // Create new tracks with corrected bone names
+    const newTracks: THREE.KeyframeTrack[] = [];
+
+    for (const track of sourceClip.tracks) {
+      const trackName = track.name;
+      const parts = trackName.split('.');
+      const boneName = parts[0];
+      const property = parts.slice(1).join('.');
+
+      let targetBoneName = boneName;
+
+      // Try to find matching bone in target model
+      if (!targetBones.has(boneName)) {
+        // Try common naming variations
+        const variations = [
+          boneName.replace('mixamorig1', 'mixamorig'),
+          boneName.replace('mixamorig', 'mixamorig1'),
+          boneName.replace('mixamorig1', 'mixamorig6'), // Handle mixamorig6 (racer model)
+          boneName.replace('mixamorig6', 'mixamorig1'), // Handle mixamorig1 to mixamorig6
+          boneName.replace('1', '6'), // Replace 1 with 6
+          boneName.replace('6', '1'), // Replace 6 with 1
+          boneName.replace('1', ''), // Remove trailing numbers
+          boneName + '1', // Add trailing number
+          boneName + '6', // Add trailing number 6
+        ];
+
+        for (const variation of variations) {
+          if (targetBones.has(variation)) {
+            targetBoneName = variation;
+            break;
+          }
+        }
+      }
+
+      // Create new track with corrected name
+      const newTrackName = `${targetBoneName}.${property}`;
+      const TrackConstructor = track.constructor as any;
+      const newTrack = new TrackConstructor(newTrackName, track.times, track.values);
+      newTracks.push(newTrack);
+    }
+
+    return new THREE.AnimationClip(sourceClip.name + '_fixed', sourceClip.duration, newTracks);
+  }
+
+  private createFallbackMesh(): void {
+    if (!this.scene) return;
+
+    // Create a simple Harrier representation as fallback
     const geometry = new THREE.ConeGeometry(0.3, 1.2, 8);
     const material = new THREE.MeshLambertMaterial({
       color: 0x00ff00,
@@ -65,6 +237,14 @@ export class Player extends BaseEntity {
 
   // Player-specific update logic
   protected onUpdate(deltaTime: number): void {
+    // Update animation mixer
+    if (this.mixer) {
+      this.mixer.update(deltaTime);
+    }
+
+    // Update animation state based on current conditions
+    this.updateAnimationState(deltaTime);
+
     // Handle invulnerability
     if (this.invulnerableTime > 0) {
       this.invulnerableTime -= deltaTime;
@@ -120,6 +300,121 @@ export class Player extends BaseEntity {
     this.velocity.y -= this.acceleration * intensity;
   }
 
+  // Set player rotation to match movement direction
+  public setRotation(rotationY: number): void {
+    this.currentRotationY = rotationY;
+    if (this.mesh) {
+      // Set rotation to match the forward direction calculation
+      // Negative rotation to face away from camera
+      this.mesh.rotation.y = -rotationY;
+    }
+  }
+
+  // Animation control methods
+  private playAnimation(animationName: string): void {
+    if (!this.mixer || !this.animations.has(animationName)) return;
+
+    // Stop current animation
+    const currentAction = this.animations.get(this.currentAnimation);
+    if (currentAction && currentAction !== this.animations.get(animationName)) {
+      currentAction.fadeOut(0.2);
+    }
+
+    // Start new animation
+    const newAction = this.animations.get(animationName)!;
+    newAction.reset().fadeIn(0.2).play();
+
+    this.currentAnimation = animationName;
+  }
+
+  // Update animation state based on player conditions
+  private updateAnimationState(deltaTime: number): void {
+    if (!this.isModelLoaded) return;
+
+    // Update transition timer
+    if (this.transitionTimer > 0) {
+      this.transitionTimer -= deltaTime;
+    }
+
+    // Check for ground state changes
+    const groundStateChanged = this.lastGroundState !== this.isNearGround;
+    if (groundStateChanged) {
+      this.lastGroundState = this.isNearGround;
+      // Trigger jump animation when leaving ground or landing
+      this.transitionTimer = 0.6; // Jump animation duration for transitions
+    }
+
+    // Determine appropriate animation
+    let targetAnimation = 'running';
+
+    // Animation sequence: Running/Strafing -> Jump -> Flying
+    if (this.isNearGround) {
+      // Player is on or near ground - use ground-based animations
+      if (this.isStrafing && this.strafeDirection) {
+        targetAnimation = this.strafeDirection === 'left' ? 'strafe_left' : 'strafe_right';
+      } else {
+        targetAnimation = 'running';
+      }
+    } else {
+      // Player is in the air
+      if (this.transitionTimer > 0 || this.isAscending || this.isDescending) {
+        // Use jump animation during transitions or active vertical movement
+        targetAnimation = 'jump';
+      } else {
+        // Use flying animation when gliding/stable in air
+        targetAnimation = 'flying';
+      }
+    }
+
+    // Switch animation if needed
+    if (targetAnimation !== this.currentAnimation) {
+      this.playAnimation(targetAnimation);
+    }
+  }
+
+  // Public method to set ground distance (called from main.ts)
+  public setGroundDistance(distance: number): void {
+    // Update internal state for animation decisions
+    // Increased threshold - only consider "near ground" when very close
+    this.isNearGround = distance < 1;
+  }
+
+  // Public method to set strafe state (called from main.ts)
+  public setStrafing(isStrafing: boolean, direction: 'left' | 'right' | null = null): void {
+    this.isStrafing = isStrafing;
+    this.strafeDirection = direction;
+  }
+
+  // Public method to set vertical movement state (called from main.ts)
+  public setVerticalMovement(isAscending: boolean, isDescending: boolean): void {
+    this.isAscending = isAscending;
+    this.isDescending = isDescending;
+  }
+
+  // Public method to switch to next model (called from main.ts)
+  public switchToNextModel(): void {
+    // Move to next model (circular)
+    this.currentModelIndex = (this.currentModelIndex + 1) % this.availableModels.length;
+
+    // Remove current mesh from scene
+    if (this.mesh && this.scene) {
+      this.scene.remove(this.mesh);
+    }
+
+    // Clear current animations
+    this.animations.clear();
+    this.mixer = undefined as any;
+    this.isModelLoaded = false;
+
+    // Reload with new model
+    this.loadAnimationModels();
+  }
+
+  // Public method to get current model name
+  public getCurrentModelName(): string {
+    return this.availableModels[this.currentModelIndex];
+  }
+
   // Combat methods
   public shoot(): boolean {
     if (this.ammo <= 0 || this.state !== EntityState.ACTIVE) return false;
@@ -166,10 +461,35 @@ export class Player extends BaseEntity {
 
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
-    this.velocity = { x: 0, y: 0, z: 0 };
+    this.velocity.set(0, 0, 0);
   }
 
   protected override onDestroy(): void {
     // Player cleanup
+  }
+
+  // Collisions
+  public override onCollision(other: BaseEntity): void {
+    if (this.state !== EntityState.ACTIVE) return;
+
+    // Colliding with obstacles reduces shield, then lives
+    if (other.type === EntityType.OBSTACLE) {
+      if (this.invulnerableTime > 0) return; // brief i-frames
+      this.invulnerableTime = 0.5; // half a second of invulnerability between hits
+
+      const hud: any = (this.scene as any)?.userData?.hud;
+
+      if (this.shield > 0) {
+        this.shield = Math.max(0, this.shield - 1);
+        hud?.updateShieldSegments?.(this.shield);
+      } else {
+        // Reduce life and restore shield to max (8 segments default)
+        const currentLives = hud?.getGameState?.().lives ?? 0;
+        const newLives = Math.max(0, currentLives - 1);
+        hud?.updateLives?.(newLives);
+        this.shield = Math.min(this.maxShield || 8, 8);
+        hud?.updateShieldSegments?.(this.shield);
+      }
+    }
   }
 }
