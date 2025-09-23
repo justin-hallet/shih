@@ -124,7 +124,8 @@ export class Player extends BaseEntity {
   public shoot(): boolean {
     if (this.ammo <= 0 || this.state !== EntityState.ACTIVE) return false;
 
-    this.ammo--;
+    // Deplete 0.5 ammo per shot, clamped at 0
+    this.ammo = Math.max(0, this.ammo - 0.5);
     this.animationType = AnimationType.ATTACKING;
     this.animationFrame = 0;
 

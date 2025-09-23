@@ -142,8 +142,8 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.15, 8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0xffff00 : 0xff4444,
-          emissive: new THREE.Color(0xffff66),
-          emissiveIntensity: 1.0,
+          emissive: new THREE.Color(this.owner === 'player' ? 0xffff00 : 0xff4444),
+          emissiveIntensity: 1.5,
         });
         // Use default exponent (set in ctor) for late growth
         break;
@@ -153,44 +153,46 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.ConeGeometry(0.15, 0.8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ff00 : 0xff0000,
-          emissive: new THREE.Color(0x44ff44),
-          emissiveIntensity: 0.8,
+          emissive: new THREE.Color(this.owner === 'player' ? 0x00ff00 : 0xff0000),
+          emissiveIntensity: 1.4,
         });
         break;
 
       case ProjectileSubType.LASER:
-        // Thin laser beam
-        geometry = new THREE.CylinderGeometry(0.02, 0.02, 1.0, 4);
+        // Pill-shaped laser (capsule), more visible, aligned to XZ plane
+        geometry = new THREE.CapsuleGeometry(0.12, 0.6, 4, 8);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ffff : 0xff00ff,
-          emissive: new THREE.Color(0x66ffff),
-          emissiveIntensity: 1.2,
+          emissive: new THREE.Color(this.owner === 'player' ? 0x00ffff : 0xff00ff),
+          emissiveIntensity: 1.8,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
         });
         break;
 
       case ProjectileSubType.PLASMA:
         // Glowing plasma ball
-        geometry = new THREE.SphereGeometry(0.3, 8, 6);
+        geometry = new THREE.SphereGeometry(0.34, 12, 8);
         material = new THREE.MeshLambertMaterial({
-          color: this.owner === 'player' ? 0x0088ff : 0xff8800,
-          emissive: new THREE.Color(0x4488ff),
-          emissiveIntensity: 1.0,
-          transparent: true,
-          opacity: 0.8,
+          color: 0x000000,
+          emissive: new THREE.Color(0x66ccff),
+          emissiveIntensity: 3.0,
+          transparent: false,
+          opacity: 1.0,
+          blending: THREE.AdditiveBlending,
         });
         break;
 
       case ProjectileSubType.FIREBALL:
         // Large fireball
-        geometry = new THREE.SphereGeometry(0.5, 10, 8);
+        geometry = new THREE.SphereGeometry(0.55, 12, 10);
         material = new THREE.MeshLambertMaterial({
-          color: 0xff4400,
-          emissive: new THREE.Color(0xff2200),
-          emissiveIntensity: 1.2,
+          color: 0x000000,
+          emissive: new THREE.Color(0xff6622),
+          emissiveIntensity: 3.2,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
         });
         break;
 
@@ -203,6 +205,11 @@ export class Projectile extends BaseEntity {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.mesh.layers.enable(1); // Bloom layer
+
+    // Align pill/laser along XZ plane
+    if (this.projectileType === ProjectileSubType.LASER) {
+      this.mesh.rotation.x = Math.PI / 2; // rotate so capsule length lies in XZ
+    }
     this.baseScale = this.mesh.scale.x; // assume uniform scale
 
     // Orient missile and laser correctly
@@ -250,10 +257,9 @@ export class Projectile extends BaseEntity {
       return;
     }
 
-    // Remove projectiles that have gone too far behind the camera
-    if (this.position.z > 10) {
-      this.die();
-    }
+    // Note: Previously we removed projectiles when position.z > 10.
+    // That caused immediate despawn in large positive-Z areas.
+    // We now rely on lifetime (and collisions) to remove projectiles.
   }
 
   private updateHoming(deltaTime: number): void {

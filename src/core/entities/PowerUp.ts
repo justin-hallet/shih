@@ -12,6 +12,8 @@ export class PowerUp extends BaseEntity {
   public magnetRange: number; // Range at which player attracts this power-up
   public attracted: boolean;
   public attractionSpeed: number;
+  public magnetBaseSpeed?: number;
+  public magnetMaxSpeed?: number;
   public bobHeight: number;
   public bobSpeed: number;
   private bobTimer: number;
@@ -33,9 +35,11 @@ export class PowerUp extends BaseEntity {
 
     this.powerUpType = powerUpType;
     this.value = 1;
-    this.magnetRange = 3.0;
+    this.magnetRange = 20.0;
     this.attracted = false;
-    this.attractionSpeed = 8.0;
+    this.attractionSpeed = 18.0;
+    this.magnetBaseSpeed = 30.0;
+    this.magnetMaxSpeed = 140.0;
     this.bobHeight = 0.5;
     this.bobSpeed = 2.0;
     this.bobTimer = Math.random() * Math.PI * 2; // Random start phase
@@ -53,42 +57,44 @@ export class PowerUp extends BaseEntity {
   }
 
   private initializeByType(): void {
+    const radiusScale = 4.0;
+    const magnetRangeScale = 4.0;
     switch (this.powerUpType) {
       case PowerUpSubType.AMMO:
         this.value = 50; // 50 shots
         this.weight = 0.2;
-        this.collisionBounds = { radius: 0.5 };
-        this.magnetRange = 2.5;
+        this.collisionBounds = { radius: 2.0 * radiusScale };
+        this.magnetRange = 24.0 * magnetRangeScale;
         break;
 
       case PowerUpSubType.SHIELD:
         this.value = 25; // 25 shield points
         this.weight = 0.3;
-        this.collisionBounds = { radius: 0.6 };
-        this.magnetRange = 3.0;
+        this.collisionBounds = { radius: 2.4 * radiusScale };
+        this.magnetRange = 24.0 * magnetRangeScale;
         break;
 
       case PowerUpSubType.LIFE:
         this.value = 1; // 1 extra life
         this.weight = 0.1;
-        this.collisionBounds = { radius: 0.7 };
-        this.magnetRange = 4.0; // Lives are more attractive
+        this.collisionBounds = { radius: 2.8 * radiusScale };
+        this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
         break;
 
       case PowerUpSubType.SPEED:
         this.value = 2; // 2x speed multiplier for 10 seconds
         this.weight = 0.2;
-        this.collisionBounds = { radius: 0.4 };
-        this.magnetRange = 2.0;
+        this.collisionBounds = { radius: 2.0 * radiusScale };
+        this.magnetRange = 24.0 * magnetRangeScale;
         this.bobSpeed = 4.0; // Faster bobbing for speed power-up
         break;
 
       case PowerUpSubType.WEAPON_UPGRADE:
         this.value = 1; // 1 weapon level
         this.weight = 0.4;
-        this.collisionBounds = { radius: 0.8 };
-        this.magnetRange = 3.5;
+        this.collisionBounds = { radius: 3.0 * radiusScale };
+        this.magnetRange = 24.0 * magnetRangeScale;
         this.bobHeight = 0.6;
         break;
     }
@@ -129,11 +135,11 @@ export class PowerUp extends BaseEntity {
         // Life/heart shape (simplified as diamond)
         geometry = new THREE.OctahedronGeometry(0.6);
         material = new THREE.MeshLambertMaterial({
-          color: 0xff0088, // Pink/Red
-          emissive: new THREE.Color(0xff66aa),
+          color: 0xff0000, // Red
+          emissive: new THREE.Color(0xaa0000),
           emissiveIntensity: 2.0,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.85,
         });
         break;
 
@@ -141,8 +147,8 @@ export class PowerUp extends BaseEntity {
         // Speed boost (lightning bolt shape, simplified as thin diamond)
         geometry = new THREE.ConeGeometry(0.2, 1.0, 4);
         material = new THREE.MeshLambertMaterial({
-          color: 0x88ff00, // Bright Green
-          emissive: new THREE.Color(0xaaff66),
+          color: 0x00ff00, // Green
+          emissive: new THREE.Color(0x33ff33),
           emissiveIntensity: 2.0,
           transparent: true,
           opacity: 0.9,
@@ -189,6 +195,9 @@ export class PowerUp extends BaseEntity {
   }
 
   private updateBobbing(deltaTime: number): void {
+    // Stop all bob/jiggle once magnetism is active
+    if (this.attracted) return;
+
     this.bobTimer += this.bobSpeed * deltaTime;
 
     if (this.mesh) {
@@ -234,25 +243,71 @@ export class PowerUp extends BaseEntity {
   }
 
   private updatePlayerAttraction(deltaTime: number): void {
-    // This would typically get the player from EntityManager
-    // For now, we'll implement basic magnetic behavior
+    if (!this.scene) return;
+    const em = (this.scene as any).userData?.entityManager;
+    const cam = (this.scene as any).userData?.camera as THREE.PerspectiveCamera | undefined;
+    const player = em?.player;
+    if (!player) return;
 
-    if (this.attracted && this.mesh) {
-      // Move towards player position (simplified - assumes player at origin)
-      const playerPos = { x: 0, y: 0, z: 2 }; // Approximate player position
+    // Only attract if visible in camera frustum
+    if (cam) {
+      const frustum = new THREE.Frustum();
+      const projView = new THREE.Matrix4().multiplyMatrices(
+        cam.projectionMatrix,
+        cam.matrixWorldInverse,
+      );
+      frustum.setFromProjectionMatrix(projView);
+      const isVisible = frustum.containsPoint(
+        new THREE.Vector3(this.position.x, this.position.y, this.position.z),
+      );
+      if (!isVisible && !this.attracted) return;
+    }
 
-      const dx = playerPos.x - this.position.x;
-      const dy = playerPos.y - this.position.y;
-      const dz = playerPos.z - this.position.z;
+    // Check magnet activation
+    const dx = player.position.x - this.position.x;
+    const dy = player.position.y - this.position.y;
+    const dz = player.position.z - this.position.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!this.attracted && distance <= this.magnetRange) this.attracted = true;
 
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (this.attracted) {
+      // If within snap radius, immediately apply and remove
+      if (distance < 1.2) {
+        this.applyToPlayer(player as IEntity);
+        this.die();
+        return;
+      }
 
-      if (distance > 0.5) {
-        // Move towards player
-        const moveSpeed = this.attractionSpeed * deltaTime;
-        this.velocity.x += (dx / distance) * moveSpeed;
-        this.velocity.y += (dy / distance) * moveSpeed;
-        this.velocity.z += (dz / distance) * moveSpeed;
+      // If very close, directly interpolate toward player to avoid orbiting
+      if (distance < 3.0) {
+        const lerpFactor = Math.min(1, 8.0 * deltaTime);
+        this.position.x += (player.position.x - this.position.x) * lerpFactor;
+        this.position.y += (player.position.y - this.position.y) * lerpFactor;
+        this.position.z += (player.position.z - this.position.z) * lerpFactor;
+        this.velocity.set(0, 0, 0);
+        return;
+      }
+      // Much snappier: override velocity toward player with speed that scales by distance.
+      const dir = new THREE.Vector3(dx, dy, dz);
+      const dist = Math.max(0.0001, distance);
+      dir.multiplyScalar(1 / dist);
+      // Speed grows with remaining range and proximity, clamped by magnetMaxSpeed
+      const range = this.magnetRange;
+      const base = this.magnetBaseSpeed || 30.0;
+      const maxS = this.magnetMaxSpeed || 140.0;
+      const proximity = Math.max(0, Math.min(1, 1 - dist / range));
+      const boost = (range - dist) * 10.0 + 80.0 * Math.pow(proximity, 1.2);
+      const speed = Math.min(maxS, base + boost);
+      const step = speed; // units/sec
+      this.velocity.x = dir.x * step;
+      this.velocity.y = dir.y * step;
+      this.velocity.z = dir.z * step;
+
+      // If very close, ensure immediate pickup next frame
+      if (dist < 0.2) {
+        this.velocity.x *= 2;
+        this.velocity.y *= 2;
+        this.velocity.z *= 2;
       }
     }
   }
@@ -322,35 +377,48 @@ export class PowerUp extends BaseEntity {
   }
 
   // Apply power-up effect to player
-  public applyToPlayer(_player: IEntity): void {
-    // This would be implemented based on the specific player interface
-    // For now, we'll use the generic entity interface
-
+  public applyToPlayer(player: IEntity): void {
+    const sceneUser = (this.scene as any)?.userData || {};
+    const hud = sceneUser.hud as any;
     switch (this.powerUpType) {
-      case PowerUpSubType.AMMO:
-        // player.addAmmo(this.value);
-        console.log(`Player gained ${this.value} ammo!`);
+      case PowerUpSubType.AMMO: {
+        (player as any).ammo = Math.min(250, ((player as any).ammo || 0) + (this.value || 10));
+        hud?.updateAmmo((player as any).ammo);
         break;
-
-      case PowerUpSubType.SHIELD:
-        // player.addShield(this.value);
-        console.log(`Player gained ${this.value} shield!`);
+      }
+      case PowerUpSubType.SHIELD: {
+        const maxShield = (player as any).maxShield || 8;
+        (player as any).shield = Math.min(
+          maxShield,
+          ((player as any).shield || 0) + (this.value || 1),
+        );
+        hud?.updateShieldSegments((player as any).shield);
         break;
-
-      case PowerUpSubType.LIFE:
-        // player.addLife(this.value);
-        console.log(`Player gained ${this.value} extra life!`);
+      }
+      case PowerUpSubType.LIFE: {
+        const currentLives = Math.min(8, (hud?.getGameState?.().lives || 0) + 1);
+        hud?.updateLives(currentLives);
         break;
-
-      case PowerUpSubType.SPEED:
-        // player.applySpeedBoost(this.value, 10); // 10 second duration
-        console.log(`Player gained ${this.value}x speed boost!`);
+      }
+      case PowerUpSubType.SPEED: {
+        const base = sceneUser.baseRailsSpeed || 50;
+        const boosted = Math.min(500, base * 1.5);
+        sceneUser.railsSpeed = boosted;
+        hud?.updateSpeed(boosted);
+        setTimeout(() => {
+          sceneUser.railsSpeed = base;
+          hud?.updateSpeed(base);
+        }, 5000);
         break;
-
-      case PowerUpSubType.WEAPON_UPGRADE:
-        // player.upgradeWeapon();
-        console.log(`Player weapon upgraded!`);
+      }
+      case PowerUpSubType.WEAPON_UPGRADE: {
+        const current = (player as any).weaponLevel || 0;
+        // Cycle levels 1→5, then wrap to 1
+        const nextLevel = (current % 5) + 1;
+        (player as any).weaponLevel = nextLevel;
+        hud?.updateWeaponLevel(nextLevel);
         break;
+      }
     }
   }
 
@@ -369,16 +437,29 @@ export class PowerUp extends BaseEntity {
         this.mesh.scale.setScalar(1.5);
       }
 
-      // Destroy power-up after brief effect
-      setTimeout(() => {
-        this.die();
-      }, 200);
+      // Destroy power-up immediately
+      this.die();
+      return;
+    }
+
+    // If hit by the player's projectile, snap into magnet mode toward the player
+    if (other.type === EntityType.PROJECTILE && this.state === EntityState.ACTIVE) {
+      // Only react to player's projectiles
+      const owner = (other as any).owner;
+      if (owner === 'player') {
+        this.attracted = true;
+        // Strong magnet effect and wide range so it quickly reaches the player
+        this.magnetRange = Math.max(this.magnetRange, 40.0);
+        this.attractionSpeed = Math.max(this.attractionSpeed, 24.0);
+      }
     }
   }
 
   protected override onDie(): void {
-    this.velocity = { x: 0, y: 0, z: 0 };
+    // Immediately mark as DEAD so EntityManager removes the power-up
+    this.velocity.set(0, 0, 0);
     this.animationType = AnimationType.EXPLODING;
+    this.state = EntityState.DEAD;
   }
 
   protected override onDestroy(): void {

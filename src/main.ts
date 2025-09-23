@@ -14,7 +14,7 @@ import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
-import { ProjectileSubType, EntityType } from './core/types';
+import { ProjectileSubType, EntityType, PowerUpSubType } from './core/types';
 import './styles/hud.css';
 
 // eslint-disable-next-line no-console
@@ -65,6 +65,41 @@ directionalLight.shadow.camera.far = 1000;
 directionalLight.shadow.bias = -0.0003;
 scene.add(directionalLight);
 
+// Keep light and its shadow frustum centered around the camera/player
+function updateShadowRig(): void {
+  const up = new THREE.Vector3(0, 1, 0);
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.normalize();
+  const right = new THREE.Vector3().crossVectors(forward, up).normalize();
+
+  // Position light slightly behind and above the camera, offset to one side
+  const lightPos = new THREE.Vector3()
+    .copy(camera.position)
+    .addScaledVector(forward, -150)
+    .addScaledVector(up, 180)
+    .addScaledVector(right, -80);
+  directionalLight.position.copy(lightPos);
+
+  // Look at player if available, otherwise a point in front of camera
+  const targetPos = player
+    ? player.position
+    : new THREE.Vector3().copy(camera.position).addScaledVector(forward, 100);
+  directionalLight.target.position.copy(targetPos);
+  directionalLight.target.updateMatrixWorld();
+
+  // Dynamic shadow camera extents based on camera height and speed
+  const halfSize = Math.min(800, Math.max(300, camera.position.y * 8));
+  const ortho = directionalLight.shadow.camera as THREE.OrthographicCamera;
+  ortho.left = -halfSize;
+  ortho.right = halfSize;
+  ortho.top = halfSize;
+  ortho.bottom = -halfSize;
+  ortho.near = 1;
+  ortho.far = halfSize * 4;
+  ortho.updateProjectionMatrix();
+}
+
 // Replace the loading div with our Three.js canvas
 const appDiv = document.getElementById('app');
 if (appDiv) {
@@ -90,15 +125,20 @@ let hud: HUD | null = null;
 let gameScore = 0;
 let gameStage = 1;
 
-if (appDiv) {
-  hud = new HUD(appDiv);
-}
-
 // Initialize Entity System with higher limits for infinite world
 const entityManager = new EntityManager({
   scene,
   maxEntities: 35000, // Increased for expanded terrain coverage (1089 chunks × ~30 entities each)
 });
+
+if (appDiv) {
+  hud = new HUD(appDiv);
+}
+// Ensure userData exists
+(scene as any).userData = (scene as any).userData || {};
+(scene as any).userData['hud'] = hud;
+(scene as any).userData['entityManager'] = entityManager;
+(scene as any).userData['camera'] = camera;
 
 // Configure procedural generation settings
 const proceduralSettings: ProceduralGenerationSettings = {
@@ -167,7 +207,12 @@ type Action =
   | 'speed_up'
   | 'speed_down'
   | 'toggle_wireframe'
-  | 'toggle_surface';
+  | 'toggle_surface'
+  | 'set_weapon_1'
+  | 'set_weapon_2'
+  | 'set_weapon_3'
+  | 'set_weapon_4'
+  | 'set_weapon_5';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -194,6 +239,12 @@ const KeyBindings: Record<string, Action> = {
   // Visualization toggles
   KeyO: 'toggle_wireframe',
   KeyF: 'toggle_surface',
+  // Debug weapon level
+  Digit1: 'set_weapon_1',
+  Digit2: 'set_weapon_2',
+  Digit3: 'set_weapon_3',
+  Digit4: 'set_weapon_4',
+  Digit5: 'set_weapon_5',
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -238,6 +289,12 @@ function handleAction(action: Action, isDown: boolean) {
       showSurface = !showSurface;
       toggleTerrainVisualization();
       scene.userData['showSurface'] = showSurface;
+    } else if (action.startsWith('set_weapon_')) {
+      const level = parseInt(action.split('_')[2] || '1', 10);
+      if (player) {
+        (player as any).weaponLevel = level;
+        hud?.updateWeaponLevel(level);
+      }
     }
   }
 }
@@ -314,9 +371,10 @@ camera.lookAt(0, 0, 0);
 // Initialize player stats and HUD (Borderlands-style bottom-left)
 const startingShield = 4; // 0-8
 const startingLives = 3; // 1-8
-const startingWeapon = 0; // 0-5
+const startingWeapon = 1; // 1-5 (default 1)
 const startingAmmo = 150; // 0-250
 const startingSpeed = (scene.userData['railsSpeed'] || 50) as number; // current rails speed
+(scene as any).userData['baseRailsSpeed'] = startingSpeed;
 
 player.shield = startingShield;
 player.maxShield = 8;
@@ -418,6 +476,8 @@ function animate() {
 
   // MANUAL PLAYER CONTROLS
   if (player) {
+    // Update the shadow rig so shadows follow the camera/player
+    updateShadowRig();
     const turnRate = 2;
     const moveSpeed = 100; // Units per second (strafe)
     const flySpeed = 50; // Vertical movement speed
@@ -456,6 +516,23 @@ function animate() {
       const minAllowedY = terrainYForDescend + MIN_FLOOR_CLEARANCE;
       const nextY = player.position.y - flySpeed * deltaTime;
       player.position.y = Math.max(nextY, minAllowedY);
+    }
+
+    // If ammo has reached 0, spawn an ammo power-up ahead of the player
+    if ((player as any).ammo <= 0) {
+      const fwd = new THREE.Vector3();
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      const spawn = {
+        x: player.position.x + fwd.x * 4,
+        y: player.position.y,
+        z: player.position.z + fwd.z * 4,
+      };
+      entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
+      // Give the player a tiny reserve so we don't spawn every frame until pickup
+      (player as any).ammo = 0.5;
+      hud?.updateAmmo(Math.floor((player as any).ammo));
     }
 
     // Enforce ground collision / constant hover height unless actively flying down
@@ -515,7 +592,20 @@ function animate() {
         z: player.position.z + forward.z * 0.6,
       };
 
-      const proj = entityManager.spawnProjectile(ProjectileSubType.BULLET, 'player', spawnPos, {
+      // Map weapon level to projectile subtype
+      const weaponLevel = ((player as any).weaponLevel || 1) as number;
+      const projType =
+        weaponLevel === 1
+          ? ProjectileSubType.BULLET
+          : weaponLevel === 2
+            ? ProjectileSubType.MISSILE
+            : weaponLevel === 3
+              ? ProjectileSubType.LASER
+              : weaponLevel === 4
+                ? ProjectileSubType.PLASMA
+                : ProjectileSubType.FIREBALL;
+
+      const proj = entityManager.spawnProjectile(projType, 'player', spawnPos, {
         x: forward.x,
         y: 0, // constant height
         z: forward.z,
@@ -530,6 +620,8 @@ function animate() {
       proj.velocity.y = 0; // constant height
       proj.velocity.z = forward.z * proj.speed;
       lastShotTime = currentTime;
+      // Reflect ammo change in HUD (ammo may be fractional but HUD shows int)
+      hud?.updateAmmo(Math.floor((player as any).ammo || 0));
     }
   }
 
