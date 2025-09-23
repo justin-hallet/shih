@@ -489,7 +489,12 @@ export class WorldGenerator {
 
     // Create wireframe overlay as a separate child for independent visibility
     const wireGeom = new THREE.WireframeGeometry(geometry);
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const wireMat = new THREE.LineBasicMaterial({
+      color: 0x000000,
+      linewidth: 0.5, // Make wireframe lines thinner (limited browser support)
+      opacity: 0.6, // Make lines more transparent for thinner appearance
+      transparent: true,
+    });
     const wireframe = new THREE.LineSegments(wireGeom, wireMat);
     wireframe.renderOrder = 1; // draw after surface
     wireframe.userData['isTerrainWireframe'] = true;

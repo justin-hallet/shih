@@ -11,6 +11,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CellShadingPass } from './shaders/CellShadingPass.js';
 import { HUD } from './components/HUD';
+import { DebugPanel } from './components/DebugPanel.js';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
@@ -43,6 +44,7 @@ composer.addPass(new RenderPass(scene, camera));
 
 // Cell shading pass (Borderlands-style)
 const cellShadingPass = new CellShadingPass(window.innerWidth, window.innerHeight);
+cellShadingPass.enabled = false;
 composer.addPass(cellShadingPass);
 
 const bloomPass = new UnrealBloomPass(
@@ -140,6 +142,48 @@ const entityManager = new EntityManager({
 if (appDiv) {
   hud = new HUD(appDiv);
 }
+
+// Initialize Debug Panel
+const debugPanel = new DebugPanel();
+debugPanel.setCellShadingPass(cellShadingPass);
+
+// Set up debug panel callbacks
+debugPanel.setWeaponChangeCallback((weaponType: number) => {
+  handleAction(`set_weapon_${weaponType}` as Action, false);
+});
+
+debugPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
+  if (type === 'debugObstacles') {
+    const currentFlag = scene.userData['debugObstacles'] || false;
+    if (currentFlag !== enabled) {
+      handleAction('toggle_debug_obstacles', false);
+    }
+  } else if (type === 'debugEnemies') {
+    const currentFlag = scene.userData['debugEnemies'] || false;
+    if (currentFlag !== enabled) {
+      handleAction('toggle_debug_enemies', false);
+    }
+  } else if (type === 'debugPowerups') {
+    const currentFlag = scene.userData['debugPowerUps'] || false;
+    if (currentFlag !== enabled) {
+      handleAction('toggle_debug_powerups', false);
+    }
+  }
+});
+
+debugPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
+  if (type === 'wireframe') {
+    if (showWireframe !== enabled) {
+      // showWireframe = enabled;
+      handleAction('toggle_wireframe', false);
+    }
+  } else if (type === 'surface') {
+    if (showSurface !== enabled) {
+      // showSurface = enabled;
+      handleAction('toggle_surface', false);
+    }
+  }
+});
 // Ensure userData exists
 (scene as any).userData = (scene as any).userData || {};
 (scene as any).userData['hud'] = hud;
@@ -198,6 +242,9 @@ const player = entityManager.spawnPlayer({
   z: tileCenter,
 });
 
+// Set player reference in debug panel now that it's created
+debugPanel.setPlayer(player);
+
 // Initialize world generation around player
 worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter));
 
@@ -225,7 +272,8 @@ type Action =
   | 'switch_model'
   | 'toggle_cell_shading'
   | 'adjust_edge_threshold'
-  | 'adjust_color_levels';
+  | 'adjust_color_levels'
+  | 'toggle_debug_panel';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -268,6 +316,8 @@ const KeyBindings: Record<string, Action> = {
   KeyC: 'toggle_cell_shading',
   KeyV: 'adjust_edge_threshold',
   KeyB: 'adjust_color_levels',
+  // Debug panel
+  Backquote: 'toggle_debug_panel', // ~ key
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -351,6 +401,8 @@ function handleAction(action: Action, isDown: boolean) {
       const currentIndex = levels.indexOf(currentLevels);
       const nextIndex = (currentIndex + 1) % levels.length;
       cellShadingPass.setColorLevels(levels[nextIndex]);
+    } else if (action === 'toggle_debug_panel') {
+      debugPanel.toggle();
     }
   }
 }
@@ -716,7 +768,7 @@ function animate() {
         POS: (${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})<br>
         TILE: (${playerTileX}, ${playerTileZ})<br>
         MODEL: ${currentModel.toUpperCase()}<br>
-        CONTROLS: WASD + Q/E or Space/Shift + M=Model<br>
+        CONTROLS: WASD + Q/E or Space/Shift + M=Model ~=Debug<br>
         DISPLAY: O=Wireframe(${showWireframe ? 'ON' : 'OFF'}) F=Surface(${showSurface ? 'ON' : 'OFF'})<br>
         CELL SHADING: C=Toggle(${cellShadingPass.enabled ? 'ON' : 'OFF'}) V=Edges B=Colors
       `;

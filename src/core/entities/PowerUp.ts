@@ -3,6 +3,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BaseEntity, IEntity } from '../Entity';
 import { EntityType, PowerUpSubType, AnimationType, EntityState } from '../types';
 
@@ -21,6 +22,13 @@ export class PowerUp extends BaseEntity {
   public visualScale: number;
   public jiggleAmplitude: number;
   public jiggleFrequency: number;
+
+  // GLTF model loading
+  private static gltfLoader: GLTFLoader = new GLTFLoader();
+  private static modelCache: Map<PowerUpSubType, THREE.Group> = new Map();
+  private originalMaterial?: THREE.Material; // Store original material for bloom effects
+  private isLoadingModel: boolean = false; // Prevent multiple simultaneous loads
+  private currentRotation: number = 0; // Track rotation independently of mesh
 
   constructor(
     powerUpType: PowerUpSubType,
@@ -47,9 +55,16 @@ export class PowerUp extends BaseEntity {
     this.jiggleAmplitude = 0.5; // horizontal wiggle amplitude (units)
     this.jiggleFrequency = 12.0; // wiggle speed (Hz)
 
+    // Start with random rotation for visual variety
+    this.currentRotation = Math.random() * Math.PI * 2;
+
     // Set properties based on power-up type
     this.initializeByType();
-    this.createMesh();
+
+    // Create mesh asynchronously
+    this.createMesh().catch(error => {
+      this.createFallbackMesh();
+    });
 
     // Power-ups are immediately active
     this.state = EntityState.ACTIVE;
@@ -80,6 +95,7 @@ export class PowerUp extends BaseEntity {
         this.collisionBounds = { radius: 2.8 * radiusScale };
         this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
+        this.visualScale = 22.4; // 4x larger than default (5.6 * 4 = 22.4)
         break;
 
       case PowerUpSubType.SPEED:
@@ -100,19 +116,136 @@ export class PowerUp extends BaseEntity {
     }
   }
 
-  private createMesh(): void {
+  private async createMesh(): Promise<void> {
     if (!this.scene) return;
+
+    // Prevent multiple simultaneous loads
+    if (this.isLoadingModel || this.mesh) return;
+    this.isLoadingModel = true;
+
+    try {
+      // Load GLTF model
+      const model = await this.loadGLTFModel();
+      if (!model) {
+        this.createFallbackMesh();
+        return;
+      }
+
+      // Clone the model for this instance
+      this.mesh = model.clone();
+
+      // Debug: Check model bounds
+      const box = new THREE.Box3().setFromObject(this.mesh);
+      const size = box.getSize(new THREE.Vector3());
+
+      // Apply bloom material effects
+      this.applyBloomMaterial();
+
+      // Set up mesh properties
+      this.mesh.castShadow = true;
+      this.mesh.receiveShadow = false;
+      this.mesh.scale.setScalar(this.visualScale);
+
+      // Set position (make sure it's at the right location)
+      this.mesh.position.copy(this.position);
+
+      // Apply current rotation to the new mesh
+      this.mesh.rotation.y = this.currentRotation;
+
+      this.mesh.layers.enable(1); // Bloom layer
+      this.scene.add(this.mesh);
+    } catch (error) {
+      this.createFallbackMesh();
+    } finally {
+      this.isLoadingModel = false;
+    }
+  }
+
+  private async loadGLTFModel(): Promise<THREE.Group | null> {
+    // Check cache first
+    if (PowerUp.modelCache.has(this.powerUpType)) {
+      return PowerUp.modelCache.get(this.powerUpType)!;
+    }
+
+    // Map power-up types to model files
+    const modelFiles: Record<PowerUpSubType, string> = {
+      [PowerUpSubType.AMMO]: 'ammo.glb',
+      [PowerUpSubType.SHIELD]: 'shield.glb',
+      [PowerUpSubType.LIFE]: 'life.glb',
+      [PowerUpSubType.SPEED]: 'speed.glb',
+      [PowerUpSubType.WEAPON_UPGRADE]: 'weapon.glb',
+    };
+
+    const modelFile = modelFiles[this.powerUpType];
+    if (!modelFile) {
+      console.warn(`No model file mapped for power-up type: ${this.powerUpType}`);
+      return null;
+    }
+
+    try {
+      const gltf = await PowerUp.gltfLoader.loadAsync(`/src/assets/models/${modelFile}`);
+      const model = gltf.scene;
+
+      // Cache the model
+      PowerUp.modelCache.set(this.powerUpType, model);
+
+      return model;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private applyBloomMaterial(): void {
+    if (!this.mesh) return;
+
+    // Get bloom color based on power-up type
+    const bloomColors: Record<PowerUpSubType, number> = {
+      [PowerUpSubType.AMMO]: 0xffee66, // bright yellow
+      [PowerUpSubType.SHIELD]: 0x66ccff, // blue
+      [PowerUpSubType.LIFE]: 0xff3333, // red
+      [PowerUpSubType.SPEED]: 0x33ff33, // green
+      [PowerUpSubType.WEAPON_UPGRADE]: 0xffaa44, // orange
+    };
+
+    const emissiveColor = new THREE.Color(bloomColors[this.powerUpType]);
+
+    // Apply bloom material to all meshes in the model
+    this.mesh.traverse(child => {
+      if (child instanceof THREE.Mesh) {
+        // Store original material if needed
+        if (!this.originalMaterial && child.material) {
+          this.originalMaterial = child.material;
+        }
+
+        // Create subtle bloom material (more visible models)
+        const bloomMaterial = new THREE.MeshLambertMaterial({
+          color: 0x888888, // Lighter gray base for better visibility
+          emissive: emissiveColor,
+          emissiveIntensity: 0.6, // Much lower intensity for subtlety
+          transparent: true,
+          opacity: 0.95, // Slightly less transparent
+          // No additive blending for solid appearance
+        });
+
+        child.material = bloomMaterial;
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+  }
+
+  private createFallbackMesh(): void {
+    console.log(`🔄 Creating fallback mesh for ${this.powerUpType}`);
 
     let geometry: THREE.BufferGeometry;
     let material: THREE.Material;
 
     switch (this.powerUpType) {
       case PowerUpSubType.AMMO:
-        // Ammo box
         geometry = new THREE.BoxGeometry(0.6, 0.4, 0.3);
         material = new THREE.MeshLambertMaterial({
           color: 0x000000,
-          emissive: new THREE.Color(0xffee66), // bright yellow
+          emissive: new THREE.Color(0xffee66),
           emissiveIntensity: 2.8,
           transparent: true,
           opacity: 0.95,
@@ -122,11 +255,10 @@ export class PowerUp extends BaseEntity {
         break;
 
       case PowerUpSubType.SHIELD:
-        // Shield orb
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
         material = new THREE.MeshLambertMaterial({
           color: 0x000000,
-          emissive: new THREE.Color(0x66ccff), // blue
+          emissive: new THREE.Color(0x66ccff),
           emissiveIntensity: 2.8,
           transparent: true,
           opacity: 0.95,
@@ -136,11 +268,10 @@ export class PowerUp extends BaseEntity {
         break;
 
       case PowerUpSubType.LIFE:
-        // Life/heart shape (simplified as diamond)
         geometry = new THREE.OctahedronGeometry(0.6);
         material = new THREE.MeshLambertMaterial({
           color: 0x000000,
-          emissive: new THREE.Color(0xff3333), // red
+          emissive: new THREE.Color(0xff3333),
           emissiveIntensity: 3.0,
           transparent: true,
           opacity: 0.95,
@@ -150,11 +281,10 @@ export class PowerUp extends BaseEntity {
         break;
 
       case PowerUpSubType.SPEED:
-        // Speed boost (lightning bolt shape, simplified as thin diamond)
         geometry = new THREE.ConeGeometry(0.2, 1.0, 4);
         material = new THREE.MeshLambertMaterial({
           color: 0x000000,
-          emissive: new THREE.Color(0x33ff33), // green
+          emissive: new THREE.Color(0x33ff33),
           emissiveIntensity: 2.8,
           transparent: true,
           opacity: 0.95,
@@ -164,11 +294,10 @@ export class PowerUp extends BaseEntity {
         break;
 
       case PowerUpSubType.WEAPON_UPGRADE:
-        // Weapon upgrade (star/plus shape)
         geometry = new THREE.DodecahedronGeometry(0.7);
         material = new THREE.MeshLambertMaterial({
           color: 0x000000,
-          emissive: new THREE.Color(0xffaa44), // orange
+          emissive: new THREE.Color(0xffaa44),
           emissiveIntensity: 2.8,
           transparent: true,
           opacity: 0.95,
@@ -191,11 +320,11 @@ export class PowerUp extends BaseEntity {
   }
 
   protected onUpdate(deltaTime: number): void {
-    // Handle bobbing animation
-    this.updateBobbing(deltaTime);
+    // Handle bouncing animation (up and down)
+    this.updateBouncing(deltaTime);
 
-    // Handle rotation
-    this.updateRotation(deltaTime);
+    // Handle Y-axis spinning
+    this.updateSpinning(deltaTime);
 
     // Handle player attraction (if player is nearby)
     this.updatePlayerAttraction(deltaTime);
@@ -204,51 +333,59 @@ export class PowerUp extends BaseEntity {
     this.updateSpecialEffects(deltaTime);
   }
 
-  private updateBobbing(deltaTime: number): void {
-    // Stop all bob/jiggle once magnetism is active
+  private updateBouncing(deltaTime: number): void {
+    // Stop bouncing once magnetism is active
     if (this.attracted) return;
 
     this.bobTimer += this.bobSpeed * deltaTime;
 
     if (this.mesh) {
-      // Smooth bobbing motion
-      const bobOffset = Math.sin(this.bobTimer) * this.bobHeight;
-      this.mesh.position.y = this.position.y + bobOffset;
-      // Horizontal jiggle/wiggle to catch the eye
-      const jiggle = Math.sin(this.bobTimer * this.jiggleFrequency) * this.jiggleAmplitude;
-      this.mesh.position.x = this.position.x + jiggle;
-      this.mesh.position.z = this.position.z + jiggle * 0.6;
+      // Dramatic bouncing motion (up and down only) - much more visible
+      const bounceOffset = Math.sin(this.bobTimer) * this.bobHeight * 4.0; // 4x the bounce height
+      this.mesh.position.y = this.position.y + bounceOffset;
+
+      // Keep X and Z position fixed (no jiggle)
+      this.mesh.position.x = this.position.x;
+      this.mesh.position.z = this.position.z;
     }
   }
 
-  private updateRotation(deltaTime: number): void {
+  private updateSpinning(deltaTime: number): void {
     if (!this.mesh) return;
 
-    // Rotate based on power-up type
+    // All power-ups spin around Y-axis at different speeds based on type
+    let spinSpeed: number;
+
     switch (this.powerUpType) {
       case PowerUpSubType.AMMO:
-        this.mesh.rotation.y += 1.0 * deltaTime;
+        spinSpeed = 2.0; // Moderate spin for ammo
         break;
-
       case PowerUpSubType.SHIELD:
-        this.mesh.rotation.x += 0.5 * deltaTime;
-        this.mesh.rotation.y += 1.5 * deltaTime;
+        spinSpeed = 1.5; // Slower, steady spin for shield
         break;
-
       case PowerUpSubType.LIFE:
-        this.mesh.rotation.y += 2.0 * deltaTime;
-        this.mesh.rotation.z += 1.0 * deltaTime;
+        spinSpeed = 2.5; // Slightly faster for life (important)
         break;
-
       case PowerUpSubType.SPEED:
-        this.mesh.rotation.z += 3.0 * deltaTime; // Fast spin for speed boost
+        spinSpeed = 3.0; // Fastest spin for speed boost
         break;
-
       case PowerUpSubType.WEAPON_UPGRADE:
-        this.mesh.rotation.x += 1.0 * deltaTime;
-        this.mesh.rotation.y += 1.0 * deltaTime;
-        this.mesh.rotation.z += 1.0 * deltaTime;
+        spinSpeed = 2.2; // Medium-fast for weapon upgrades
         break;
+      default:
+        spinSpeed = 2.0;
+    }
+
+    // Update persistent rotation
+    const oldRotation = this.currentRotation;
+    this.currentRotation += spinSpeed * deltaTime;
+
+    // Apply rotation to mesh
+    this.mesh.rotation.y = this.currentRotation;
+
+    // Wrap rotation to prevent overflow
+    if (this.currentRotation > Math.PI * 2) {
+      this.currentRotation -= Math.PI * 2;
     }
   }
 
