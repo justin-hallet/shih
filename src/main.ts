@@ -9,6 +9,7 @@ import * as tf from '@tensorflow/tfjs';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { CellShadingPass } from './shaders/CellShadingPass.js';
 import { HUD } from './components/HUD';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
@@ -36,14 +37,19 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x1e3c72); // Space Harrier blue gradient
 
-// Postprocessing: Bloom composer
+// Postprocessing: Cell shading + Bloom composer
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+
+// Cell shading pass (Borderlands-style)
+const cellShadingPass = new CellShadingPass(window.innerWidth, window.innerHeight);
+composer.addPass(cellShadingPass);
+
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  1.2, // strength
-  0.8, // radius
-  0.85, // threshold
+  0.8, // reduced strength to work with cell shading
+  0.6, // radius
+  0.9, // higher threshold for more selective bloom
 );
 composer.addPass(bloomPass);
 
@@ -216,7 +222,10 @@ type Action =
   | 'toggle_debug_obstacles'
   | 'toggle_debug_enemies'
   | 'toggle_debug_powerups'
-  | 'switch_model';
+  | 'switch_model'
+  | 'toggle_cell_shading'
+  | 'adjust_edge_threshold'
+  | 'adjust_color_levels';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -255,6 +264,10 @@ const KeyBindings: Record<string, Action> = {
   Digit8: 'toggle_debug_powerups',
   // Model switching
   KeyM: 'switch_model',
+  // Cell shading controls
+  KeyC: 'toggle_cell_shading',
+  KeyV: 'adjust_edge_threshold',
+  KeyB: 'adjust_color_levels',
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -321,6 +334,23 @@ function handleAction(action: Action, isDown: boolean) {
       if (player) {
         (player as any).switchToNextModel();
       }
+    } else if (action === 'toggle_cell_shading') {
+      // Toggle cell shading pass enabled/disabled
+      cellShadingPass.enabled = !cellShadingPass.enabled;
+    } else if (action === 'adjust_edge_threshold') {
+      // Cycle through edge threshold values
+      const currentThreshold = cellShadingPass.getEdgeThreshold();
+      const thresholds = [0.05, 0.1, 0.15, 0.2, 0.3];
+      const currentIndex = thresholds.indexOf(currentThreshold);
+      const nextIndex = (currentIndex + 1) % thresholds.length;
+      cellShadingPass.setEdgeThreshold(thresholds[nextIndex]);
+    } else if (action === 'adjust_color_levels') {
+      // Cycle through color quantization levels
+      const currentLevels = cellShadingPass.getColorLevels();
+      const levels = [3, 4, 5, 6, 8];
+      const currentIndex = levels.indexOf(currentLevels);
+      const nextIndex = (currentIndex + 1) % levels.length;
+      cellShadingPass.setColorLevels(levels[nextIndex]);
     }
   }
 }
@@ -687,7 +717,8 @@ function animate() {
         TILE: (${playerTileX}, ${playerTileZ})<br>
         MODEL: ${currentModel.toUpperCase()}<br>
         CONTROLS: WASD + Q/E or Space/Shift + M=Model<br>
-        DISPLAY: O=Wireframe(${showWireframe ? 'ON' : 'OFF'}) F=Surface(${showSurface ? 'ON' : 'OFF'})
+        DISPLAY: O=Wireframe(${showWireframe ? 'ON' : 'OFF'}) F=Surface(${showSurface ? 'ON' : 'OFF'})<br>
+        CELL SHADING: C=Toggle(${cellShadingPass.enabled ? 'ON' : 'OFF'}) V=Edges B=Colors
       `;
     }
   }
@@ -820,6 +851,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   // Keep composer in sync with viewport
   composer.setSize(window.innerWidth, window.innerHeight);
+  // Update cell shading pass resolution
+  cellShadingPass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Start the animation loop
