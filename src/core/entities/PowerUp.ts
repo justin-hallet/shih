@@ -111,11 +111,13 @@ export class PowerUp extends BaseEntity {
         // Ammo box
         geometry = new THREE.BoxGeometry(0.6, 0.4, 0.3);
         material = new THREE.MeshLambertMaterial({
-          color: 0xffff00, // Yellow
-          emissive: new THREE.Color(0xffee66),
-          emissiveIntensity: 2.2,
+          color: 0x000000,
+          emissive: new THREE.Color(0xffee66), // bright yellow
+          emissiveIntensity: 2.8,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
         break;
 
@@ -123,11 +125,13 @@ export class PowerUp extends BaseEntity {
         // Shield orb
         geometry = new THREE.SphereGeometry(0.5, 10, 8);
         material = new THREE.MeshLambertMaterial({
-          color: 0x00aaff, // Blue
-          emissive: new THREE.Color(0x66ccff),
-          emissiveIntensity: 1.8,
+          color: 0x000000,
+          emissive: new THREE.Color(0x66ccff), // blue
+          emissiveIntensity: 2.8,
           transparent: true,
-          opacity: 0.7,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
         break;
 
@@ -135,11 +139,13 @@ export class PowerUp extends BaseEntity {
         // Life/heart shape (simplified as diamond)
         geometry = new THREE.OctahedronGeometry(0.6);
         material = new THREE.MeshLambertMaterial({
-          color: 0xff0000, // Red
-          emissive: new THREE.Color(0xaa0000),
-          emissiveIntensity: 2.0,
+          color: 0x000000,
+          emissive: new THREE.Color(0xff3333), // red
+          emissiveIntensity: 3.0,
           transparent: true,
-          opacity: 0.85,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
         break;
 
@@ -147,11 +153,13 @@ export class PowerUp extends BaseEntity {
         // Speed boost (lightning bolt shape, simplified as thin diamond)
         geometry = new THREE.ConeGeometry(0.2, 1.0, 4);
         material = new THREE.MeshLambertMaterial({
-          color: 0x00ff00, // Green
-          emissive: new THREE.Color(0x33ff33),
-          emissiveIntensity: 2.0,
+          color: 0x000000,
+          emissive: new THREE.Color(0x33ff33), // green
+          emissiveIntensity: 2.8,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
         break;
 
@@ -159,11 +167,13 @@ export class PowerUp extends BaseEntity {
         // Weapon upgrade (star/plus shape)
         geometry = new THREE.DodecahedronGeometry(0.7);
         material = new THREE.MeshLambertMaterial({
-          color: 0xff8800, // Orange
-          emissive: new THREE.Color(0xffaa44),
-          emissiveIntensity: 2.0,
+          color: 0x000000,
+          emissive: new THREE.Color(0xffaa44), // orange
+          emissiveIntensity: 2.8,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
         });
         break;
 
