@@ -9,7 +9,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CellShadingPass } from './shaders/CellShadingPass.js';
 import { HUD } from './components/HUD';
-import { DebugPanel } from './components/DebugPanel.js';
+import { SettingsPanel } from './components/SettingsPanel.js';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
@@ -136,15 +136,15 @@ if (appDiv) {
 }
 
 // Initialize Debug Panel
-const debugPanel = new DebugPanel();
-debugPanel.setCellShadingPass(cellShadingPass);
+const settingsPanel = new SettingsPanel();
+settingsPanel.setCellShadingPass(cellShadingPass);
 
 // Set up debug panel callbacks
-debugPanel.setWeaponChangeCallback((weaponType: number) => {
+settingsPanel.setWeaponChangeCallback((weaponType: number) => {
   handleAction(`set_weapon_${weaponType}` as Action, false);
 });
 
-debugPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
+settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
   if (type === 'debugObstacles') {
     const currentFlag = scene.userData['debugObstacles'] || false;
     if (currentFlag !== enabled) {
@@ -163,7 +163,7 @@ debugPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
   }
 });
 
-debugPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
+settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
   if (type === 'wireframe') {
     if (showWireframe !== enabled) {
       // showWireframe = enabled;
@@ -235,7 +235,7 @@ const player = entityManager.spawnPlayer({
 });
 
 // Set player reference in debug panel now that it's created
-debugPanel.setPlayer(player);
+settingsPanel.setPlayer(player);
 
 // Initialize world generation around player
 worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter));
@@ -394,7 +394,7 @@ function handleAction(action: Action, isDown: boolean) {
       const nextIndex = (currentIndex + 1) % levels.length;
       cellShadingPass.setColorLevels(levels[nextIndex]);
     } else if (action === 'toggle_debug_panel') {
-      debugPanel.toggle();
+      settingsPanel.toggle();
     }
   }
 }

@@ -1,9 +1,9 @@
 /**
- * Debug Panel - Borderlands-style debug controls
+ * Settings Panel - Borderlands-style settings controls
  * Modeless popup with cell shading, weapon, and debug controls
  */
 
-export class DebugPanel {
+export class SettingsPanel {
   private container!: HTMLElement;
   private isVisible: boolean = false;
   private cellShadingPass: any; // eslint-disable-line @typescript-eslint/no-explicit-any
