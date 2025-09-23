@@ -604,10 +604,19 @@ function animate() {
     const isAscending = actionDown['ascend'] || false;
     const isDescending = actionDown['descend'] || false;
 
+    // Track turning for banking animation
+    const isTurning = actionDown['turn_left'] || actionDown['turn_right'] || false;
+    const turnDirection = actionDown['turn_left']
+      ? 'left'
+      : actionDown['turn_right']
+        ? 'right'
+        : null;
+
     // Update player animation states
     (player as any).setStrafing(isStrafing, strafeDirection);
     (player as any).setGroundDistance(groundDistance);
     (player as any).setVerticalMovement(isAscending, isDescending);
+    (player as any).setTurning(isTurning, turnDirection);
 
     // Up/down (W/Up and S/Down)
     if (actionDown['ascend']) {

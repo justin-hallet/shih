@@ -38,6 +38,14 @@ export class Player extends BaseEntity {
   private transitionTimer: number = 0;
   private isAscending: boolean = false;
   private isDescending: boolean = false;
+  private isTurning: boolean = false;
+  private turnDirection: 'left' | 'right' | null = null;
+
+  // Banking/leaning for flight dynamics
+  private targetBankAngle: number = 0;
+  private currentBankAngle: number = 0;
+  private targetPitchAngle: number = 0;
+  private currentPitchAngle: number = 0;
 
   // Model switching
   private availableModels: string[] = ['bot', 'female', 'racer', 'mouse', 'machine'];
@@ -143,7 +151,8 @@ export class Player extends BaseEntity {
     fbx.scale.setScalar(0.04);
 
     // Orient the model so we see the back (character runs forward)
-    fbx.rotation.y = -this.currentRotationY;
+    // Initial rotation to face away from camera
+    fbx.rotation.y = Math.PI;
 
     // Position the model correctly
     fbx.position.set(0, 0, 0);
@@ -245,6 +254,9 @@ export class Player extends BaseEntity {
     // Update animation state based on current conditions
     this.updateAnimationState(deltaTime);
 
+    // Update banking/leaning for flight dynamics
+    this.updateFlightDynamics(deltaTime);
+
     // Handle invulnerability
     if (this.invulnerableTime > 0) {
       this.invulnerableTime -= deltaTime;
@@ -303,11 +315,76 @@ export class Player extends BaseEntity {
   // Set player rotation to match movement direction
   public setRotation(rotationY: number): void {
     this.currentRotationY = rotationY;
+    this.updateMeshRotation();
+  }
+
+  // Update mesh rotation including banking and pitch
+  private updateMeshRotation(): void {
     if (this.mesh) {
-      // Set rotation to match the forward direction calculation
-      // Negative rotation to face away from camera
-      this.mesh.rotation.y = -rotationY;
+      // Player should counter-rotate to stay aligned with direction of travel
+      // Math.PI makes model face away from camera, +currentRotationY counter-rotates
+      this.mesh.rotation.y = Math.PI + this.currentRotationY;
+
+      // Apply banking (roll) and pitch for flight dynamics
+      this.mesh.rotation.z = this.currentBankAngle;
+      this.mesh.rotation.x = this.currentPitchAngle;
     }
+  }
+
+  // Update flight dynamics (banking and pitching)
+  private updateFlightDynamics(deltaTime: number): void {
+    const lerpSpeed = 8.0; // How quickly to interpolate to target angles
+
+    // Calculate target bank angle based on strafing/turning (only when flying)
+    if (!this.isNearGround) {
+      const maxBankAngle = Math.PI / 6; // 30 degrees max bank
+      let bankDirection: 'left' | 'right' | null = null;
+
+      // Check for strafing first (Q/E keys)
+      if (this.isStrafing && this.strafeDirection) {
+        bankDirection = this.strafeDirection;
+      }
+      // Check for turning (A/D keys)
+      else if (this.isTurning && this.turnDirection) {
+        bankDirection = this.turnDirection;
+      }
+
+      if (bankDirection) {
+        // Invert banking: left = lean left (negative Z), right = lean right (positive Z)
+        this.targetBankAngle = bankDirection === 'left' ? -maxBankAngle : maxBankAngle;
+      } else {
+        this.targetBankAngle = 0;
+      }
+    } else {
+      this.targetBankAngle = 0;
+    }
+
+    // Calculate target pitch angle based on vertical movement (only when flying)
+    if (!this.isNearGround && (this.isAscending || this.isDescending)) {
+      const maxPitchAngle = Math.PI / 8; // 22.5 degrees max pitch
+      if (this.isAscending) {
+        this.targetPitchAngle = maxPitchAngle; // Nose up
+      } else if (this.isDescending) {
+        this.targetPitchAngle = -maxPitchAngle; // Nose down
+      }
+    } else {
+      this.targetPitchAngle = 0;
+    }
+
+    // Smoothly interpolate to target angles
+    this.currentBankAngle = this.lerp(
+      this.currentBankAngle,
+      this.targetBankAngle,
+      lerpSpeed * deltaTime,
+    );
+    this.currentPitchAngle = this.lerp(
+      this.currentPitchAngle,
+      this.targetPitchAngle,
+      lerpSpeed * deltaTime,
+    );
+
+    // Update mesh rotation
+    this.updateMeshRotation();
   }
 
   // Animation control methods
@@ -357,11 +434,11 @@ export class Player extends BaseEntity {
       }
     } else {
       // Player is in the air
-      if (this.transitionTimer > 0 || this.isAscending || this.isDescending) {
-        // Use jump animation during transitions or active vertical movement
+      if (this.transitionTimer > 0) {
+        // Use jump animation only during takeoff/landing transitions
         targetAnimation = 'jump';
       } else {
-        // Use flying animation when gliding/stable in air
+        // Use flying animation for all air movement (pitch handles up/down visually)
         targetAnimation = 'flying';
       }
     }
@@ -391,6 +468,12 @@ export class Player extends BaseEntity {
     this.isDescending = isDescending;
   }
 
+  // Public method to set turning state (called from main.ts)
+  public setTurning(isTurning: boolean, direction: 'left' | 'right' | null = null): void {
+    this.isTurning = isTurning;
+    this.turnDirection = direction;
+  }
+
   // Public method to switch to next model (called from main.ts)
   public switchToNextModel(): void {
     // Move to next model (circular)
@@ -405,6 +488,12 @@ export class Player extends BaseEntity {
     this.animations.clear();
     this.mixer = undefined as any;
     this.isModelLoaded = false;
+
+    // Reset banking angles
+    this.targetBankAngle = 0;
+    this.currentBankAngle = 0;
+    this.targetPitchAngle = 0;
+    this.currentPitchAngle = 0;
 
     // Reload with new model
     this.loadAnimationModels();
