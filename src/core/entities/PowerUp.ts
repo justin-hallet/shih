@@ -30,6 +30,9 @@ export class PowerUp extends BaseEntity {
   private isLoadingModel: boolean = false; // Prevent multiple simultaneous loads
   private currentRotation: number = 0; // Track rotation independently of mesh
 
+  // Audio manager reference
+  private static audioManager?: any;
+
   constructor(
     powerUpType: PowerUpSubType,
     position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
@@ -568,6 +571,9 @@ export class PowerUp extends BaseEntity {
   // Override collision to apply power-up to player
   public override onCollision(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
+      // Play collection sound
+      PowerUp.audioManager?.playPowerUpSound(this.powerUpType, this.position);
+
       // Apply power-up effect
       this.applyToPlayer(other);
 
@@ -625,5 +631,10 @@ export class PowerUp extends BaseEntity {
       default:
         return 1;
     }
+  }
+
+  // Static method to set audio manager for all power-ups
+  public static setAudioManager(audioManager: any): void {
+    PowerUp.audioManager = audioManager;
   }
 }

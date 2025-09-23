@@ -46,7 +46,9 @@
     "workbox-window": "^7.3.0"
   },
   "dependencies": {
+    "@types/howler": "^2.2.12",
     "ammo.js": "^0.0.10",
+    "howler": "^2.2.4",
     "three": "^0.180.0"
   }
 }

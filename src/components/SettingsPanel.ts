@@ -10,7 +10,9 @@ export class SettingsPanel {
   private onWeaponChange?: (weaponType: number) => void;
   private onDebugToggle?: (type: string, enabled: boolean) => void;
   private onDisplayToggle?: (type: string, enabled: boolean) => void;
+  private onAudioChange?: (type: string, value: number) => void;
   private player?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private audioManager?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   constructor() {
     this.createPanel();
@@ -77,6 +79,7 @@ export class SettingsPanel {
     // Add sections
     content.appendChild(this.createCellShadingSection());
     content.appendChild(this.createWeaponSection());
+    content.appendChild(this.createAudioSection());
     content.appendChild(this.createDebugSection());
     content.appendChild(this.createDisplaySection());
 
@@ -259,6 +262,49 @@ export class SettingsPanel {
 
     section.appendChild(title);
     section.appendChild(selectRow);
+
+    return section;
+  }
+
+  private createAudioSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(255, 102, 0, 0.1);
+      border: 1px solid #ff6600;
+      border-radius: 8px;
+    `;
+
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      margin: 0 0 10px 0;
+      color: #ff6600;
+      font-size: 13px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    title.textContent = '🔊 AUDIO SETTINGS';
+
+    // Volume sliders
+    const masterVolumeRow = this.createSliderRow(
+      'Master Volume',
+      'masterVolume',
+      1.0,
+      0.0,
+      1.0,
+      0.1,
+    );
+    const sfxVolumeRow = this.createSliderRow('SFX Volume', 'sfxVolume', 0.8, 0.0, 1.0, 0.1);
+    const musicVolumeRow = this.createSliderRow('Music Volume', 'musicVolume', 0.6, 0.0, 1.0, 0.1);
+
+    // Theme music button
+    const themeButtonRow = this.createButtonRow('Start Theme Music', 'startTheme');
+
+    section.appendChild(title);
+    section.appendChild(masterVolumeRow);
+    section.appendChild(sfxVolumeRow);
+    section.appendChild(musicVolumeRow);
+    section.appendChild(themeButtonRow);
 
     return section;
   }
@@ -482,6 +528,56 @@ export class SettingsPanel {
     return row;
   }
 
+  private createButtonRow(label: string, id: string): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 5px 0;
+    `;
+
+    const labelEl = document.createElement('label');
+    labelEl.style.cssText = `
+      color: #ffcc00;
+      font-size: 11px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    labelEl.textContent = label;
+
+    const button = document.createElement('button');
+    button.id = id;
+    button.textContent = 'Start';
+    button.style.cssText = `
+      padding: 4px 12px;
+      background: linear-gradient(135deg, #ff6600 0%, #cc4400 100%);
+      color: #ffffff;
+      border: 1px solid #ff8833;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      this.handleButtonClick(id);
+    });
+
+    row.appendChild(labelEl);
+    row.appendChild(button);
+
+    return row;
+  }
+
+  private handleButtonClick(id: string): void {
+    if (id === 'startTheme') {
+      this.audioManager?.forceStartTheme();
+    }
+  }
+
   private handleToggleChange(id: string, value: boolean): void {
     switch (id) {
       case 'cellShading':
@@ -502,25 +598,44 @@ export class SettingsPanel {
   }
 
   private handleSliderChange(id: string, value: number): void {
-    if (!this.cellShadingPass) return;
-
-    switch (id) {
-      case 'brightness':
-        this.cellShadingPass.setBrightness(value);
-        break;
-      case 'contrast':
-        this.cellShadingPass.setContrast(value);
-        break;
-      case 'edgeThreshold':
-        this.cellShadingPass.setEdgeThreshold(value);
-        break;
-      case 'edgeThickness':
-        this.cellShadingPass.setEdgeThickness(value);
-        break;
-      case 'colorLevels':
-        this.cellShadingPass.setColorLevels(value);
-        break;
+    // Handle cell shading controls
+    if (this.cellShadingPass) {
+      switch (id) {
+        case 'brightness':
+          this.cellShadingPass.setBrightness(value);
+          break;
+        case 'contrast':
+          this.cellShadingPass.setContrast(value);
+          break;
+        case 'edgeThreshold':
+          this.cellShadingPass.setEdgeThreshold(value);
+          break;
+        case 'edgeThickness':
+          this.cellShadingPass.setEdgeThickness(value);
+          break;
+        case 'colorLevels':
+          this.cellShadingPass.setColorLevels(value);
+          break;
+      }
     }
+
+    // Handle audio controls
+    if (this.audioManager) {
+      switch (id) {
+        case 'masterVolume':
+          this.audioManager.setMasterVolume(value);
+          break;
+        case 'sfxVolume':
+          this.audioManager.setSFXVolume(value);
+          break;
+        case 'musicVolume':
+          this.audioManager.setMusicVolume(value);
+          break;
+      }
+    }
+
+    // Call audio change callback if available
+    this.onAudioChange?.(id, value);
   }
 
   private handleSelectChange(id: string, value: string): void {
@@ -547,6 +662,14 @@ export class SettingsPanel {
 
   public setPlayer(player: any): void {
     this.player = player;
+  }
+
+  public setAudioManager(audioManager: any): void {
+    this.audioManager = audioManager;
+  }
+
+  public setAudioChangeCallback(callback: (type: string, value: number) => void): void {
+    this.onAudioChange = callback;
   }
 
   public toggle(): void {

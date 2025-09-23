@@ -15,6 +15,8 @@ import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
 import { ProjectileSubType, EntityType, PowerUpSubType } from './core/types';
+import { AudioManager } from './core/AudioManager';
+import { PowerUp } from './core/entities/PowerUp';
 import './styles/hud.css';
 
 // eslint-disable-next-line no-console
@@ -135,9 +137,13 @@ if (appDiv) {
   hud = new HUD(appDiv);
 }
 
-// Initialize Debug Panel
+// Initialize Audio Manager
+const audioManager = new AudioManager();
+
+// Initialize Settings Panel
 const settingsPanel = new SettingsPanel();
 settingsPanel.setCellShadingPass(cellShadingPass);
+settingsPanel.setAudioManager(audioManager);
 
 // Set up debug panel callbacks
 settingsPanel.setWeaponChangeCallback((weaponType: number) => {
@@ -236,6 +242,15 @@ const player = entityManager.spawnPlayer({
 
 // Set player reference in debug panel now that it's created
 settingsPanel.setPlayer(player);
+
+// Set up audio manager
+audioManager.setCamera(camera);
+audioManager.setPlayerPosition(player.position);
+(player as any).setAudioManager(audioManager);
+PowerUp.setAudioManager(audioManager);
+
+// Start background music
+audioManager.playTheme();
 
 // Initialize world generation around player
 worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter));
@@ -571,6 +586,8 @@ function animate() {
 
   // Update procedural world generation
   if (player) {
+    // Update audio manager with current player position
+    audioManager.setPlayerPosition(player.position);
     // Rails shooter constant forward motion parallel to the floor (yaw only)
     const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
     if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
@@ -812,6 +829,13 @@ function animate() {
       proj.velocity.y = 0; // constant height
       proj.velocity.z = forward.z * proj.speed;
       lastShotTime = currentTime;
+
+      // Play shooting sound
+      audioManager.playShootSound(
+        weaponLevel,
+        new THREE.Vector3(spawnPos.x, spawnPos.y, spawnPos.z),
+      );
+
       // Reflect ammo change in HUD (ammo may be fractional but HUD shows int)
       hud?.updateAmmo(Math.floor((player as any).ammo || 0));
     }

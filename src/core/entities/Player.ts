@@ -16,6 +16,9 @@ export class Player extends BaseEntity {
   public weaponLevel: number;
   public invulnerableTime: number;
 
+  // Audio manager reference
+  private audioManager?: any;
+
   // Movement constraints
   public maxSpeed: number;
   public acceleration: number;
@@ -503,6 +506,11 @@ export class Player extends BaseEntity {
     return this.availableModels[this.currentModelIndex];
   }
 
+  // Set audio manager reference
+  public setAudioManager(audioManager: any): void {
+    this.audioManager = audioManager;
+  }
+
   // Combat methods
   public shoot(): boolean {
     if (this.ammo <= 0 || this.state !== EntityState.ACTIVE) return false;
@@ -530,6 +538,9 @@ export class Player extends BaseEntity {
   // Override damage to handle shield
   public override takeDamage(damage: number): void {
     if (this.invulnerableTime > 0) return;
+
+    // Play enemy/projectile damage sound
+    this.audioManager?.playDamageSound('enemy', this.position);
 
     let actualDamage = damage;
 
@@ -564,6 +575,9 @@ export class Player extends BaseEntity {
     if (other.type === EntityType.OBSTACLE) {
       if (this.invulnerableTime > 0) return; // brief i-frames
       this.invulnerableTime = 0.5; // half a second of invulnerability between hits
+
+      // Play obstacle collision sound
+      this.audioManager?.playDamageSound('obstacle', this.position);
 
       const hud: any = (this.scene as any)?.userData?.hud;
 
