@@ -547,7 +547,7 @@ export class WorldGenerator {
           const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
 
           if (position.y >= rule.heightRange.min && position.y <= rule.heightRange.max) {
-            const clampedY = this.clampAboveTerrain(position.x, position.z, position.y, 0.25);
+            const clampedY = this.clampAboveTerrain(position.x, position.z, position.y, 0.0);
             const obstacle = this.entityManager.spawnObstacle(rule.type, {
               x: position.x,
               y: clampedY,
@@ -639,7 +639,7 @@ export class WorldGenerator {
         worldPos.x,
         worldPos.z,
         height + obstacleData['position'].y,
-        0.25,
+        0.0,
       );
       const obstacle = this.entityManager.spawnObstacle(obstacleData.type, {
         x: worldPos.x,
@@ -742,9 +742,9 @@ export class WorldGenerator {
       coordinate.z * chunkSize + (Math.random() - 0.5) * (chunkSize - margin * 2),
     );
 
-    // Get actual terrain height at this position
+    // Get actual terrain height at this position and place EXACTLY on the floor
     const terrainHeight = this.getHeightAtPosition(heightMap, position, coordinate);
-    position.y = terrainHeight + 0.5; // Place slightly above terrain surface
+    position.y = terrainHeight;
 
     return position;
   }

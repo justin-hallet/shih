@@ -212,7 +212,10 @@ type Action =
   | 'set_weapon_2'
   | 'set_weapon_3'
   | 'set_weapon_4'
-  | 'set_weapon_5';
+  | 'set_weapon_5'
+  | 'toggle_debug_obstacles'
+  | 'toggle_debug_enemies'
+  | 'toggle_debug_powerups';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -245,6 +248,10 @@ const KeyBindings: Record<string, Action> = {
   Digit3: 'set_weapon_3',
   Digit4: 'set_weapon_4',
   Digit5: 'set_weapon_5',
+  // Debug bloom overrides
+  Digit6: 'toggle_debug_obstacles',
+  Digit7: 'toggle_debug_enemies',
+  Digit8: 'toggle_debug_powerups',
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -294,6 +301,58 @@ function handleAction(action: Action, isDown: boolean) {
       if (player) {
         (player as any).weaponLevel = level;
         hud?.updateWeaponLevel(level);
+      }
+    } else if (action === 'toggle_debug_obstacles') {
+      const flag = !(scene.userData['debugObstacles'] || false);
+      scene.userData['debugObstacles'] = flag;
+      applyDebugBloomOverride(EntityType.OBSTACLE, flag, 0xff00ff, true); // bright pink
+    } else if (action === 'toggle_debug_enemies') {
+      const flag = !(scene.userData['debugEnemies'] || false);
+      scene.userData['debugEnemies'] = flag;
+      applyDebugBloomOverride(EntityType.ENEMY, flag, 0xff0000, true); // bright red
+    } else if (action === 'toggle_debug_powerups') {
+      const flag = !(scene.userData['debugPowerUps'] || false);
+      scene.userData['debugPowerUps'] = flag;
+      applyDebugBloomOverride(EntityType.POWERUP, flag, 0x00ff00, false); // bright green
+    }
+  }
+}
+
+// Apply/restore bright bloom material override for a whole entity type
+function applyDebugBloomOverride(
+  type: EntityType,
+  enable: boolean,
+  emissiveHex: number,
+  forceDisableBloomOnRestore: boolean,
+): void {
+  const ents = (scene.userData['entityManager'] as any)?.getEntitiesByType(type) as
+    | any[]
+    | undefined;
+  if (!ents) return;
+  for (const e of ents) {
+    const m = e.mesh as THREE.Mesh | undefined;
+    if (!m) continue;
+    if (enable) {
+      if (!m.userData.originalMaterial) {
+        m.userData.originalMaterial = m.material;
+      }
+      m.material = new THREE.MeshLambertMaterial({
+        color: 0x000000,
+        emissive: new THREE.Color(emissiveHex),
+        emissiveIntensity: 3.0,
+        transparent: true,
+        opacity: 0.98,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      m.layers.enable(1);
+    } else {
+      if (m.userData.originalMaterial) {
+        m.material = m.userData.originalMaterial;
+        delete m.userData.originalMaterial;
+      }
+      if (forceDisableBloomOnRestore) {
+        m.layers.disable(1);
       }
     }
   }
