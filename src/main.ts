@@ -4,8 +4,6 @@
  */
 
 import * as THREE from 'three';
-// import { Howl } from 'howler'; // TODO: Will use for audio in Phase 5
-import * as tf from '@tensorflow/tfjs';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -21,12 +19,6 @@ import './styles/hud.css';
 
 // eslint-disable-next-line no-console
 console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
-
-// Initialize TensorFlow.js
-tf.ready().then(() => {
-  // eslint-disable-next-line no-console
-  console.log('✅ TensorFlow.js ready');
-});
 
 // Create basic Three.js scene for testing
 const scene = new THREE.Scene();

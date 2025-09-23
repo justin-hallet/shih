@@ -68,7 +68,6 @@ export class Player extends BaseEntity {
     this.maxSpeed = 10.0;
     this.acceleration = 20.0;
     this.deceleration = 15.0;
-    this.weight = 1.5;
 
     // Collision
     this.collisionBounds = { radius: 0.8 };

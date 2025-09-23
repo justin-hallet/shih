@@ -62,7 +62,7 @@ export class PowerUp extends BaseEntity {
     this.initializeByType();
 
     // Create mesh asynchronously
-    this.createMesh().catch(error => {
+    this.createMesh().catch(() => {
       this.createFallbackMesh();
     });
 
@@ -77,21 +77,18 @@ export class PowerUp extends BaseEntity {
     switch (this.powerUpType) {
       case PowerUpSubType.AMMO:
         this.value = 50; // 50 shots
-        this.weight = 0.2;
         this.collisionBounds = { radius: 2.0 * radiusScale };
         this.magnetRange = 24.0 * magnetRangeScale;
         break;
 
       case PowerUpSubType.SHIELD:
         this.value = 25; // 25 shield points
-        this.weight = 0.3;
         this.collisionBounds = { radius: 2.4 * radiusScale };
         this.magnetRange = 24.0 * magnetRangeScale;
         break;
 
       case PowerUpSubType.LIFE:
         this.value = 1; // 1 extra life
-        this.weight = 0.1;
         this.collisionBounds = { radius: 2.8 * radiusScale };
         this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
@@ -100,7 +97,6 @@ export class PowerUp extends BaseEntity {
 
       case PowerUpSubType.SPEED:
         this.value = 2; // 2x speed multiplier for 10 seconds
-        this.weight = 0.2;
         this.collisionBounds = { radius: 2.0 * radiusScale };
         this.magnetRange = 24.0 * magnetRangeScale;
         this.bobSpeed = 4.0; // Faster bobbing for speed power-up
@@ -108,7 +104,6 @@ export class PowerUp extends BaseEntity {
 
       case PowerUpSubType.WEAPON_UPGRADE:
         this.value = 1; // 1 weapon level
-        this.weight = 0.4;
         this.collisionBounds = { radius: 3.0 * radiusScale };
         this.magnetRange = 24.0 * magnetRangeScale;
         this.bobHeight = 0.6;
@@ -136,7 +131,7 @@ export class PowerUp extends BaseEntity {
 
       // Debug: Check model bounds
       const box = new THREE.Box3().setFromObject(this.mesh);
-      const size = box.getSize(new THREE.Vector3());
+      box.getSize(new THREE.Vector3());
 
       // Apply bloom material effects
       this.applyBloomMaterial();
@@ -316,7 +311,9 @@ export class PowerUp extends BaseEntity {
     this.mesh.receiveShadow = false;
     this.mesh.scale.setScalar(this.visualScale);
     this.mesh.layers.enable(1); // Bloom layer
-    this.scene.add(this.mesh);
+    if (this.scene) {
+      this.scene.add(this.mesh);
+    }
   }
 
   protected onUpdate(deltaTime: number): void {
@@ -377,7 +374,6 @@ export class PowerUp extends BaseEntity {
     }
 
     // Update persistent rotation
-    const oldRotation = this.currentRotation;
     this.currentRotation += spinSpeed * deltaTime;
 
     // Apply rotation to mesh

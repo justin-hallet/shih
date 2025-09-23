@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
-    "@types/howler": "^2.2.12",
     "@types/node": "^24.5.2",
     "@types/three": "^0.180.0",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
@@ -47,11 +46,7 @@
     "workbox-window": "^7.3.0"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "ammo.js": "^0.0.10",
-    "howler": "^2.2.4",
-    "three": "^0.180.0",
-    "three-fbx-loader": "^1.0.3"
+    "three": "^0.180.0"
   }
 }

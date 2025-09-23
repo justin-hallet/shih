@@ -55,7 +55,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.TREE:
         this.health = 50;
         this.maxHealth = 50;
-        this.weight = 2.0;
         this.collisionBounds = { radius: 1.2 };
         this.animationType = AnimationType.FLOATING;
         break;
@@ -63,7 +62,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.ROCK:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.weight = 10.0;
         this.collisionBounds = { radius: 2.0 };
         this.animationType = AnimationType.IDLE;
         break;
@@ -71,7 +69,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.PILLAR:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.weight = 20.0;
         this.collisionBounds = {
           radius: 1.0,
           box: { width: 2.0, height: 8.0, depth: 2.0 },
@@ -82,7 +79,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.VEHICLE:
         this.health = 100;
         this.maxHealth = 100;
-        this.weight = 5.0;
         this.collisionBounds = { radius: 1.5 };
         this.animationType = AnimationType.MOVING;
         this.velocity.z = -2.0; // Moving toward player
@@ -91,7 +87,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.BUILDING:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.weight = 50.0;
         this.collisionBounds = {
           radius: 3.0,
           box: { width: 6.0, height: 12.0, depth: 6.0 },
@@ -102,7 +97,6 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.CRYSTAL:
         this.health = 25;
         this.maxHealth = 25;
-        this.weight = 0.5;
         this.collisionBounds = { radius: 0.8 };
         this.animationType = AnimationType.SPINNING;
         this.rotationSpeed = 2.0;

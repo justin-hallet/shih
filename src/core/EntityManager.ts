@@ -269,7 +269,7 @@ export class EntityManager {
     projectileType: ProjectileSubType,
     owner: 'player' | 'enemy',
     position?: { x: number; y: number; z: number },
-    direction?: { x: number; y: number; z: number },
+    direction?: THREE.Vector3 | { x: number; y: number; z: number },
   ): Projectile {
     const projectile = new Projectile(projectileType, owner, position, direction, this.scene);
     this.spawn(projectile);

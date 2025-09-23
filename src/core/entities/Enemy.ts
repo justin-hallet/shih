@@ -16,7 +16,11 @@ export class Enemy extends BaseEntity {
   public targetPlayer: IEntity | null;
   public aiUpdateTimer: number;
 
-  constructor(enemyType: EnemySubType, position = { x: 0, y: 0, z: 0 }, scene?: THREE.Scene) {
+  constructor(
+    enemyType: EnemySubType,
+    position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+    scene?: THREE.Scene,
+  ) {
     super(EntityType.ENEMY, enemyType, position, scene);
 
     this.enemyType = enemyType;
@@ -41,7 +45,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.GRUNT:
         this.health = 30;
         this.maxHealth = 30;
-        this.weight = 1.0;
         this.attackDamage = 15;
         this.attackRange = 2.5;
         this.attackCooldown = 1.5;
@@ -54,7 +57,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.SOLDIER:
         this.health = 50;
         this.maxHealth = 50;
-        this.weight = 1.2;
         this.attackDamage = 20;
         this.attackRange = 4.0;
         this.attackCooldown = 1.0;
@@ -67,7 +69,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.FLYER:
         this.health = 25;
         this.maxHealth = 25;
-        this.weight = 0.5;
         this.attackDamage = 12;
         this.attackRange = 5.0;
         this.attackCooldown = 0.8;
@@ -81,7 +82,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.TANK:
         this.health = 150;
         this.maxHealth = 150;
-        this.weight = 5.0;
         this.attackDamage = 40;
         this.attackRange = 6.0;
         this.attackCooldown = 2.0;
@@ -94,7 +94,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.BOSS:
         this.health = 500;
         this.maxHealth = 500;
-        this.weight = 10.0;
         this.attackDamage = 75;
         this.attackRange = 8.0;
         this.attackCooldown = 3.0;
@@ -107,7 +106,6 @@ export class Enemy extends BaseEntity {
       case EnemySubType.DRAGON:
         this.health = 200;
         this.maxHealth = 200;
-        this.weight = 2.0;
         this.attackDamage = 60;
         this.attackRange = 7.0;
         this.attackCooldown = 1.5;
@@ -356,7 +354,7 @@ export class Enemy extends BaseEntity {
 
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
-    this.velocity = { x: 0, y: 0, z: 0 };
+    this.velocity.set(0, 0, 0);
 
     // Boss death effects
     if (this.enemyType === EnemySubType.BOSS || this.enemyType === EnemySubType.DRAGON) {

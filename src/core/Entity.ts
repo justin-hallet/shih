@@ -17,9 +17,6 @@ export interface IEntity {
   direction: GameVector3;
   velocity: GameVector3;
 
-  // Physics properties
-  weight: number;
-
   // Animation properties
   animationType: AnimationType;
   animationFrame: number;
@@ -59,9 +56,6 @@ export abstract class BaseEntity implements IEntity {
   public direction: GameVector3;
   public velocity: GameVector3;
 
-  // Physics
-  public weight: number;
-
   // Animation
   public animationType: AnimationType;
   public animationFrame: number;
@@ -84,7 +78,7 @@ export abstract class BaseEntity implements IEntity {
   constructor(
     type: EntityType,
     subType: string,
-    position: GameVector3 = { x: 0, y: 0, z: 0 },
+    position: GameVector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
     scene?: THREE.Scene,
   ) {
     this.id = this.generateId();
@@ -93,12 +87,12 @@ export abstract class BaseEntity implements IEntity {
     this.scene = scene;
 
     // Initialize transform with proper THREE.Vector3 objects
-    this.position = new THREE.Vector3(position.x, position.y, position.z);
+    this.position =
+      position instanceof THREE.Vector3
+        ? position
+        : new THREE.Vector3(position.x, position.y, position.z);
     this.direction = new THREE.Vector3(0, 0, -1); // Default forward
     this.velocity = new THREE.Vector3(0, 0, 0);
-
-    // Initialize physics
-    this.weight = 1.0;
 
     // Initialize animation
     this.animationType = AnimationType.IDLE;

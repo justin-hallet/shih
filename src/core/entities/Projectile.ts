@@ -79,7 +79,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 15 : 10;
         this.speed = 20.0;
         this.lifetime = 3.0;
-        this.weight = 0.1;
         this.collisionBounds = { radius: 0.1 };
         this.animationType = AnimationType.MOVING;
         break;
@@ -88,7 +87,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 40 : 30;
         this.speed = 12.0;
         this.lifetime = 8.0;
-        this.weight = 0.5;
         this.explosive = true;
         this.explosionRadius = 2.0;
         this.homingStrength = 2.0; // Can home in on targets
@@ -100,7 +98,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 25 : 20;
         this.speed = 30.0;
         this.lifetime = 2.0;
-        this.weight = 0.01;
         this.piercing = true; // Goes through targets
         this.collisionBounds = { radius: 0.05 };
         this.animationType = AnimationType.MOVING;
@@ -110,7 +107,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 35 : 25;
         this.speed = 8.0;
         this.lifetime = 4.0;
-        this.weight = 0.3;
         this.explosive = true;
         this.explosionRadius = 1.5;
         this.collisionBounds = { radius: 0.4 };
@@ -121,7 +117,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 50 : 40;
         this.speed = 6.0;
         this.lifetime = 6.0;
-        this.weight = 0.8;
         this.explosive = true;
         this.explosionRadius = 3.0;
         this.collisionBounds = { radius: 0.6 };
