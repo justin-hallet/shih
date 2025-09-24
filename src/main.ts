@@ -162,7 +162,7 @@ settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
       handleAction('toggle_debug_enemies', false);
     }
   } else if (type === 'debugPowerups') {
-    const currentFlag = scene.userData['debugPowerUps'] || false;
+    const currentFlag = scene.userData['debugPowerups'] || false;
     if (currentFlag !== enabled) {
       handleAction('toggle_debug_powerups', false);
     }
@@ -383,8 +383,8 @@ function handleAction(action: Action, isDown: boolean) {
       scene.userData['debugEnemies'] = flag;
       applyDebugBloomOverride(EntityType.ENEMY, flag, 0xff0000, true); // bright red
     } else if (action === 'toggle_debug_powerups') {
-      const flag = !(scene.userData['debugPowerUps'] || false);
-      scene.userData['debugPowerUps'] = flag;
+      const flag = !(scene.userData['debugPowerups'] || false);
+      scene.userData['debugPowerups'] = flag;
       applyDebugBloomOverride(EntityType.POWERUP, flag, 0x00ff00, false); // bright green
     } else if (action === 'switch_model') {
       if (player) {
@@ -425,29 +425,48 @@ function applyDebugBloomOverride(
     | undefined;
   if (!ents) return;
   for (const e of ents) {
-    const m = e.mesh as THREE.Mesh | undefined;
-    if (!m) continue;
-    if (enable) {
-      if (!m.userData.originalMaterial) {
-        m.userData.originalMaterial = m.material;
-      }
-      m.material = new THREE.MeshLambertMaterial({
-        color: 0x000000,
-        emissive: new THREE.Color(emissiveHex),
-        emissiveIntensity: 3.0,
-        transparent: true,
-        opacity: 0.98,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+    const meshObject = e.mesh as THREE.Object3D | undefined;
+    if (!meshObject) continue;
+
+    // Handle both single Mesh and Group objects (like GLTF models)
+    const meshesToProcess: THREE.Mesh[] = [];
+
+    if (meshObject instanceof THREE.Mesh) {
+      // Simple mesh (Obstacles, Enemies)
+      meshesToProcess.push(meshObject);
+    } else if (meshObject instanceof THREE.Group) {
+      // Group with mesh children (PowerUps from GLTF)
+      meshObject.traverse(child => {
+        if (child instanceof THREE.Mesh) {
+          meshesToProcess.push(child);
+        }
       });
-      m.layers.enable(1);
-    } else {
-      if (m.userData.originalMaterial) {
-        m.material = m.userData.originalMaterial;
-        delete m.userData.originalMaterial;
-      }
-      if (forceDisableBloomOnRestore) {
-        m.layers.disable(1);
+    }
+
+    // Apply material to all found meshes
+    for (const m of meshesToProcess) {
+      if (enable) {
+        if (!m.userData.originalMaterial) {
+          m.userData.originalMaterial = m.material;
+        }
+        m.material = new THREE.MeshLambertMaterial({
+          color: 0x000000,
+          emissive: new THREE.Color(emissiveHex),
+          emissiveIntensity: 3.0,
+          transparent: true,
+          opacity: 0.98,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        m.layers.enable(1);
+      } else {
+        if (m.userData.originalMaterial) {
+          m.material = m.userData.originalMaterial;
+          delete m.userData.originalMaterial;
+        }
+        if (forceDisableBloomOnRestore) {
+          m.layers.disable(1);
+        }
       }
     }
   }
