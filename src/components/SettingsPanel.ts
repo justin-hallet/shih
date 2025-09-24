@@ -362,11 +362,11 @@ export class SettingsPanel {
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    title.textContent = '🐛 DEBUG BLOOM';
+    title.textContent = '🐛 Highlighting';
 
-    const obstaclesRow = this.createToggleRow('Obstacles Bloom', 'debugObstacles', false);
-    const enemiesRow = this.createToggleRow('Enemies Bloom', 'debugEnemies', false);
-    const powerupsRow = this.createToggleRow('PowerUps Bloom', 'debugPowerups', false);
+    const obstaclesRow = this.createToggleRow('Obstacles', 'debugObstacles', false);
+    const enemiesRow = this.createToggleRow('Enemies', 'debugEnemies', false);
+    const powerupsRow = this.createToggleRow('PowerUps', 'debugPowerups', false);
 
     section.appendChild(title);
     section.appendChild(obstaclesRow);
@@ -713,6 +713,50 @@ export class SettingsPanel {
     this.ssaoPass = pass;
   }
 
+  // Sync panel controls with current state of passes
+  private syncControlsWithState(): void {
+    // Sync cell shading controls
+    if (this.cellShadingPass) {
+      this.updateToggleState('cellShading', this.cellShadingPass.enabled);
+      // Note: Cell shading pass doesn't expose getter methods for individual properties
+      // so we can't sync the sliders without modifying the CellShadingPass class
+    }
+
+    // Sync SSAO controls
+    if (this.ssaoPass) {
+      this.updateToggleState('ssao', this.ssaoPass.enabled);
+      this.updateSliderState('ssaoIntensity', this.ssaoPass.intensity || 1.0);
+      this.updateSliderState('ssaoRadius', this.ssaoPass.kernelRadius || 16);
+      this.updateSliderState('ssaoMinDistance', this.ssaoPass.minDistance || 0.005);
+      this.updateSliderState('ssaoMaxDistance', this.ssaoPass.maxDistance || 0.1);
+    }
+
+    // Sync audio controls
+    if (this.audioManager) {
+      this.updateSliderState('masterVolume', this.audioManager.getMasterVolume?.() || 1.0);
+      this.updateSliderState('sfxVolume', this.audioManager.getSFXVolume?.() || 0.9);
+      this.updateSliderState('musicVolume', this.audioManager.getMusicVolume?.() || 0.2);
+    }
+  }
+
+  private updateToggleState(id: string, value: boolean): void {
+    const toggle = document.getElementById(id) as HTMLInputElement;
+    if (toggle) {
+      toggle.checked = value;
+    }
+  }
+
+  private updateSliderState(id: string, value: number): void {
+    const slider = document.getElementById(id) as HTMLInputElement;
+    const valueSpan = document.getElementById(`${id}-value`);
+    if (slider) {
+      slider.value = value.toString();
+    }
+    if (valueSpan) {
+      valueSpan.textContent = value.toString();
+    }
+  }
+
   public setWeaponChangeCallback(callback: (weaponType: number) => void): void {
     this.onWeaponChange = callback;
   }
@@ -740,6 +784,11 @@ export class SettingsPanel {
   public toggle(): void {
     this.isVisible = !this.isVisible;
     this.container.style.left = this.isVisible ? '0px' : '-350px';
+
+    // Sync controls with current state when showing
+    if (this.isVisible) {
+      this.syncControlsWithState();
+    }
   }
 
   public hide(): void {
@@ -750,6 +799,9 @@ export class SettingsPanel {
   public show(): void {
     this.isVisible = true;
     this.container.style.left = '0px';
+
+    // Sync controls with current state when showing
+    this.syncControlsWithState();
   }
 
   public isOpen(): boolean {

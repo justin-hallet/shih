@@ -30,8 +30,8 @@ export class AudioManager {
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
   private camera: THREE.Camera | null = null;
   private masterVolume: number = 1.0;
-  private sfxVolume: number = 0.8;
-  private musicVolume: number = 0.4;
+  private sfxVolume: number = 0.9;
+  private musicVolume: number = 0.2;
   private isInitialized: boolean = false;
   private hasUserInteracted: boolean = false;
 
@@ -540,6 +540,19 @@ export class AudioManager {
     });
   }
 
+  // Volume getters
+  public getMasterVolume(): number {
+    return this.masterVolume;
+  }
+
+  public getSFXVolume(): number {
+    return this.sfxVolume;
+  }
+
+  public getMusicVolume(): number {
+    return this.musicVolume;
+  }
+
   // Mute/unmute controls
   public muteAll(): void {
     Howler.mute(true);
@@ -600,19 +613,6 @@ export class AudioManager {
     });
     this.sounds.clear();
     this.isInitialized = false;
-  }
-
-  // Getters for current settings
-  public getMasterVolume(): number {
-    return this.masterVolume;
-  }
-
-  public getSFXVolume(): number {
-    return this.sfxVolume;
-  }
-
-  public getMusicVolume(): number {
-    return this.musicVolume;
   }
 
   public isReady(): boolean {
