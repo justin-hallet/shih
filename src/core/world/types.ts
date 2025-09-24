@@ -178,9 +178,6 @@ export interface WorldChunk {
   heightGrid: number[][];
   lodLevel: number;
 
-  // Entities in this chunk
-  entities: Set<string>; // Entity IDs
-
   // Generation metadata
   seed: number;
   generationVersion: number;

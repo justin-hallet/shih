@@ -211,7 +211,7 @@ const proceduralSettings: ProceduralGenerationSettings = {
   },
 
   preloadDistance: 1000, // 1000 ÷ 200 = 5 tile radius for proper coverage
-  unloadDistance: 1500, // Unload chunks 1500 units away
+  unloadDistance: 1500, // Unload chunks 1500 units away (ORIGINAL SETTINGS)
   maxLoadedChunks: 121, // (5×2+1)² = 11×11 = 121 chunks for complete coverage
 
   terrainResolution: 65, // 65x65 heightmap per tile (for 64x64 subdivisions)

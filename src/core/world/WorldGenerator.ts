@@ -15,6 +15,7 @@ import {
   BiomeConfig,
   BiomeSpawnRules,
 } from './types';
+import { EntityType } from '../types';
 import { BiomeManager } from './BiomeManager';
 import { EntityManager } from '../EntityManager';
 
@@ -296,6 +297,10 @@ export class WorldGenerator {
       if (chunk) {
         this.unloadChunk(chunk);
         this.streamingState.loadedChunks.delete(chunkId);
+
+        // Fix counter display - decrement when chunks are actually unloaded
+        this.streamingState.totalChunksGenerated--;
+        this.generationStats.chunksGenerated--;
       }
     }
   }
@@ -328,7 +333,6 @@ export class WorldGenerator {
       heightMap,
       mesh,
       lodLevel: 0,
-      entities: new Set(),
       heightGrid, // Store the height grid for edge constraints
       seed: this.generateSeed(coordinate),
       generationVersion: 1,
@@ -558,7 +562,7 @@ export class WorldGenerator {
               y: clampedY,
               z: position.z,
             });
-            chunk.entities.add(obstacle.id);
+            // No need to track entity in chunk - we'll find it by position when needed
           }
         }
       }
@@ -590,7 +594,7 @@ export class WorldGenerator {
           enemy.health = Math.floor(enemy.health * this.difficultyScaling.enemyHealthMultiplier);
           enemy.maxHealth = enemy.health;
 
-          chunk.entities.add(enemy.id);
+          // No need to track entity in chunk - we'll find it by position when needed
         }
       }
     }
@@ -608,7 +612,7 @@ export class WorldGenerator {
           z: position.z,
         });
 
-        chunk.entities.add(powerUp.id);
+        // No need to track entity in chunk - we'll find it by position when needed
       }
     }
   }
@@ -646,12 +650,12 @@ export class WorldGenerator {
         height + obstacleData['position'].y,
         0.0,
       );
-      const obstacle = this.entityManager.spawnObstacle(obstacleData.type, {
+      this.entityManager.spawnObstacle(obstacleData.type, {
         x: worldPos.x,
         y: obstacleY,
         z: worldPos.z,
       });
-      chunk.entities.add(obstacle.id);
+      // No need to track entity in chunk - we'll find it by position when needed
     }
 
     // Spawn enemies from template
@@ -663,12 +667,12 @@ export class WorldGenerator {
         height + enemyData['position'].y,
         0.25,
       );
-      const enemy = this.entityManager.spawnEnemy(enemyData.type as any, {
+      this.entityManager.spawnEnemy(enemyData.type as any, {
         x: worldPos.x,
         y: enemyY,
         z: worldPos.z,
       });
-      chunk.entities.add(enemy.id);
+      // No need to track entity in chunk - we'll find it by position when needed
     }
 
     // Spawn power-ups from template
@@ -680,12 +684,12 @@ export class WorldGenerator {
         height + powerUpData['position'].y,
         0.25,
       );
-      const powerUp = this.entityManager.spawnPowerUp(powerUpData.type as any, {
+      this.entityManager.spawnPowerUp(powerUpData.type as any, {
         x: worldPos.x,
         y: puY,
         z: worldPos.z,
       });
-      chunk.entities.add(powerUp.id);
+      // No need to track entity in chunk - we'll find it by position when needed
     }
   }
 
@@ -705,11 +709,25 @@ export class WorldGenerator {
       }
     }
 
-    // Remove all entities that belong to this chunk
-    for (const entityId of chunk.entities) {
+    // Find and remove all entities in this chunk by checking their current positions
+    const entitiesToRemove: string[] = [];
+    const allEntities = this.entityManager
+      .getEntitiesByType(EntityType.OBSTACLE)
+      .concat(this.entityManager.getEntitiesByType(EntityType.ENEMY))
+      .concat(this.entityManager.getEntitiesByType(EntityType.POWERUP))
+      .concat(this.entityManager.getEntitiesByType(EntityType.PROJECTILE));
+
+    for (const entity of allEntities) {
+      const entityChunk = this.worldPositionToTile(entity.position);
+      if (entityChunk.x === chunk.coordinate.x && entityChunk.z === chunk.coordinate.z) {
+        entitiesToRemove.push(entity.id);
+      }
+    }
+
+    // Remove all entities found in this chunk
+    for (const entityId of entitiesToRemove) {
       this.entityManager.remove(entityId);
     }
-    chunk.entities.clear();
 
     chunk.loaded = false;
   }
