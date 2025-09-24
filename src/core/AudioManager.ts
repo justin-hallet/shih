@@ -66,7 +66,7 @@ export class AudioManager {
       loop: false,
       category: 'sfx',
       priority: 1,
-      maxInstances: 12,  
+      maxInstances: 12,
     },
     'shoot-plasma': {
       file: '/src/assets/audio/shoot-4.mp3',
