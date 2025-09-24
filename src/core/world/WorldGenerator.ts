@@ -601,6 +601,13 @@ export class WorldGenerator {
   }
 
   private spawnPowerUps(chunk: WorldChunk, spawnRules: BiomeSpawnRules): void {
+    // First check: Should we spawn ANY PowerUps in this chunk?
+    const powerUpSpawnChance = spawnRules.spawnProbabilities.get(EntityType.POWERUP) || 0;
+    if (Math.random() > powerUpSpawnChance) {
+      return; // No PowerUps for this chunk
+    }
+
+    // If we're spawning PowerUps, check each type individually
     for (const rule of spawnRules.powerUpRules) {
       if (Math.random() < rule.probability) {
         const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);

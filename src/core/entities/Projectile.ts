@@ -201,6 +201,9 @@ export class Projectile extends BaseEntity {
 
     this.scene.add(this.mesh);
 
+    // Calculate collision bounds from the actual mesh
+    this.updateCollisionBoundsFromMesh();
+
     // Apply outline effect for glow
     this.applyOutlineEffect();
   }
@@ -425,6 +428,15 @@ export class Projectile extends BaseEntity {
   protected override onDie(): void {
     // Immediately mark as dead; EntityManager will remove and cleanup
     this.state = EntityState.DEAD;
+  }
+
+  // Override die() to skip the DYING state entirely for projectiles
+  public override die(): void {
+    if (this.state === EntityState.DEAD) return;
+
+    // Skip DYING state - go directly to DEAD for immediate cleanup
+    this.state = EntityState.DEAD;
+    this.onDie();
   }
 
   protected override onDestroy(): void {

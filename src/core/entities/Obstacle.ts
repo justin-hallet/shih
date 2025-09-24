@@ -55,31 +55,24 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.TREE:
         this.health = 50;
         this.maxHealth = 50;
-        this.collisionBounds = { radius: 1.2 };
         this.animationType = AnimationType.FLOATING;
         break;
 
       case ObstacleSubType.ROCK:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.collisionBounds = { radius: 2.0 };
         this.animationType = AnimationType.IDLE;
         break;
 
       case ObstacleSubType.PILLAR:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.collisionBounds = {
-          radius: 1.0,
-          box: { width: 2.0, height: 8.0, depth: 2.0 },
-        };
         this.animationType = AnimationType.IDLE;
         break;
 
       case ObstacleSubType.VEHICLE:
         this.health = 100;
         this.maxHealth = 100;
-        this.collisionBounds = { radius: 1.5 };
         this.animationType = AnimationType.MOVING;
         this.velocity.z = -2.0; // Moving toward player
         break;
@@ -87,17 +80,12 @@ export class Obstacle extends BaseEntity {
       case ObstacleSubType.BUILDING:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
-        this.collisionBounds = {
-          radius: 3.0,
-          box: { width: 6.0, height: 12.0, depth: 6.0 },
-        };
         this.animationType = AnimationType.IDLE;
         break;
 
       case ObstacleSubType.CRYSTAL:
         this.health = 25;
         this.maxHealth = 25;
-        this.collisionBounds = { radius: 0.8 };
         this.animationType = AnimationType.SPINNING;
         this.rotationSpeed = 2.0;
         break;
@@ -185,20 +173,12 @@ export class Obstacle extends BaseEntity {
     this.mesh = new THREE.Mesh(geometry, material);
     // Make obstacles twice as big (uniform scale)
     this.mesh.scale.multiplyScalar(2);
-    // Update collision bounds to match visual scale
-    if (this.collisionBounds) {
-      if (typeof this.collisionBounds.radius === 'number') {
-        this.collisionBounds.radius *= 2;
-      }
-      if (this.collisionBounds.box) {
-        this.collisionBounds.box.width *= 2;
-        this.collisionBounds.box.height *= 2;
-        this.collisionBounds.box.depth *= 2;
-      }
-    }
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
+
+    // Calculate collision bounds from the actual scaled mesh
+    this.updateCollisionBoundsFromMesh();
   }
 
   protected onUpdate(deltaTime: number): void {
@@ -242,6 +222,9 @@ export class Obstacle extends BaseEntity {
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
     this.velocity.set(0, 0, 0);
+
+    // Immediately mark as DEAD so EntityManager removes the obstacle
+    this.state = EntityState.DEAD;
   }
 
   protected override onDestroy(): void {

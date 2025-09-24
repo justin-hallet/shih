@@ -79,6 +79,12 @@ export class EntityManager {
       this.player = null;
     }
 
+    // Remove collision debug circle
+    const collisionDebugRenderer = (this.scene as any)?.userData?.collisionDebugRenderer;
+    if (collisionDebugRenderer) {
+      collisionDebugRenderer.removeEntity(entityId);
+    }
+
     // Destroy entity
     entity.destroy();
     this.entityCount--;
@@ -91,8 +97,11 @@ export class EntityManager {
     const deadEntities: string[] = [];
 
     // Update all entities
-    for (const entity of this.entities.values()) {
+    for (const entity of Array.from(this.entities.values())) {
       entity.update(deltaTime);
+
+      // Update collision debug circles
+      this.updateCollisionDebug(entity);
 
       // Mark dead entities for removal
       if (entity.state === EntityState.DEAD) {
@@ -104,6 +113,9 @@ export class EntityManager {
     for (const entityId of deadEntities) {
       this.remove(entityId);
     }
+
+    // Clear collision highlights before checking new collisions
+    this.clearCollisionHighlights();
 
     // Check collisions
     this.checkCollisions();
@@ -120,6 +132,9 @@ export class EntityManager {
 
         if (this.shouldCheckCollision(entityA, entityB)) {
           if (entityA.checkCollision(entityB)) {
+            // Highlight collision in debug renderer
+            this.highlightCollision(entityA, entityB);
+
             entityA.onCollision(entityB);
             entityB.onCollision(entityA);
           }
@@ -283,5 +298,36 @@ export class EntityManager {
     const powerUp = new PowerUp(powerUpType, position, this.scene);
     this.spawn(powerUp);
     return powerUp;
+  }
+
+  // Collision debug methods
+  private updateCollisionDebug(entity: IEntity): void {
+    const collisionDebugRenderer = (this.scene as any)?.userData?.collisionDebugRenderer;
+    if (!collisionDebugRenderer) return;
+
+    const radius = entity.collisionBounds?.radius || 1.0;
+    const position = new THREE.Vector3(entity.position.x, entity.position.y, entity.position.z);
+
+    // Apply model center offset if the entity has one
+    if (entity.modelCenterOffset) {
+      position.add(entity.modelCenterOffset);
+    }
+
+    collisionDebugRenderer.updateEntity(entity.id, entity.type, position, radius);
+  }
+
+  private clearCollisionHighlights(): void {
+    const collisionDebugRenderer = (this.scene as any)?.userData?.collisionDebugRenderer;
+    if (collisionDebugRenderer) {
+      collisionDebugRenderer.clearCollisions();
+    }
+  }
+
+  private highlightCollision(entity1: IEntity, entity2: IEntity): void {
+    const collisionDebugRenderer = (this.scene as any)?.userData?.collisionDebugRenderer;
+    if (collisionDebugRenderer) {
+      collisionDebugRenderer.setEntityColliding(entity1.id, true);
+      collisionDebugRenderer.setEntityColliding(entity2.id, true);
+    }
   }
 }

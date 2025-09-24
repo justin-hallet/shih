@@ -33,6 +33,9 @@ export interface IEntity {
   // 3D Object reference
   mesh?: THREE.Object3D;
 
+  // Model center offset for collision positioning
+  modelCenterOffset?: THREE.Vector3;
+
   // Lifecycle methods
   update(deltaTime: number): void;
   destroy(): void;
@@ -72,6 +75,9 @@ export abstract class BaseEntity implements IEntity {
 
   // 3D Object
   public mesh?: THREE.Object3D;
+
+  // Model center offset for collision positioning
+  public modelCenterOffset?: THREE.Vector3;
 
   protected scene: THREE.Scene | undefined;
 
@@ -231,6 +237,38 @@ export abstract class BaseEntity implements IEntity {
     }
 
     this.onDestroy();
+  }
+
+  // Calculate collision bounds from mesh geometry
+  protected updateCollisionBoundsFromMesh(): void {
+    if (!this.mesh) {
+      console.log(`${this.type} ${this.subType}: No mesh found for collision calculation`);
+      return;
+    }
+
+    // Calculate the bounding box of the mesh
+    const box = new THREE.Box3().setFromObject(this.mesh);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Use the largest horizontal dimension (X or Z) for collision radius
+    // This works well for most game objects where height shouldn't affect collision
+    const radius = Math.max(size.x, Math.max(size.y, size.z)) * 0.5;
+
+    // Ensure minimum collision radius for gameplay,
+    // 1.1 is a multiplier to make the collision radius slightly larger than the actual mesh
+    const finalRadius = Math.max(radius, 0.3) * 1.1;
+
+    // Update collision bounds
+    this.collisionBounds = { radius: finalRadius };
+
+    // Store the center offset relative to the entity position
+    // This centers the collision circle on the mesh's visual center
+    this.modelCenterOffset = center.clone().sub(this.mesh.position);
+
+    console.log(
+      `${this.type} ${this.subType}: collision radius=${finalRadius.toFixed(2)}, size=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)}), center_offset=(${this.modelCenterOffset.x.toFixed(2)}, ${this.modelCenterOffset.y.toFixed(2)}, ${this.modelCenterOffset.z.toFixed(2)})`,
+    );
   }
 
   // Subclass hooks (to be overridden)

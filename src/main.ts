@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { CellShadingPass } from './shaders/CellShadingPass.js';
 import { OutlinePass } from './shaders/OutlinePass.js';
+import { CollisionDebugRenderer } from './utils/CollisionDebugRenderer';
 import { HUD } from './components/HUD';
 import { SettingsPanel } from './components/SettingsPanel.js';
 import { EntityManager } from './core/EntityManager';
@@ -155,10 +156,15 @@ if (appDiv) {
 const audioManager = new AudioManager();
 
 // Initialize Settings Panel
+// Initialize collision debug renderer
+const collisionDebugRenderer = new CollisionDebugRenderer(scene);
+collisionDebugRenderer.setCamera(camera);
+
 const settingsPanel = new SettingsPanel();
 settingsPanel.setCellShadingPass(cellShadingPass);
 settingsPanel.setSSAOPass(ssaoPass);
 settingsPanel.setAudioManager(audioManager);
+settingsPanel.setCollisionDebugRenderer(collisionDebugRenderer);
 
 // Set up debug panel callbacks
 settingsPanel.setWeaponChangeCallback((weaponType: number) => {
@@ -204,6 +210,7 @@ settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
 (scene as any).userData['camera'] = camera;
 (scene as any).userData['outlinePass'] = outlinePass;
 (scene as any).userData['ssaoPass'] = ssaoPass;
+(scene as any).userData['collisionDebugRenderer'] = collisionDebugRenderer;
 
 // Configure procedural generation settings
 const proceduralSettings: ProceduralGenerationSettings = {
@@ -296,7 +303,8 @@ type Action =
   | 'toggle_cell_shading'
   | 'adjust_edge_threshold'
   | 'adjust_color_levels'
-  | 'toggle_debug_panel';
+  | 'toggle_debug_panel'
+  | 'toggle_collision_debug';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -333,6 +341,7 @@ const KeyBindings: Record<string, Action> = {
   Digit6: 'toggle_debug_obstacles',
   Digit7: 'toggle_debug_enemies',
   Digit8: 'toggle_debug_powerups',
+  Digit9: 'toggle_collision_debug',
   // Model switching
   KeyM: 'switch_model',
   // Cell shading controls
@@ -426,6 +435,10 @@ function handleAction(action: Action, isDown: boolean) {
       cellShadingPass.setColorLevels(levels[nextIndex]);
     } else if (action === 'toggle_debug_panel') {
       settingsPanel.toggle();
+    } else if (action === 'toggle_collision_debug') {
+      const enabled = !collisionDebugRenderer.isEnabled();
+      collisionDebugRenderer.setEnabled(enabled);
+      scene.userData['collisionDebugEnabled'] = enabled;
     }
   }
 }

@@ -14,6 +14,7 @@ export class SettingsPanel {
   private onAudioChange?: (type: string, value: number) => void;
   private player?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private audioManager?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private collisionDebugRenderer?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   constructor() {
     this.createPanel();
@@ -367,11 +368,13 @@ export class SettingsPanel {
     const obstaclesRow = this.createToggleRow('Obstacles', 'debugObstacles', false);
     const enemiesRow = this.createToggleRow('Enemies', 'debugEnemies', false);
     const powerupsRow = this.createToggleRow('PowerUps', 'debugPowerups', false);
+    const collisionRow = this.createToggleRow('Collision Bounds', 'collisionDebug', false);
 
     section.appendChild(title);
     section.appendChild(obstaclesRow);
     section.appendChild(enemiesRow);
     section.appendChild(powerupsRow);
+    section.appendChild(collisionRow);
 
     return section;
   }
@@ -633,6 +636,11 @@ export class SettingsPanel {
       case 'debugPowerups':
         this.onDebugToggle?.(id, value);
         break;
+      case 'collisionDebug':
+        if (this.collisionDebugRenderer) {
+          this.collisionDebugRenderer.setEnabled(value);
+        }
+        break;
       case 'wireframe':
       case 'surface':
         this.onDisplayToggle?.(id, value);
@@ -713,6 +721,10 @@ export class SettingsPanel {
     this.ssaoPass = pass;
   }
 
+  public setCollisionDebugRenderer(renderer: any): void {
+    this.collisionDebugRenderer = renderer;
+  }
+
   // Sync panel controls with current state of passes
   private syncControlsWithState(): void {
     // Sync cell shading controls
@@ -729,6 +741,11 @@ export class SettingsPanel {
       this.updateSliderState('ssaoRadius', this.ssaoPass.kernelRadius || 16);
       this.updateSliderState('ssaoMinDistance', this.ssaoPass.minDistance || 0.005);
       this.updateSliderState('ssaoMaxDistance', this.ssaoPass.maxDistance || 0.1);
+    }
+
+    // Sync collision debug controls
+    if (this.collisionDebugRenderer) {
+      this.updateToggleState('collisionDebug', this.collisionDebugRenderer.isEnabled());
     }
 
     // Sync audio controls

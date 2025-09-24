@@ -48,7 +48,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 15;
         this.attackRange = 2.5;
         this.attackCooldown = 1.5;
-        this.collisionBounds = { radius: 0.8 };
         this.animationType = AnimationType.MOVING;
         this.movementPattern = 'straight';
         this.velocity.z = -3.0; // Moving toward player
@@ -60,7 +59,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 20;
         this.attackRange = 4.0;
         this.attackCooldown = 1.0;
-        this.collisionBounds = { radius: 0.9 };
         this.animationType = AnimationType.MOVING;
         this.movementPattern = 'zigzag';
         this.velocity.z = -2.5;
@@ -72,7 +70,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 12;
         this.attackRange = 5.0;
         this.attackCooldown = 0.8;
-        this.collisionBounds = { radius: 0.7 };
         this.animationType = AnimationType.FLOATING;
         this.movementPattern = 'circular';
         this.velocity.z = -4.0;
@@ -85,7 +82,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 40;
         this.attackRange = 6.0;
         this.attackCooldown = 2.0;
-        this.collisionBounds = { radius: 1.8 };
         this.animationType = AnimationType.MOVING;
         this.movementPattern = 'straight';
         this.velocity.z = -1.5;
@@ -97,7 +93,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 75;
         this.attackRange = 8.0;
         this.attackCooldown = 3.0;
-        this.collisionBounds = { radius: 3.0 };
         this.animationType = AnimationType.ATTACKING;
         this.movementPattern = 'boss';
         this.velocity.z = -1.0;
@@ -109,7 +104,6 @@ export class Enemy extends BaseEntity {
         this.attackDamage = 60;
         this.attackRange = 7.0;
         this.attackCooldown = 1.5;
-        this.collisionBounds = { radius: 2.5 };
         this.animationType = AnimationType.FLOATING;
         this.movementPattern = 'aggressive';
         this.velocity.z = -2.0;
@@ -181,6 +175,9 @@ export class Enemy extends BaseEntity {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
+
+    // Calculate collision bounds from the actual mesh
+    this.updateCollisionBoundsFromMesh();
   }
 
   protected onUpdate(deltaTime: number): void {
@@ -365,6 +362,9 @@ export class Enemy extends BaseEntity {
         this.mesh.rotation.z = Math.random() * Math.PI;
       }
     }
+
+    // Immediately mark as DEAD so EntityManager removes the enemy
+    this.state = EntityState.DEAD;
   }
 
   protected override onDestroy(): void {

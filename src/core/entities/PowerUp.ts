@@ -95,7 +95,7 @@ export class PowerUp extends BaseEntity {
         this.collisionBounds = { radius: 2.8 * radiusScale };
         this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
-        this.visualScale *= 2; 
+        this.visualScale *= 2;
         break;
 
       case PowerUpSubType.SPEED:
@@ -129,11 +129,8 @@ export class PowerUp extends BaseEntity {
         return;
       }
 
-
       // Clone the model for this instance
       this.mesh = model.clone();
-
-
 
       // Apply bloom material effects
       this.applyBloomMaterial();
@@ -145,7 +142,6 @@ export class PowerUp extends BaseEntity {
 
       // Set position (make sure it's at the right location)
       this.mesh.position.copy(this.position);
-
 
       // Apply current rotation to the new mesh
       this.mesh.rotation.y = this.currentRotation;
@@ -242,7 +238,6 @@ export class PowerUp extends BaseEntity {
   }
 
   private createFallbackMesh(): void {
-
     let geometry: THREE.BufferGeometry;
     let material: THREE.Material;
 
@@ -580,9 +575,6 @@ export class PowerUp extends BaseEntity {
   // Override collision to apply power-up to player
   public override onCollision(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
-      // Play collection sound
-      PowerUp.audioManager?.playPowerUpSound(this.powerUpType, this.position);
-
       // Apply power-up effect
       this.applyToPlayer(other);
 
@@ -605,6 +597,9 @@ export class PowerUp extends BaseEntity {
       // Only react to player's projectiles
       const owner = (other as any).owner;
       if (owner === 'player') {
+        // Play collection sound immediately when shot
+        PowerUp.audioManager?.playPowerUpSound(this.powerUpType, this.position);
+
         this.attracted = true;
         // Strong magnet effect and wide range so it quickly reaches the player
         this.magnetRange = Math.max(this.magnetRange, 40.0);
@@ -622,24 +617,6 @@ export class PowerUp extends BaseEntity {
 
   protected override onDestroy(): void {
     // Power-up cleanup - could spawn sparkle effects, etc.
-  }
-
-  // Get rarity/value rating (for spawning logic)
-  public getRarityRating(): number {
-    switch (this.powerUpType) {
-      case PowerUpSubType.AMMO:
-        return 1; // Common
-      case PowerUpSubType.SPEED:
-        return 2; // Uncommon
-      case PowerUpSubType.SHIELD:
-        return 3; // Rare
-      case PowerUpSubType.WEAPON_UPGRADE:
-        return 4; // Very Rare
-      case PowerUpSubType.LIFE:
-        return 5; // Ultra Rare
-      default:
-        return 1;
-    }
   }
 
   // Static method to set audio manager for all power-ups

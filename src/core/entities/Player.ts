@@ -175,6 +175,46 @@ export class Player extends BaseEntity {
 
     this.mesh = fbx;
     this.scene!.add(this.mesh);
+
+    // Calculate proper collision bounds from the FBX model
+    this.updateCollisionBoundsFromModel();
+  }
+
+  private updateCollisionBoundsFromModel(): void {
+    if (!this.mesh) return;
+
+    // Temporarily reset scale to get original model dimensions
+    const originalScale = this.mesh.scale.clone();
+    this.mesh.scale.setScalar(1.0);
+
+    // Calculate the bounding box of the unscaled model
+    const box = new THREE.Box3().setFromObject(this.mesh);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Restore the original scale
+    this.mesh.scale.copy(originalScale);
+
+    // Use a reasonable collision radius based on the unscaled model
+    // For a humanoid character, use about 40% of the height or largest dimension
+    const unscaledRadius = Math.max(size.x, size.z) * 0.4; // Use width/depth, not height
+
+    // Apply the same scale factor to the collision radius
+    const scaledRadius = unscaledRadius * originalScale.x;
+
+    // Ensure minimum collision radius for gameplay
+    const finalRadius = Math.max(scaledRadius, 0.8);
+
+    // Update collision bounds
+    this.collisionBounds = { radius: finalRadius };
+
+    // Scale the center offset by the model scale
+    const scaledCenter = center.clone().multiplyScalar(originalScale.x);
+    (this as any).modelCenterOffset = scaledCenter;
+
+    console.log(
+      `Player collision updated: unscaled_size=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)}), unscaled_radius=${unscaledRadius.toFixed(2)}, final_radius=${finalRadius.toFixed(2)}, center=(${scaledCenter.x.toFixed(2)}, ${scaledCenter.y.toFixed(2)}, ${scaledCenter.z.toFixed(2)})`,
+    );
   }
 
   private fixAnimationBoneNames(
