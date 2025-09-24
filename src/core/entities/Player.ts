@@ -211,10 +211,6 @@ export class Player extends BaseEntity {
     // Scale the center offset by the model scale
     const scaledCenter = center.clone().multiplyScalar(originalScale.x);
     (this as any).modelCenterOffset = scaledCenter;
-
-    console.log(
-      `Player collision updated: unscaled_size=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)}), unscaled_radius=${unscaledRadius.toFixed(2)}, final_radius=${finalRadius.toFixed(2)}, center=(${scaledCenter.x.toFixed(2)}, ${scaledCenter.y.toFixed(2)}, ${scaledCenter.z.toFixed(2)})`,
-    );
   }
 
   private fixAnimationBoneNames(

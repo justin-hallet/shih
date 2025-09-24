@@ -241,10 +241,7 @@ export abstract class BaseEntity implements IEntity {
 
   // Calculate collision bounds from mesh geometry
   protected updateCollisionBoundsFromMesh(): void {
-    if (!this.mesh) {
-      console.log(`${this.type} ${this.subType}: No mesh found for collision calculation`);
-      return;
-    }
+    if (!this.mesh) return;
 
     // Calculate the bounding box of the mesh
     const box = new THREE.Box3().setFromObject(this.mesh);
@@ -265,10 +262,6 @@ export abstract class BaseEntity implements IEntity {
     // Store the center offset relative to the entity position
     // This centers the collision circle on the mesh's visual center
     this.modelCenterOffset = center.clone().sub(this.mesh.position);
-
-    console.log(
-      `${this.type} ${this.subType}: collision radius=${finalRadius.toFixed(2)}, size=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)}), center_offset=(${this.modelCenterOffset.x.toFixed(2)}, ${this.modelCenterOffset.y.toFixed(2)}, ${this.modelCenterOffset.z.toFixed(2)})`,
-    );
   }
 
   // Subclass hooks (to be overridden)

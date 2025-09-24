@@ -23,6 +23,7 @@ export class Projectile extends BaseEntity {
   public growthMaxScale: number; // final scale multiplier at death
   private baseScale: number; // initial mesh scale baseline
   private effectScale: number; // transient effect scale from specials
+  private baseCollisionRadius: number; // base collision radius before growth scaling
 
   constructor(
     projectileType: ProjectileSubType,
@@ -204,6 +205,9 @@ export class Projectile extends BaseEntity {
     // Calculate collision bounds from the actual mesh
     this.updateCollisionBoundsFromMesh();
 
+    // Store the base collision radius for growth scaling
+    this.baseCollisionRadius = this.collisionBounds.radius;
+
     // Apply outline effect for glow
     this.applyOutlineEffect();
   }
@@ -273,6 +277,9 @@ export class Projectile extends BaseEntity {
       const t = Math.max(0, Math.min(1, this.lifetime > 0 ? this.age / this.lifetime : 1));
       const growth = 1 + (this.growthMaxScale - 1) * Math.pow(t, this.growthExponent);
       this.mesh.scale.setScalar(this.baseScale * this.effectScale * growth);
+
+      // Scale collision radius to match visual growth
+      this.collisionBounds.radius = this.baseCollisionRadius * growth;
     }
 
     // If projectile stopped moving significantly, remove it
