@@ -15,6 +15,8 @@ export class SettingsPanel {
   private player?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private audioManager?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private collisionDebugRenderer?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private virtualController?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private onControlsChange?: (type: string, enabled: boolean) => void;
 
   constructor() {
     this.createPanel();
@@ -155,6 +157,7 @@ export class SettingsPanel {
     content.appendChild(this.createCellShadingSection());
     content.appendChild(this.createWeaponSection());
     content.appendChild(this.createAudioSection());
+    content.appendChild(this.createControlsSection());
     content.appendChild(this.createDebugSection());
     content.appendChild(this.createDisplaySection());
 
@@ -448,6 +451,80 @@ export class SettingsPanel {
     section.appendChild(welcomeButtonRow);
 
     return section;
+  }
+
+  private createControlsSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(255, 102, 0, 0.1);
+      border: 1px solid #ff6600;
+      border-radius: 8px;
+    `;
+
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      margin: 0 0 15px 0;
+      color: #ff6600;
+      font-size: 13px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    title.textContent = '🎮 CONTROLS';
+
+    // Virtual Controller Group
+    const virtualControllerGroup = this.createControlGroup('Virtual Controller (Mobile)', [
+      { label: 'Enable Touch Controls', key: 'virtualController', enabled: true },
+      { label: 'Left-Handed Layout', key: 'leftHandedControls', enabled: false },
+    ]);
+
+    section.appendChild(title);
+    section.appendChild(virtualControllerGroup);
+
+    return section;
+  }
+
+  private createControlGroup(
+    groupName: string,
+    toggles: Array<{ label: string; key: string; enabled: boolean }>,
+  ): HTMLElement {
+    const group = document.createElement('div');
+    group.style.cssText = `
+      margin-bottom: 12px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.3);
+      border-radius: 6px;
+    `;
+
+    // Group header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
+      color: #ffaa44;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    `;
+    header.textContent = groupName;
+
+    // Toggles container
+    const togglesContainer = document.createElement('div');
+    togglesContainer.style.cssText = `
+      padding-left: 4px;
+    `;
+
+    toggles.forEach(toggle => {
+      const toggleRow = this.createToggleRow(toggle.label, toggle.key, toggle.enabled);
+      togglesContainer.appendChild(toggleRow);
+    });
+
+    group.appendChild(header);
+    group.appendChild(togglesContainer);
+
+    return group;
   }
 
   private createDebugSection(): HTMLElement {
@@ -793,6 +870,18 @@ export class SettingsPanel {
           this.collisionDebugRenderer.setEnabled(value);
         }
         break;
+      case 'virtualController':
+        if (this.virtualController) {
+          this.virtualController.setEnabled(value);
+        }
+        this.onControlsChange?.(id, value);
+        break;
+      case 'leftHandedControls':
+        if (this.virtualController) {
+          this.virtualController.setLeftHanded(value);
+        }
+        this.onControlsChange?.(id, value);
+        break;
       case 'wireframe':
       case 'surface':
         this.onDisplayToggle?.(id, value);
@@ -877,6 +966,14 @@ export class SettingsPanel {
     this.collisionDebugRenderer = renderer;
   }
 
+  public setVirtualController(controller: any): void {
+    this.virtualController = controller;
+  }
+
+  public setControlsChangeCallback(callback: (type: string, enabled: boolean) => void): void {
+    this.onControlsChange = callback;
+  }
+
   // Sync panel controls with current state of passes
   private syncControlsWithState(): void {
     // Sync cell shading controls
@@ -905,6 +1002,12 @@ export class SettingsPanel {
       this.updateSliderState('masterVolume', this.audioManager.getMasterVolume?.() || 1.0);
       this.updateSliderState('sfxVolume', this.audioManager.getSFXVolume?.() || 0.9);
       this.updateSliderState('musicVolume', this.audioManager.getMusicVolume?.() || 0.2);
+    }
+
+    // Sync virtual controller controls
+    if (this.virtualController) {
+      this.updateToggleState('virtualController', this.virtualController.isControllerEnabled());
+      this.updateToggleState('leftHandedControls', this.virtualController.isControllerLeftHanded());
     }
   }
 

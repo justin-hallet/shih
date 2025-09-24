@@ -13,6 +13,7 @@ import { OutlinePass } from './shaders/OutlinePass.js';
 import { CollisionDebugRenderer } from './utils/CollisionDebugRenderer';
 import { HUD } from './components/HUD';
 import { SettingsPanel } from './components/SettingsPanel.js';
+import { VirtualController } from './components/VirtualController';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
@@ -274,6 +275,69 @@ if (hud) {
     settingsPanel.toggle();
   });
 }
+
+// Initialize Virtual Controller for mobile touch input
+const virtualController = new VirtualController({
+  onMove: direction => {
+    // Map joystick input to movement actions
+    const threshold = 0.3; // Dead zone threshold
+
+    // Handle horizontal movement (strafe)
+    if (Math.abs(direction.x) > threshold) {
+      if (direction.x > 0) {
+        handleAction('strafe_right', true);
+        handleAction('strafe_left', false);
+      } else {
+        handleAction('strafe_left', true);
+        handleAction('strafe_right', false);
+      }
+    } else {
+      handleAction('strafe_left', false);
+      handleAction('strafe_right', false);
+    }
+
+    // Handle vertical movement (ascend/descend)
+    if (Math.abs(direction.y) > threshold) {
+      if (direction.y > 0) {
+        handleAction('ascend', true);
+        handleAction('descend', false);
+      } else {
+        handleAction('descend', true);
+        handleAction('ascend', false);
+      }
+    } else {
+      handleAction('ascend', false);
+      handleAction('descend', false);
+    }
+  },
+  onMoveEnd: () => {
+    // Stop all movement when joystick is released
+    handleAction('strafe_left', false);
+    handleAction('strafe_right', false);
+    handleAction('ascend', false);
+    handleAction('descend', false);
+  },
+  onFire: pressed => {
+    // Handle fire button
+    handleAction('fire', pressed);
+  },
+});
+
+// Auto-enable virtual controller on mobile devices
+const isMobile =
+  window.innerWidth <= 768 ||
+  /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+virtualController.setEnabled(isMobile);
+
+// Connect virtual controller to settings panel
+settingsPanel.setVirtualController(virtualController);
+settingsPanel.setControlsChangeCallback((type: string, enabled: boolean) => {
+  if (type === 'virtualController') {
+    virtualController.setEnabled(enabled);
+  } else if (type === 'leftHandedControls') {
+    virtualController.setLeftHanded(enabled);
+  }
+});
 
 // Mobile fullscreen handling
 let hasRequestedFullscreen = false;
@@ -1029,6 +1093,9 @@ function handleResize() {
 
   // Update settings panel for mobile rotation
   settingsPanel.handleResize();
+
+  // Update virtual controller for mobile rotation
+  virtualController.handleResize();
 }
 
 // Handle window resize and orientation changes
