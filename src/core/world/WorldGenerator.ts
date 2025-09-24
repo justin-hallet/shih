@@ -532,26 +532,54 @@ export class WorldGenerator {
     const distance = chunkCenter.length();
     const difficultyMultiplier = Math.max(1.0, distance / this.difficultyScaling.baseDistance);
 
-    // Spawn obstacles
-    this.spawnObstacles(chunk, spawnRules);
+    // Track total entities spawned in this chunk
+    let totalEntitiesSpawned = 0;
+    const maxEntities = spawnRules.maxEntitiesPerTile;
 
-    // Spawn enemies (with difficulty scaling)
-    this.spawnEnemies(chunk, spawnRules, chunkCenter, difficultyMultiplier);
+    // Spawn obstacles (with limits)
+    totalEntitiesSpawned += this.spawnObstacles(
+      chunk,
+      spawnRules,
+      maxEntities - totalEntitiesSpawned,
+    );
 
-    // Spawn power-ups
-    this.spawnPowerUps(chunk, spawnRules);
+    // Spawn enemies (with difficulty scaling and remaining limit)
+    totalEntitiesSpawned += this.spawnEnemies(
+      chunk,
+      spawnRules,
+      chunkCenter,
+      difficultyMultiplier,
+      maxEntities - totalEntitiesSpawned,
+    );
+
+    // Spawn power-ups (with remaining limit)
+    totalEntitiesSpawned += this.spawnPowerUps(
+      chunk,
+      spawnRules,
+      maxEntities - totalEntitiesSpawned,
+    );
 
     // Apply content templates
     this.applyContentTemplates(chunk);
   }
 
-  private spawnObstacles(chunk: WorldChunk, spawnRules: BiomeSpawnRules): void {
-    for (const rule of spawnRules.obstacleRules) {
-      const count =
-        Math.floor(Math.random() * (rule.groupSize.max - rule.groupSize.min + 1)) +
-        rule.groupSize.min;
+  private spawnObstacles(
+    chunk: WorldChunk,
+    spawnRules: BiomeSpawnRules,
+    maxRemaining: number,
+  ): number {
+    let spawned = 0;
 
-      for (let i = 0; i < count; i++) {
+    for (const rule of spawnRules.obstacleRules) {
+      if (spawned >= maxRemaining) break;
+
+      const count = Math.min(
+        Math.floor(Math.random() * (rule.groupSize.max - rule.groupSize.min + 1)) +
+          rule.groupSize.min,
+        maxRemaining - spawned,
+      );
+
+      for (let i = 0; i < count && spawned < maxRemaining; i++) {
         if (Math.random() < rule.probability) {
           const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
 
@@ -562,11 +590,14 @@ export class WorldGenerator {
               y: clampedY,
               z: position.z,
             });
+            spawned++;
             // No need to track entity in chunk - we'll find it by position when needed
           }
         }
       }
     }
+
+    return spawned;
   }
 
   private spawnEnemies(
@@ -574,12 +605,20 @@ export class WorldGenerator {
     spawnRules: BiomeSpawnRules,
     _chunkCenter: THREE.Vector3,
     difficultyMultiplier: number,
-  ): void {
+    maxRemaining: number,
+  ): number {
+    let spawned = 0;
+
     for (const rule of spawnRules.enemyRules) {
-      const maxCount = Math.floor(rule.maxPerTile * difficultyMultiplier);
+      if (spawned >= maxRemaining) break;
+
+      const maxCount = Math.min(
+        Math.floor(rule.maxPerTile * difficultyMultiplier),
+        maxRemaining - spawned,
+      );
       const actualCount = Math.floor(Math.random() * maxCount);
 
-      for (let i = 0; i < actualCount; i++) {
+      for (let i = 0; i < actualCount && spawned < maxRemaining; i++) {
         if (Math.random() < rule.probability) {
           const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
 
@@ -594,21 +633,32 @@ export class WorldGenerator {
           enemy.health = Math.floor(enemy.health * this.difficultyScaling.enemyHealthMultiplier);
           enemy.maxHealth = enemy.health;
 
+          spawned++;
           // No need to track entity in chunk - we'll find it by position when needed
         }
       }
     }
+
+    return spawned;
   }
 
-  private spawnPowerUps(chunk: WorldChunk, spawnRules: BiomeSpawnRules): void {
+  private spawnPowerUps(
+    chunk: WorldChunk,
+    spawnRules: BiomeSpawnRules,
+    maxRemaining: number,
+  ): number {
+    let spawned = 0;
+
     // First check: Should we spawn ANY PowerUps in this chunk?
     const powerUpSpawnChance = spawnRules.spawnProbabilities.get(EntityType.POWERUP) || 0;
-    if (Math.random() > powerUpSpawnChance) {
-      return; // No PowerUps for this chunk
+    if (Math.random() > powerUpSpawnChance || maxRemaining <= 0) {
+      return 0; // No PowerUps for this chunk
     }
 
     // If we're spawning PowerUps, check each type individually
     for (const rule of spawnRules.powerUpRules) {
+      if (spawned >= maxRemaining) break;
+
       if (Math.random() < rule.probability) {
         const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
 
@@ -619,9 +669,12 @@ export class WorldGenerator {
           z: position.z,
         });
 
+        spawned++;
         // No need to track entity in chunk - we'll find it by position when needed
       }
     }
+
+    return spawned;
   }
 
   private applyContentTemplates(chunk: WorldChunk): void {
