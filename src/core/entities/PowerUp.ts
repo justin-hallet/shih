@@ -207,7 +207,7 @@ export class PowerUp extends BaseEntity {
 
     const emissiveColor = new THREE.Color(bloomColors[this.powerUpType]);
 
-    // Apply bloom material to all meshes in the model
+    // Create glowing outline effect by adding outline meshes
     this.mesh.traverse(child => {
       if (child instanceof THREE.Mesh) {
         // Store original material if needed
@@ -215,19 +215,44 @@ export class PowerUp extends BaseEntity {
           this.originalMaterial = child.material;
         }
 
-        // Create subtle bloom material (more visible models)
-        const bloomMaterial = new THREE.MeshLambertMaterial({
-          color: 0x888888, // Lighter gray base for better visibility
-          emissive: emissiveColor,
-          emissiveIntensity: 0.6, // Much lower intensity for subtlety
-          transparent: true,
-          opacity: 0.95, // Slightly less transparent
-          // No additive blending for solid appearance
-        });
+        // Brighten the original material while preserving textures
+        const originalMaterial = child.material;
+        const brightenedMaterial = originalMaterial.clone();
 
-        child.material = bloomMaterial;
+        // Increase the overall brightness without washing out textures
+        if (brightenedMaterial.color) {
+          brightenedMaterial.color.multiplyScalar(1.5); // Make colors 50% brighter
+        }
+
+        // Add a subtle emissive tint that matches the outline color
+        brightenedMaterial.emissive = emissiveColor.clone().multiplyScalar(0.1); // Very subtle emissive
+        brightenedMaterial.emissiveIntensity = 0.3;
+
+        child.material = brightenedMaterial;
         child.castShadow = true;
         child.receiveShadow = false;
+
+        // Create a glowing outline mesh
+        const outlineMesh = child.clone();
+
+        // Create outline material - pure emissive for glow effect
+        const outlineMaterial = new THREE.MeshBasicMaterial({
+          color: emissiveColor,
+          transparent: true,
+          opacity: 0.6,
+          side: THREE.BackSide, // Render from inside to create outline effect
+        });
+
+        outlineMesh.material = outlineMaterial;
+        outlineMesh.scale.multiplyScalar(1.05); // Slightly larger for outline effect
+        outlineMesh.layers.enable(1); // Enable bloom layer for outline only
+        outlineMesh.castShadow = false;
+        outlineMesh.receiveShadow = false;
+
+        // Add outline mesh to the same parent
+        if (child.parent) {
+          child.parent.add(outlineMesh);
+        }
       }
     });
   }

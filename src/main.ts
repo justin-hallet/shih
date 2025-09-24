@@ -449,15 +449,17 @@ function applyDebugBloomOverride(
         if (!m.userData.originalMaterial) {
           m.userData.originalMaterial = m.material;
         }
-        m.material = new THREE.MeshLambertMaterial({
-          color: 0x000000,
-          emissive: new THREE.Color(emissiveHex),
-          emissiveIntensity: 3.0,
-          transparent: true,
-          opacity: 0.98,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
+        // Create bloom material that preserves textures
+        const originalMat = m.userData.originalMaterial;
+        const bloomMaterial = originalMat.clone();
+
+        // Add bloom effect while preserving original properties
+        bloomMaterial.emissive = new THREE.Color(emissiveHex);
+        bloomMaterial.emissiveIntensity = 2.0; // Lower intensity to not overpower textures
+        bloomMaterial.transparent = true;
+        bloomMaterial.opacity = 0.95;
+
+        m.material = bloomMaterial;
         m.layers.enable(1);
       } else {
         if (m.userData.originalMaterial) {
