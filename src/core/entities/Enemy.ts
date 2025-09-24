@@ -21,6 +21,13 @@ export class Enemy extends BaseEntity {
   private healthBarBackground?: THREE.Mesh;
   private healthBarForeground?: THREE.Mesh;
 
+  // Audio manager reference
+  private static audioManager?: any;
+
+  public static setAudioManager(audioManager: any): void {
+    Enemy.audioManager = audioManager;
+  }
+
   constructor(
     enemyType: EnemySubType,
     position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
@@ -447,6 +454,9 @@ export class Enemy extends BaseEntity {
       }, 150);
     }
 
+    // Play enemy hit sound
+    Enemy.audioManager?.playEnemyHitSound(this.position);
+
     // Update health bar immediately when damage is taken
     this.updateHealthBarDisplay();
 
@@ -457,6 +467,9 @@ export class Enemy extends BaseEntity {
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
     this.velocity.set(0, 0, 0);
+
+    // Play enemy death sound
+    Enemy.audioManager?.playEnemyDeathSound(this.position);
 
     // Boss death effects
     if (this.enemyType === EnemySubType.BOSS || this.enemyType === EnemySubType.DRAGON) {

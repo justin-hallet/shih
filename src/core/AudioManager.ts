@@ -25,6 +25,13 @@ export interface SoundAction {
   maxInstances?: number; // Limit concurrent instances
 }
 
+interface QueuedSound {
+  actionKey: string;
+  position: THREE.Vector3 | undefined;
+  priority: number;
+  timestamp: number;
+}
+
 export class AudioManager {
   private sounds: Map<string, Howl> = new Map();
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -38,53 +45,60 @@ export class AudioManager {
   // Sound instance tracking for limiting concurrent sounds
   private activeInstances: Map<string, number[]> = new Map();
 
+  // Audio queue system
+  private soundQueue: QueuedSound[] = [];
+  private lastProcessTime: number = 0;
+  private processInterval: number = 100; // Process queue every 100ms
+  private maxConcurrentSounds: number = 8; // Maximum sounds playing at once
+  private currentlyPlaying: Set<string> = new Set(); // Track currently playing sounds
+
   // Sound action mappings with volumes and settings
   private readonly soundActions: Record<string, SoundAction> = {
-    // Shooting sounds - reduced volume, limited instances
+    // Shooting sounds - low priority, queued processing
     'shoot-bullet': {
       file: '/src/assets/audio/shoot-1.mp3',
+      volume: 0.3,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 1,
+      maxInstances: 8,
+    },
+    'shoot-missile': {
+      file: '/src/assets/audio/shoot-2.mp3',
+      volume: 0.35,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 1,
+      maxInstances: 8,
+    },
+    'shoot-laser': {
+      file: '/src/assets/audio/shoot-3.mp3',
+      volume: 0.32,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 1,
+      maxInstances: 8,
+    },
+    'shoot-plasma': {
+      file: '/src/assets/audio/shoot-4.mp3',
+      volume: 0.38,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 1,
+      maxInstances: 8,
+    },
+    'shoot-fireball': {
+      file: '/src/assets/audio/shoot-5.mp3',
       volume: 0.4,
       spatial: true,
       loop: false,
       category: 'sfx',
       priority: 1,
-      maxInstances: 12,
-    },
-    'shoot-missile': {
-      file: '/src/assets/audio/shoot-2.mp3',
-      volume: 0.5,
-      spatial: true,
-      loop: false,
-      category: 'sfx',
-      priority: 1,
-      maxInstances: 12,
-    },
-    'shoot-laser': {
-      file: '/src/assets/audio/shoot-3.mp3',
-      volume: 0.45,
-      spatial: true,
-      loop: false,
-      category: 'sfx',
-      priority: 1,
-      maxInstances: 12,
-    },
-    'shoot-plasma': {
-      file: '/src/assets/audio/shoot-4.mp3',
-      volume: 0.55,
-      spatial: true,
-      loop: false,
-      category: 'sfx',
-      priority: 1,
-      maxInstances: 12,
-    },
-    'shoot-fireball': {
-      file: '/src/assets/audio/shoot-5.mp3',
-      volume: 0.6,
-      spatial: true,
-      loop: false,
-      category: 'sfx',
-      priority: 1,
-      maxInstances: 12,
+      maxInstances: 8,
     },
 
     // Damage sounds - high priority, always audible
@@ -104,6 +118,55 @@ export class AudioManager {
       loop: false,
       category: 'sfx',
       priority: 10,
+      maxInstances: 2,
+    },
+
+    // Enemy hit sounds - medium priority, spatial
+    'enemy-hit-1': {
+      file: '/src/assets/audio/hit-1.mp3',
+      volume: 1.2,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 6,
+      maxInstances: 3,
+    },
+    'enemy-hit-2': {
+      file: '/src/assets/audio/hit-2.mp3',
+      volume: 1.2,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 6,
+      maxInstances: 3,
+    },
+    'enemy-hit-3': {
+      file: '/src/assets/audio/hit-3.mp3',
+      volume: 1.2,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 6,
+      maxInstances: 3,
+    },
+    'enemy-hit-4': {
+      file: '/src/assets/audio/hit-4.mp3',
+      volume: 1.2,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 6,
+      maxInstances: 3,
+    },
+
+    // Enemy death sound - high priority, always heard
+    'enemy-death': {
+      file: '/src/assets/audio/death.mp3',
+      volume: 1.8,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 8,
       maxInstances: 2,
     },
 
@@ -297,7 +360,7 @@ export class AudioManager {
 
       // Set initial volumes correctly
       this.refreshAllVolumes();
-    } catch (error) {
+    } catch {
       // Silent initialization failure - audio will be disabled
       this.isInitialized = false;
     }
@@ -400,6 +463,23 @@ export class AudioManager {
     this.playSound(soundAction, position);
   }
 
+  // Play enemy hit sound (random variation)
+  public playEnemyHitSound(position?: THREE.Vector3): void {
+    if (!this.isInitialized) return;
+
+    // Randomly select one of the 4 hit sounds for variety
+    const hitSounds = ['enemy-hit-1', 'enemy-hit-2', 'enemy-hit-3', 'enemy-hit-4'];
+    const randomHitSound = hitSounds[Math.floor(Math.random() * hitSounds.length)];
+    this.playSound(randomHitSound, position);
+  }
+
+  // Play enemy death sound
+  public playEnemyDeathSound(position?: THREE.Vector3): void {
+    if (!this.isInitialized) return;
+
+    this.playSound('enemy-death', position);
+  }
+
   // Play background theme
   public playTheme(): void {
     if (!this.isInitialized) {
@@ -438,12 +518,68 @@ export class AudioManager {
     this.startWelcomeSequence();
   }
 
-  // Smart sound playing with instance limiting and priority management
+  // Add sound to queue for processing
   private playSound(actionKey: string, position?: THREE.Vector3): void {
+    const action = this.soundActions[actionKey];
+    if (!action) {
+      // eslint-disable-next-line no-console
+      console.warn(`Sound action not found: ${actionKey}`);
+      return;
+    }
+
+    // Add to queue with priority and timestamp
+    this.soundQueue.push({
+      actionKey,
+      position: position ? position.clone() : undefined, // Clone to avoid reference issues
+      priority: action.priority,
+      timestamp: Date.now(),
+    });
+
+    // Sort queue by priority (higher priority first), then by timestamp (older first)
+    this.soundQueue.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return b.priority - a.priority; // Higher priority first
+      }
+      return a.timestamp - b.timestamp; // Older first for same priority
+    });
+
+    // Limit queue size to prevent memory issues
+    if (this.soundQueue.length > 50) {
+      this.soundQueue = this.soundQueue.slice(0, 50);
+    }
+  }
+
+  // Process the sound queue (called every frame or interval)
+  public processAudioQueue(): void {
+    const currentTime = Date.now();
+
+    // Only process every processInterval milliseconds
+    if (currentTime - this.lastProcessTime < this.processInterval) {
+      return;
+    }
+
+    this.lastProcessTime = currentTime;
+
+    // Clean up finished sounds from tracking
+    this.cleanupFinishedSounds();
+
+    // Process queue while we have room for more sounds
+    while (this.soundQueue.length > 0 && this.currentlyPlaying.size < this.maxConcurrentSounds) {
+      const queuedSound = this.soundQueue.shift();
+      if (queuedSound) {
+        this.playQueuedSound(queuedSound);
+      }
+    }
+  }
+
+  // Actually play a sound from the queue
+  private playQueuedSound(queuedSound: QueuedSound): void {
+    const { actionKey, position } = queuedSound;
     const sound = this.sounds.get(actionKey);
     const action = this.soundActions[actionKey];
 
     if (!sound || !action) {
+      // eslint-disable-next-line no-console
       console.warn(`Sound action not found: ${actionKey}`);
       return;
     }
@@ -463,6 +599,7 @@ export class AudioManager {
           const oldestId = activeIds.shift();
           if (oldestId !== undefined) {
             sound.stop(oldestId);
+            this.currentlyPlaying.delete(`${actionKey}-${oldestId}`);
           }
         } else {
           // Low priority: skip playing this instance
@@ -473,22 +610,31 @@ export class AudioManager {
 
     const soundId = sound.play();
 
-    // Track this instance
-    if (action.maxInstances && typeof soundId === 'number') {
-      const instances = this.activeInstances.get(actionKey) || [];
-      instances.push(soundId);
-      this.activeInstances.set(actionKey, instances);
+    // Track this instance globally
+    if (typeof soundId === 'number') {
+      const trackingKey = `${actionKey}-${soundId}`;
+      this.currentlyPlaying.add(trackingKey);
 
       // Auto-cleanup when sound ends
       sound.once(
         'end',
         () => {
-          const currentInstances = this.activeInstances.get(actionKey) || [];
-          const filteredInstances = currentInstances.filter(id => id !== soundId);
-          this.activeInstances.set(actionKey, filteredInstances);
+          this.currentlyPlaying.delete(trackingKey);
+          if (action.maxInstances) {
+            const currentInstances = this.activeInstances.get(actionKey) || [];
+            const filteredInstances = currentInstances.filter(id => id !== soundId);
+            this.activeInstances.set(actionKey, filteredInstances);
+          }
         },
         soundId,
       );
+    }
+
+    // Track this instance for maxInstances limit
+    if (action.maxInstances && typeof soundId === 'number') {
+      const instances = this.activeInstances.get(actionKey) || [];
+      instances.push(soundId);
+      this.activeInstances.set(actionKey, instances);
     }
 
     // Apply spatial audio if configured and position provided
@@ -502,6 +648,23 @@ export class AudioManager {
         // Silent handling of play failures
       });
     }
+  }
+
+  // Clean up finished sounds from global tracking
+  private cleanupFinishedSounds(): void {
+    const toRemove: string[] = [];
+
+    for (const trackingKey of this.currentlyPlaying) {
+      const [actionKey, soundIdStr] = trackingKey.split('-');
+      const soundId = parseInt(soundIdStr);
+      const sound = this.sounds.get(actionKey);
+
+      if (!sound || !sound.playing(soundId)) {
+        toRemove.push(trackingKey);
+      }
+    }
+
+    toRemove.forEach(key => this.currentlyPlaying.delete(key));
   }
 
   // Volume controls
@@ -551,6 +714,24 @@ export class AudioManager {
 
   public getMusicVolume(): number {
     return this.musicVolume;
+  }
+
+  // Queue configuration methods
+  public setMaxConcurrentSounds(max: number): void {
+    this.maxConcurrentSounds = Math.max(1, Math.min(20, max));
+  }
+
+  public setProcessInterval(intervalMs: number): void {
+    this.processInterval = Math.max(50, Math.min(500, intervalMs));
+  }
+
+  // Queue status methods
+  public getQueueLength(): number {
+    return this.soundQueue.length;
+  }
+
+  public getCurrentlyPlayingCount(): number {
+    return this.currentlyPlaying.size;
   }
 
   // Mute/unmute controls

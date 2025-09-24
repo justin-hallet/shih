@@ -20,6 +20,7 @@ import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
 import { ProjectileSubType, EntityType, PowerUpSubType } from './core/types';
 import { AudioManager } from './core/AudioManager';
 import { PowerUp } from './core/entities/PowerUp';
+import { Enemy } from './core/entities/Enemy';
 import './styles/hud.css';
 
 // eslint-disable-next-line no-console
@@ -272,6 +273,7 @@ audioManager.setCamera(camera);
 audioManager.setPlayerPosition(player.position);
 (player as any).setAudioManager(audioManager);
 PowerUp.setAudioManager(audioManager);
+Enemy.setAudioManager(audioManager);
 
 // Theme music will start automatically on first user interaction
 
@@ -630,6 +632,10 @@ function animate() {
   if (player) {
     // Update audio manager with current player position
     audioManager.setPlayerPosition(player.position);
+
+    // Process audio queue
+    audioManager.processAudioQueue();
+
     // Rails shooter constant forward motion parallel to the floor (yaw only)
     const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
     if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
