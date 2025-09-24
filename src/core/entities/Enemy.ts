@@ -43,8 +43,8 @@ export class Enemy extends BaseEntity {
   private initializeByType(): void {
     switch (this.enemyType) {
       case EnemySubType.GRUNT:
-        this.health = 30;
-        this.maxHealth = 30;
+        this.health = 60;
+        this.maxHealth = 60;
         this.attackDamage = 15;
         this.attackRange = 2.5;
         this.attackCooldown = 1.5;
@@ -54,8 +54,8 @@ export class Enemy extends BaseEntity {
         break;
 
       case EnemySubType.SOLDIER:
-        this.health = 50;
-        this.maxHealth = 50;
+        this.health = 100;
+        this.maxHealth = 100;
         this.attackDamage = 20;
         this.attackRange = 4.0;
         this.attackCooldown = 1.0;
@@ -65,8 +65,8 @@ export class Enemy extends BaseEntity {
         break;
 
       case EnemySubType.FLYER:
-        this.health = 25;
-        this.maxHealth = 25;
+        this.health = 80;
+        this.maxHealth = 80;
         this.attackDamage = 12;
         this.attackRange = 5.0;
         this.attackCooldown = 0.8;
@@ -77,8 +77,8 @@ export class Enemy extends BaseEntity {
         break;
 
       case EnemySubType.TANK:
-        this.health = 150;
-        this.maxHealth = 150;
+        this.health = 300;
+        this.maxHealth = 300;
         this.attackDamage = 40;
         this.attackRange = 6.0;
         this.attackCooldown = 2.0;
@@ -88,8 +88,8 @@ export class Enemy extends BaseEntity {
         break;
 
       case EnemySubType.BOSS:
-        this.health = 500;
-        this.maxHealth = 500;
+        this.health = 1000;
+        this.maxHealth = 1000;
         this.attackDamage = 75;
         this.attackRange = 8.0;
         this.attackCooldown = 3.0;
@@ -99,8 +99,8 @@ export class Enemy extends BaseEntity {
         break;
 
       case EnemySubType.DRAGON:
-        this.health = 200;
-        this.maxHealth = 200;
+        this.health = 500;
+        this.maxHealth = 500;
         this.attackDamage = 60;
         this.attackRange = 7.0;
         this.attackCooldown = 1.5;
@@ -169,9 +169,11 @@ export class Enemy extends BaseEntity {
       default:
         geometry = new THREE.SphereGeometry(0.5);
         material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.scale.set(5, 5, 5);
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
@@ -318,10 +320,9 @@ export class Enemy extends BaseEntity {
 
       // Take collision damage ourselves
       this.takeDamage(10);
-    } else if (other.type === EntityType.PROJECTILE && other.subType === 'player_bullet') {
-      // Take damage from player projectiles
-      this.takeDamage(25);
     }
+    // Note: Projectile damage is handled automatically by the projectile's onCollision method
+    // which calls other.takeDamage(this.damage), so we don't need to handle it here
   }
 
   protected override onTakeDamage(_damage: number): void {
