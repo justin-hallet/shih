@@ -95,7 +95,7 @@ export class PowerUp extends BaseEntity {
         this.collisionBounds = { radius: 2.8 * radiusScale };
         this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
-        this.visualScale = 22.4; // 4x larger than default (5.6 * 4 = 22.4)
+        this.visualScale *= 8;
         break;
 
       case PowerUpSubType.SPEED:

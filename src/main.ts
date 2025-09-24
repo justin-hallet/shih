@@ -449,13 +449,38 @@ function applyDebugBloomOverride(
     if (!meshObject) continue;
 
     if (enable) {
-      // Add object to outline pass with the specified color
+      // Add object to outline pass with the specified debug color
       outlinePass.addOutlineObject(meshObject, outlineColor);
     } else {
-      // Remove object from outline pass
-      outlinePass.removeOutlineObject(meshObject);
+      // For PowerUps, restore their original outline color instead of removing entirely
+      if (type === EntityType.POWERUP) {
+        // Get the PowerUp's original outline color based on its type
+        const powerUpType = (e as any).powerUpType;
+        const originalColor = getPowerUpOutlineColor(powerUpType);
+        if (originalColor) {
+          outlinePass.addOutlineObject(meshObject, originalColor);
+        }
+      } else {
+        // For other entities (Obstacles, Enemies), remove outline entirely
+        outlinePass.removeOutlineObject(meshObject);
+      }
     }
   }
+}
+
+// Helper function to get PowerUp's original outline color
+function getPowerUpOutlineColor(powerUpType: PowerUpSubType): THREE.Color | null {
+  // These colors should match the ones in PowerUp.ts applyBloomMaterial method
+  const bloomColors: Record<PowerUpSubType, number> = {
+    [PowerUpSubType.AMMO]: 0xffee66, // bright yellow
+    [PowerUpSubType.SHIELD]: 0x66ccff, // blue
+    [PowerUpSubType.LIFE]: 0xff3333, // red
+    [PowerUpSubType.SPEED]: 0x33ff33, // green
+    [PowerUpSubType.WEAPON_UPGRADE]: 0xffaa44, // orange
+  };
+
+  const colorHex = bloomColors[powerUpType];
+  return colorHex ? new THREE.Color(colorHex) : null;
 }
 
 window.addEventListener('keydown', event => {
