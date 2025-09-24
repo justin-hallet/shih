@@ -249,8 +249,7 @@ audioManager.setPlayerPosition(player.position);
 (player as any).setAudioManager(audioManager);
 PowerUp.setAudioManager(audioManager);
 
-// Start background music
-audioManager.playTheme();
+// Theme music will start automatically on first user interaction
 
 // Initialize world generation around player
 worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter));

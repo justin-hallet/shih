@@ -297,14 +297,14 @@ export class SettingsPanel {
     const sfxVolumeRow = this.createSliderRow('SFX Volume', 'sfxVolume', 0.8, 0.0, 1.0, 0.1);
     const musicVolumeRow = this.createSliderRow('Music Volume', 'musicVolume', 0.6, 0.0, 1.0, 0.1);
 
-    // Theme music button
-    const themeButtonRow = this.createButtonRow('Start Theme Music', 'startTheme');
+    // Welcome sequence button
+    const welcomeButtonRow = this.createButtonRow('Start Welcome Sequence', 'startWelcome');
 
     section.appendChild(title);
     section.appendChild(masterVolumeRow);
     section.appendChild(sfxVolumeRow);
     section.appendChild(musicVolumeRow);
-    section.appendChild(themeButtonRow);
+    section.appendChild(welcomeButtonRow);
 
     return section;
   }
@@ -548,7 +548,7 @@ export class SettingsPanel {
 
     const button = document.createElement('button');
     button.id = id;
-    button.textContent = 'Start';
+    button.textContent = id === 'startWelcome' ? 'Play' : 'Start';
     button.style.cssText = `
       padding: 4px 12px;
       background: linear-gradient(135deg, #ff6600 0%, #cc4400 100%);
@@ -573,7 +573,9 @@ export class SettingsPanel {
   }
 
   private handleButtonClick(id: string): void {
-    if (id === 'startTheme') {
+    if (id === 'startWelcome') {
+      this.audioManager?.triggerWelcomeSequence();
+    } else if (id === 'startTheme') {
       this.audioManager?.forceStartTheme();
     }
   }
