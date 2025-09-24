@@ -16,6 +16,11 @@ export class Enemy extends BaseEntity {
   public targetPlayer: IEntity | null;
   public aiUpdateTimer: number;
 
+  // Health bar display
+  private healthBarGroup?: THREE.Group;
+  private healthBarBackground?: THREE.Mesh;
+  private healthBarForeground?: THREE.Mesh;
+
   constructor(
     enemyType: EnemySubType,
     position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
@@ -169,7 +174,6 @@ export class Enemy extends BaseEntity {
       default:
         geometry = new THREE.SphereGeometry(0.5);
         material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-
     }
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -180,10 +184,107 @@ export class Enemy extends BaseEntity {
 
     // Calculate collision bounds from the actual mesh
     this.updateCollisionBoundsFromMesh();
+
+    // Create health bar
+    this.createHealthBar();
+  }
+
+  private createHealthBar(): void {
+    if (!this.scene) return;
+
+    // Create health bar group
+    this.healthBarGroup = new THREE.Group();
+
+    // Health bar dimensions
+    const barWidth = 3.0;
+    const barHeight = 0.3;
+    const barDepth = 0.1;
+
+    // Background (red) - shows max health
+    const backgroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
+    const backgroundMaterial = new THREE.MeshBasicMaterial({
+      color: 0x440000,
+      transparent: true,
+      opacity: 0.8,
+    });
+    this.healthBarBackground = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+    this.healthBarGroup.add(this.healthBarBackground);
+
+    // Foreground (green/yellow/red) - shows current health
+    const foregroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth + 0.01);
+    const foregroundMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.9,
+    });
+    this.healthBarForeground = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
+    this.healthBarGroup.add(this.healthBarForeground);
+
+    // Position health bar above enemy
+    this.updateHealthBarPosition();
+
+    // Make health bar always face camera (billboard effect)
+    this.healthBarGroup.renderOrder = 1000; // Render on top
+
+    this.scene.add(this.healthBarGroup);
+  }
+
+  private updateHealthBarPosition(): void {
+    if (!this.healthBarGroup) return;
+
+    // Position health bar just above the collision radius
+    const collisionRadius = this.collisionBounds?.radius || 1.0;
+    const healthBarOffset = 0.8; // Small gap above the collision sphere
+
+    this.healthBarGroup.position.set(
+      this.position.x,
+      this.position.y + collisionRadius + healthBarOffset,
+      this.position.z,
+    );
+  }
+
+  private updateHealthBarDisplay(): void {
+    if (!this.healthBarForeground || !this.healthBarBackground) return;
+
+    // Calculate health percentage
+    const healthPercent = Math.max(0, this.health / this.maxHealth);
+
+    // Update foreground bar width to match current health
+    this.healthBarForeground.scale.x = healthPercent;
+
+    // Position foreground bar to align left
+    const barWidth = 3.0;
+    const offset = (barWidth * (1 - healthPercent)) / 2;
+    this.healthBarForeground.position.x = -offset;
+
+    // Change color based on health percentage (Borderlands style)
+    const material = this.healthBarForeground.material as THREE.MeshBasicMaterial;
+    if (healthPercent > 0.6) {
+      material.color.setHex(0x00ff00); // Green (healthy)
+    } else if (healthPercent > 0.3) {
+      material.color.setHex(0xffff00); // Yellow (damaged)
+    } else {
+      material.color.setHex(0xff0000); // Red (critical)
+    }
+  }
+
+  private updateHealthBarBillboard(): void {
+    if (!this.healthBarGroup || !this.scene) return;
+
+    // Get camera from scene userData
+    const camera = (this.scene as any)?.userData?.camera;
+    if (camera) {
+      this.healthBarGroup.lookAt(camera.position);
+    }
   }
 
   protected onUpdate(deltaTime: number): void {
     this.aiUpdateTimer += deltaTime;
+
+    // Update health bar position and display
+    this.updateHealthBarPosition();
+    this.updateHealthBarDisplay();
+    this.updateHealthBarBillboard();
 
     // Update AI every 0.1 seconds (10 FPS for AI)
     if (this.aiUpdateTimer >= 0.1) {
@@ -346,6 +447,9 @@ export class Enemy extends BaseEntity {
       }, 150);
     }
 
+    // Update health bar immediately when damage is taken
+    this.updateHealthBarDisplay();
+
     // Knockback effect
     this.velocity.z += 0.5; // Push away from player
   }
@@ -369,6 +473,21 @@ export class Enemy extends BaseEntity {
   }
 
   protected override onDestroy(): void {
+    // Clean up health bar
+    if (this.healthBarGroup && this.scene) {
+      this.scene.remove(this.healthBarGroup);
+
+      // Dispose of health bar materials and geometries
+      if (this.healthBarBackground) {
+        this.healthBarBackground.geometry.dispose();
+        (this.healthBarBackground.material as THREE.Material).dispose();
+      }
+      if (this.healthBarForeground) {
+        this.healthBarForeground.geometry.dispose();
+        (this.healthBarForeground.material as THREE.Material).dispose();
+      }
+    }
+
     // Enemy cleanup - could drop power-ups, award points, etc.
   }
 
