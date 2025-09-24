@@ -17,6 +17,7 @@ export interface GameState {
 export class HUD {
   private hudElement: HTMLElement;
   private gameState: GameState;
+  private settingsCallback?: () => void;
 
   constructor(parentElement: HTMLElement) {
     this.gameState = {
@@ -33,6 +34,7 @@ export class HUD {
     this.hudElement = this.createHUD();
     parentElement.appendChild(this.hudElement);
     this.updateDisplay();
+    this.setupMobileControls();
   }
 
   private createHUD(): HTMLElement {
@@ -43,9 +45,28 @@ export class HUD {
     hud.innerHTML = `
       <!-- Top HUD Elements -->
       <div class="hud-top">
-        <div class="hud-element hud-top-left">
-          <span class="hud-label">TOP</span>
-          <span class="hud-value" id="top-score">1710570</span>
+        <div class="hud-element hud-top-left" style="flex-direction: row; align-items: center; gap: 12px;">
+          <button id="mobile-settings-btn" class="mobile-settings-button" style="
+            display: block;
+            background: linear-gradient(135deg, #ff6600 0%, #cc4400 100%);
+            border: 2px solid #ffaa44;
+            border-radius: 8px;
+            color: white;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 6px 10px;
+            cursor: pointer;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            z-index: 1001;
+          ">⚙</button>
+          <div style="display: flex; flex-direction: column; align-items: flex-start;">
+            <span class="hud-label">TOP</span>
+            <span class="hud-value" id="top-score">1710570</span>
+          </div>
         </div>
         <div class="hud-element hud-top-right">
           <span class="hud-label">SCORE</span>
@@ -221,6 +242,71 @@ export class HUD {
   public updateFPS(fps: number): void {
     const fpsEl = document.getElementById('fps-value');
     if (fpsEl) fpsEl.textContent = fps.toString();
+  }
+
+  private setupMobileControls(): void {
+    const mobileSettingsBtn = document.getElementById('mobile-settings-btn');
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (mobileSettingsBtn) {
+      // Always show the button now
+      mobileSettingsBtn.style.display = 'block';
+
+      // Add click handler
+      mobileSettingsBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.settingsCallback) {
+          this.settingsCallback();
+        }
+      });
+
+      // Add hover effects
+      mobileSettingsBtn.addEventListener('mousedown', () => {
+        mobileSettingsBtn.style.transform = 'scale(0.95)';
+        mobileSettingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
+      });
+
+      mobileSettingsBtn.addEventListener('mouseup', () => {
+        mobileSettingsBtn.style.transform = 'scale(1)';
+        mobileSettingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      });
+
+      // Touch events for mobile
+      mobileSettingsBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        mobileSettingsBtn.style.transform = 'scale(0.95)';
+        mobileSettingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
+      });
+
+      mobileSettingsBtn.addEventListener('touchend', e => {
+        e.preventDefault();
+        mobileSettingsBtn.style.transform = 'scale(1)';
+        mobileSettingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        if (this.settingsCallback) {
+          this.settingsCallback();
+        }
+      });
+    }
+  }
+
+  public setSettingsCallback(callback: () => void): void {
+    this.settingsCallback = callback;
+  }
+
+  public handleResize(): void {
+    // Re-setup mobile controls on resize/rotation
+    const mobileSettingsBtn = document.getElementById('mobile-settings-btn');
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (mobileSettingsBtn) {
+      // Show/hide button based on current screen size
+      mobileSettingsBtn.style.display = isMobile ? 'block' : 'block'; // Always show now
+    }
   }
 
   public destroy(): void {

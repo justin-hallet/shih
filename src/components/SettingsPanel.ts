@@ -24,29 +24,60 @@ export class SettingsPanel {
     // Create main container
     this.container = document.createElement('div');
     this.container.id = 'debug-panel';
-    this.container.style.cssText = `
-      position: fixed;
-      left: -350px;
-      top: 80px;
-      bottom: 280px;
-      width: 320px;
-      height: auto;
-      background: linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
-      border: 3px solid #ff6600;
-      border-left: none;
-      border-radius: 0 15px 15px 0;
-      box-shadow: 0 0 20px rgba(255, 102, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      color: #ffcc00;
-      z-index: 10000;
-      transition: left 0.3s ease-out;
-      overflow: hidden;
-      backdrop-filter: blur(5px);
-      display: flex;
-      flex-direction: column;
-      pointer-events: auto;
-    `;
+
+    // Check if mobile device
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      this.container.style.cssText = `
+        position: fixed;
+        left: -100vw;
+        top: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
+        border: none;
+        border-radius: 0;
+        box-shadow: 0 0 20px rgba(255, 102, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: #ffcc00;
+        z-index: 10000;
+        transition: left 0.3s ease-out;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+      `;
+    } else {
+      this.container.style.cssText = `
+        position: fixed;
+        left: -350px;
+        top: 80px;
+        bottom: 280px;
+        width: 320px;
+        height: auto;
+        background: linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
+        border: 3px solid #ff6600;
+        border-left: none;
+        border-radius: 0 15px 15px 0;
+        box-shadow: 0 0 20px rgba(255, 102, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: #ffcc00;
+        z-index: 10000;
+        transition: left 0.3s ease-out;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+      `;
+    }
 
     // Create header
     const header = document.createElement('div');
@@ -65,8 +96,50 @@ export class SettingsPanel {
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     `;
-    header.textContent = '⚙ SETTINGS ⚙';
+
+    // Add close button for mobile
+    const closeButton = document.createElement('button');
+    closeButton.id = 'settings-close-btn';
+    closeButton.innerHTML = '✕';
+    closeButton.style.cssText = `
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #ff6600;
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    `;
+
+    closeButton.addEventListener('click', () => {
+      this.hide();
+    });
+
+    closeButton.addEventListener('mouseenter', () => {
+      closeButton.style.background = 'rgba(255, 102, 0, 0.3)';
+    });
+
+    closeButton.addEventListener('mouseleave', () => {
+      closeButton.style.background = 'rgba(0, 0, 0, 0.3)';
+    });
+
+    const headerTitle = document.createElement('span');
+    headerTitle.textContent = '⚙ SETTINGS ⚙';
+
+    header.appendChild(headerTitle);
+    header.appendChild(closeButton);
 
     // Create scrollable content area
     const content = document.createElement('div');
@@ -185,81 +258,112 @@ export class SettingsPanel {
 
     const title = document.createElement('h3');
     title.style.cssText = `
-      margin: 0 0 10px 0;
+      margin: 0 0 15px 0;
       color: #ff6600;
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
     title.textContent = '🎨 VISUAL EFFECTS';
 
-    // Cell Shading Toggle
-    const toggleRow = this.createToggleRow('Cell Shading', 'cellShading', true);
+    // Cell Shading Sub-section
+    const cellShadingGroup = this.createEffectGroup('Cell Shading', 'cellShading', [
+      { label: 'Brightness', key: 'brightness', value: 2.5, min: 0.5, max: 5.0, step: 0.1 },
+      { label: 'Contrast', key: 'contrast', value: 1.0, min: 0.5, max: 2.0, step: 0.1 },
+      {
+        label: 'Edge Threshold',
+        key: 'edgeThreshold',
+        value: 0.2,
+        min: 0.05,
+        max: 0.5,
+        step: 0.05,
+      },
+      { label: 'Edge Thickness', key: 'edgeThickness', value: 0.4, min: 0.1, max: 1.0, step: 0.1 },
+      { label: 'Color Levels', key: 'colorLevels', value: 4, min: 2, max: 8, step: 1 },
+    ]);
 
-    // SSAO Toggle
-    const ssaoToggleRow = this.createToggleRow('SSAO', 'ssao', true);
-
-    // Cell Shading Sliders
-    const brightnessRow = this.createSliderRow('Brightness', 'brightness', 2.5, 0.5, 5.0, 0.1);
-    const contrastRow = this.createSliderRow('Contrast', 'contrast', 1.0, 0.5, 2.0, 0.1);
-    const edgeThresholdRow = this.createSliderRow(
-      'Edge Threshold',
-      'edgeThreshold',
-      0.2,
-      0.05,
-      0.5,
-      0.05,
-    );
-    const edgeThicknessRow = this.createSliderRow(
-      'Edge Thickness',
-      'edgeThickness',
-      0.4,
-      0.1,
-      1.0,
-      0.1,
-    );
-    const colorLevelsRow = this.createSliderRow('Color Levels', 'colorLevels', 4, 2, 8, 1);
-
-    // SSAO Sliders
-    const ssaoIntensityRow = this.createSliderRow(
-      'SSAO Intensity',
-      'ssaoIntensity',
-      1.0,
-      0.0,
-      2.0,
-      0.1,
-    );
-    const ssaoRadiusRow = this.createSliderRow('SSAO Radius', 'ssaoRadius', 16, 4, 32, 1);
-    const ssaoMinDistanceRow = this.createSliderRow(
-      'SSAO Min Distance',
-      'ssaoMinDistance',
-      0.005,
-      0.001,
-      0.02,
-      0.001,
-    );
-    const ssaoMaxDistanceRow = this.createSliderRow(
-      'SSAO Max Distance',
-      'ssaoMaxDistance',
-      0.1,
-      0.05,
-      0.3,
-      0.01,
-    );
+    // SSAO Sub-section
+    const ssaoGroup = this.createEffectGroup('SSAO (Ambient Occlusion)', 'ssao', [
+      { label: 'Intensity', key: 'ssaoIntensity', value: 1.0, min: 0.0, max: 2.0, step: 0.1 },
+      { label: 'Radius', key: 'ssaoRadius', value: 16, min: 4, max: 32, step: 1 },
+      {
+        label: 'Min Distance',
+        key: 'ssaoMinDistance',
+        value: 0.005,
+        min: 0.001,
+        max: 0.02,
+        step: 0.001,
+      },
+      {
+        label: 'Max Distance',
+        key: 'ssaoMaxDistance',
+        value: 0.1,
+        min: 0.05,
+        max: 0.3,
+        step: 0.01,
+      },
+    ]);
 
     section.appendChild(title);
-    section.appendChild(toggleRow);
-    section.appendChild(ssaoToggleRow);
-    section.appendChild(brightnessRow);
-    section.appendChild(contrastRow);
-    section.appendChild(edgeThresholdRow);
-    section.appendChild(edgeThicknessRow);
-    section.appendChild(colorLevelsRow);
-    section.appendChild(ssaoIntensityRow);
-    section.appendChild(ssaoRadiusRow);
-    section.appendChild(ssaoMinDistanceRow);
-    section.appendChild(ssaoMaxDistanceRow);
+    section.appendChild(cellShadingGroup);
+    section.appendChild(ssaoGroup);
 
     return section;
+  }
+
+  private createEffectGroup(
+    groupName: string,
+    toggleKey: string,
+    sliders: Array<{
+      label: string;
+      key: string;
+      value: number;
+      min: number;
+      max: number;
+      step: number;
+    }>,
+  ): HTMLElement {
+    const group = document.createElement('div');
+    group.style.cssText = `
+      margin-bottom: 15px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.3);
+      border-radius: 6px;
+    `;
+
+    // Group header with toggle
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
+    `;
+
+    const toggleRow = this.createToggleRow(groupName, toggleKey, true);
+    header.appendChild(toggleRow);
+
+    // Sliders container
+    const slidersContainer = document.createElement('div');
+    slidersContainer.style.cssText = `
+      padding-left: 8px;
+    `;
+
+    sliders.forEach(slider => {
+      const sliderRow = this.createSliderRow(
+        slider.label,
+        slider.key,
+        slider.value,
+        slider.min,
+        slider.max,
+        slider.step,
+      );
+      slidersContainer.appendChild(sliderRow);
+    });
+
+    group.appendChild(header);
+    group.appendChild(slidersContainer);
+
+    return group;
   }
 
   private createWeaponSection(): HTMLElement {
@@ -358,25 +462,73 @@ export class SettingsPanel {
 
     const title = document.createElement('h3');
     title.style.cssText = `
-      margin: 0 0 10px 0;
+      margin: 0 0 15px 0;
       color: #ff6600;
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    title.textContent = '🐛 Highlighting';
+    title.textContent = '🐛 DEBUG & HIGHLIGHTING';
 
-    const obstaclesRow = this.createToggleRow('Obstacles', 'debugObstacles', false);
-    const enemiesRow = this.createToggleRow('Enemies', 'debugEnemies', false);
-    const powerupsRow = this.createToggleRow('PowerUps', 'debugPowerups', false);
-    const collisionRow = this.createToggleRow('Collision Bounds', 'collisionDebug', false);
+    // Entity Highlighting Group
+    const entityGroup = this.createDebugGroup('Entity Highlighting', [
+      { label: 'Obstacles', key: 'debugObstacles', enabled: false },
+      { label: 'Enemies', key: 'debugEnemies', enabled: false },
+      { label: 'PowerUps', key: 'debugPowerups', enabled: false },
+    ]);
+
+    // Collision Debug Group
+    const collisionGroup = this.createDebugGroup('Collision Debug', [
+      { label: 'Collision Bounds', key: 'collisionDebug', enabled: false },
+    ]);
 
     section.appendChild(title);
-    section.appendChild(obstaclesRow);
-    section.appendChild(enemiesRow);
-    section.appendChild(powerupsRow);
-    section.appendChild(collisionRow);
+    section.appendChild(entityGroup);
+    section.appendChild(collisionGroup);
 
     return section;
+  }
+
+  private createDebugGroup(
+    groupName: string,
+    toggles: Array<{ label: string; key: string; enabled: boolean }>,
+  ): HTMLElement {
+    const group = document.createElement('div');
+    group.style.cssText = `
+      margin-bottom: 12px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.3);
+      border-radius: 6px;
+    `;
+
+    // Group header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
+      color: #ffaa44;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    `;
+    header.textContent = groupName;
+
+    // Toggles container
+    const togglesContainer = document.createElement('div');
+    togglesContainer.style.cssText = `
+      padding-left: 4px;
+    `;
+
+    toggles.forEach(toggle => {
+      const toggleRow = this.createToggleRow(toggle.label, toggle.key, toggle.enabled);
+      togglesContainer.appendChild(toggleRow);
+    });
+
+    group.appendChild(header);
+    group.appendChild(togglesContainer);
+
+    return group;
   }
 
   private createDisplaySection(): HTMLElement {
@@ -800,7 +952,10 @@ export class SettingsPanel {
 
   public toggle(): void {
     this.isVisible = !this.isVisible;
-    this.container.style.left = this.isVisible ? '0px' : '-350px';
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    this.container.style.left = this.isVisible ? '0px' : isMobile ? '-100vw' : '-350px';
 
     // Sync controls with current state when showing
     if (this.isVisible) {
@@ -810,7 +965,10 @@ export class SettingsPanel {
 
   public hide(): void {
     this.isVisible = false;
-    this.container.style.left = '-350px';
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    this.container.style.left = isMobile ? '-100vw' : '-350px';
   }
 
   public show(): void {
@@ -819,6 +977,68 @@ export class SettingsPanel {
 
     // Sync controls with current state when showing
     this.syncControlsWithState();
+  }
+
+  public handleResize(): void {
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const closeButton = document.getElementById('settings-close-btn');
+
+    // Always show close button
+    if (closeButton) {
+      closeButton.style.display = 'flex';
+    }
+
+    // Update panel layout for current screen size
+    if (isMobile) {
+      this.container.style.cssText = `
+        position: fixed;
+        left: ${this.isVisible ? '0px' : '-100vw'};
+        top: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
+        border: none;
+        border-radius: 0;
+        box-shadow: 0 0 20px rgba(255, 102, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: #ffcc00;
+        z-index: 10000;
+        transition: left 0.3s ease-out;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+      `;
+    } else {
+      this.container.style.cssText = `
+        position: fixed;
+        left: ${this.isVisible ? '0px' : '-350px'};
+        top: 80px;
+        bottom: 280px;
+        width: 320px;
+        height: auto;
+        background: linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
+        border: 3px solid #ff6600;
+        border-left: none;
+        border-radius: 0 15px 15px 0;
+        box-shadow: 0 0 20px rgba(255, 102, 0, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: #ffcc00;
+        z-index: 10000;
+        transition: left 0.3s ease-out;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+      `;
+    }
   }
 
   public isOpen(): boolean {

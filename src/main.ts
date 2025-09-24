@@ -268,6 +268,49 @@ const player = entityManager.spawnPlayer({
 // Set player reference in debug panel now that it's created
 settingsPanel.setPlayer(player);
 
+// Connect mobile settings button to settings panel
+if (hud) {
+  hud.setSettingsCallback(() => {
+    settingsPanel.toggle();
+  });
+}
+
+// Mobile fullscreen handling
+let hasRequestedFullscreen = false;
+
+function requestFullscreenOnMobile() {
+  const isMobile =
+    window.innerWidth <= 768 ||
+    /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // Only request fullscreen on actual mobile devices, not desktop
+  if (isMobile && !hasRequestedFullscreen) {
+    hasRequestedFullscreen = true;
+
+    // Request fullscreen only on mobile
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {
+        // Fullscreen failed, continue anyway
+      });
+    } else if ((document.documentElement as any).webkitRequestFullscreen) {
+      (document.documentElement as any).webkitRequestFullscreen();
+    } else if ((document.documentElement as any).mozRequestFullScreen) {
+      (document.documentElement as any).mozRequestFullScreen();
+    } else if ((document.documentElement as any).msRequestFullscreen) {
+      (document.documentElement as any).msRequestFullscreen();
+    }
+  } else if (!isMobile) {
+    // Mark as requested on desktop to prevent future attempts
+    hasRequestedFullscreen = true;
+  }
+}
+
+// Add first interaction listeners for fullscreen
+const firstInteractionEvents = ['touchstart', 'touchend', 'mousedown', 'keydown'];
+firstInteractionEvents.forEach(eventType => {
+  document.addEventListener(eventType, requestFullscreenOnMobile, { once: true });
+});
+
 // Set up audio manager
 audioManager.setCamera(camera);
 audioManager.setPlayerPosition(player.position);
@@ -959,19 +1002,40 @@ function animate() {
   composer.render();
 }
 
-// Handle window resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// Enhanced resize handler for mobile rotation support
+function handleResize() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  // Update camera
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Update renderer
+  renderer.setSize(width, height);
   // Keep composer in sync with viewport
-  composer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(width, height);
   // Update SSAO pass resolution
-  ssaoPass.setSize(window.innerWidth, window.innerHeight);
+  ssaoPass.setSize(width, height);
   // Update cell shading pass resolution
-  cellShadingPass.setSize(window.innerWidth, window.innerHeight);
+  cellShadingPass.setSize(width, height);
   // Update outline pass resolution
-  outlinePass.setSize(window.innerWidth, window.innerHeight);
+  outlinePass.setSize(width, height);
+
+  // Update HUD for mobile rotation
+  if (hud) {
+    hud.handleResize();
+  }
+
+  // Update settings panel for mobile rotation
+  settingsPanel.handleResize();
+}
+
+// Handle window resize and orientation changes
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+  // Delay to allow orientation change to complete
+  setTimeout(handleResize, 100);
 });
 
 // Start the animation loop
