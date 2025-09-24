@@ -7,6 +7,7 @@ export class SettingsPanel {
   private container!: HTMLElement;
   private isVisible: boolean = false;
   private cellShadingPass: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  private ssaoPass: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private onWeaponChange?: (weaponType: number) => void;
   private onDebugToggle?: (type: string, enabled: boolean) => void;
   private onDisplayToggle?: (type: string, enabled: boolean) => void;
@@ -188,12 +189,15 @@ export class SettingsPanel {
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    title.textContent = '🎨 CELL SHADING';
+    title.textContent = '🎨 VISUAL EFFECTS';
 
-    // Toggle
+    // Cell Shading Toggle
     const toggleRow = this.createToggleRow('Cell Shading', 'cellShading', true);
 
-    // Sliders
+    // SSAO Toggle
+    const ssaoToggleRow = this.createToggleRow('SSAO', 'ssao', true);
+
+    // Cell Shading Sliders
     const brightnessRow = this.createSliderRow('Brightness', 'brightness', 2.5, 0.5, 5.0, 0.1);
     const contrastRow = this.createSliderRow('Contrast', 'contrast', 1.0, 0.5, 2.0, 0.1);
     const edgeThresholdRow = this.createSliderRow(
@@ -214,13 +218,45 @@ export class SettingsPanel {
     );
     const colorLevelsRow = this.createSliderRow('Color Levels', 'colorLevels', 4, 2, 8, 1);
 
+    // SSAO Sliders
+    const ssaoIntensityRow = this.createSliderRow(
+      'SSAO Intensity',
+      'ssaoIntensity',
+      1.0,
+      0.0,
+      2.0,
+      0.1,
+    );
+    const ssaoRadiusRow = this.createSliderRow('SSAO Radius', 'ssaoRadius', 16, 4, 32, 1);
+    const ssaoMinDistanceRow = this.createSliderRow(
+      'SSAO Min Distance',
+      'ssaoMinDistance',
+      0.005,
+      0.001,
+      0.02,
+      0.001,
+    );
+    const ssaoMaxDistanceRow = this.createSliderRow(
+      'SSAO Max Distance',
+      'ssaoMaxDistance',
+      0.1,
+      0.05,
+      0.3,
+      0.01,
+    );
+
     section.appendChild(title);
     section.appendChild(toggleRow);
+    section.appendChild(ssaoToggleRow);
     section.appendChild(brightnessRow);
     section.appendChild(contrastRow);
     section.appendChild(edgeThresholdRow);
     section.appendChild(edgeThicknessRow);
     section.appendChild(colorLevelsRow);
+    section.appendChild(ssaoIntensityRow);
+    section.appendChild(ssaoRadiusRow);
+    section.appendChild(ssaoMinDistanceRow);
+    section.appendChild(ssaoMaxDistanceRow);
 
     return section;
   }
@@ -587,6 +623,11 @@ export class SettingsPanel {
           this.cellShadingPass.enabled = value;
         }
         break;
+      case 'ssao':
+        if (this.ssaoPass) {
+          this.ssaoPass.enabled = value;
+        }
+        break;
       case 'debugObstacles':
       case 'debugEnemies':
       case 'debugPowerups':
@@ -621,6 +662,24 @@ export class SettingsPanel {
       }
     }
 
+    // Handle SSAO controls
+    if (this.ssaoPass) {
+      switch (id) {
+        case 'ssaoIntensity':
+          this.ssaoPass.intensity = value;
+          break;
+        case 'ssaoRadius':
+          this.ssaoPass.kernelRadius = value;
+          break;
+        case 'ssaoMinDistance':
+          this.ssaoPass.minDistance = value;
+          break;
+        case 'ssaoMaxDistance':
+          this.ssaoPass.maxDistance = value;
+          break;
+      }
+    }
+
     // Handle audio controls
     if (this.audioManager) {
       switch (id) {
@@ -648,6 +707,10 @@ export class SettingsPanel {
 
   public setCellShadingPass(pass: any): void {
     this.cellShadingPass = pass;
+  }
+
+  public setSSAOPass(pass: any): void {
+    this.ssaoPass = pass;
   }
 
   public setWeaponChangeCallback(callback: (weaponType: number) => void): void {

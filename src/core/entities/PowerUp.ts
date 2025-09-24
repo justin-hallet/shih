@@ -194,7 +194,7 @@ export class PowerUp extends BaseEntity {
   }
 
   private applyBloomMaterial(): void {
-    if (!this.mesh) return;
+    if (!this.mesh || !this.scene) return;
 
     // Get bloom color based on power-up type
     const bloomColors: Record<PowerUpSubType, number> = {
@@ -207,7 +207,7 @@ export class PowerUp extends BaseEntity {
 
     const emissiveColor = new THREE.Color(bloomColors[this.powerUpType]);
 
-    // Create glowing outline effect by adding outline meshes
+    // Brighten the original materials while preserving textures
     this.mesh.traverse(child => {
       if (child instanceof THREE.Mesh) {
         // Store original material if needed
@@ -231,30 +231,14 @@ export class PowerUp extends BaseEntity {
         child.material = brightenedMaterial;
         child.castShadow = true;
         child.receiveShadow = false;
-
-        // Create a glowing outline mesh
-        const outlineMesh = child.clone();
-
-        // Create outline material - pure emissive for glow effect
-        const outlineMaterial = new THREE.MeshBasicMaterial({
-          color: emissiveColor,
-          transparent: true,
-          opacity: 0.6,
-          side: THREE.BackSide, // Render from inside to create outline effect
-        });
-
-        outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.multiplyScalar(1.05); // Slightly larger for outline effect
-        outlineMesh.layers.enable(1); // Enable bloom layer for outline only
-        outlineMesh.castShadow = false;
-        outlineMesh.receiveShadow = false;
-
-        // Add outline mesh to the same parent
-        if (child.parent) {
-          child.parent.add(outlineMesh);
-        }
       }
     });
+
+    // Use the new outline pass for the glowing outline effect
+    const outlinePass = (this.scene as any)?.userData?.outlinePass;
+    if (outlinePass) {
+      outlinePass.addOutlineObject(this.mesh, emissiveColor);
+    }
   }
 
   private createFallbackMesh(): void {

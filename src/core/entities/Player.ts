@@ -19,6 +19,9 @@ export class Player extends BaseEntity {
   // Audio manager reference
   private audioManager?: any;
 
+  // Visual effects
+  private hasOutlineEffect: boolean = false;
+
   // Movement constraints
   public maxSpeed: number;
   public acceleration: number;
@@ -263,12 +266,15 @@ export class Player extends BaseEntity {
     if (this.invulnerableTime > 0) {
       this.invulnerableTime -= deltaTime;
 
-      // Flicker effect during invulnerability
-      if (this.mesh) {
-        this.mesh.visible = Math.floor(this.invulnerableTime * 10) % 2 === 0;
+      // Create glowing outline effect during invulnerability
+      if (!this.hasOutlineEffect) {
+        this.createInvulnerabilityOutline();
       }
-    } else if (this.mesh) {
-      this.mesh.visible = true;
+    } else {
+      // Remove outline when invulnerability ends
+      if (this.hasOutlineEffect) {
+        this.removeInvulnerabilityOutline();
+      }
     }
 
     // Apply deceleration if no input
@@ -592,6 +598,30 @@ export class Player extends BaseEntity {
         this.shield = Math.min(this.maxShield || 8, 8);
         hud?.updateShieldSegments?.(this.shield);
       }
+    }
+  }
+
+  private createInvulnerabilityOutline(): void {
+    if (!this.mesh || !this.scene) return;
+
+    // Get the outline pass from scene userData
+    const outlinePass = (this.scene as any)?.userData?.outlinePass;
+    if (outlinePass) {
+      // Add player mesh to outline pass with red color
+      outlinePass.addOutlineObject(this.mesh, new THREE.Color(0xff3333));
+      this.hasOutlineEffect = true;
+    }
+  }
+
+  private removeInvulnerabilityOutline(): void {
+    if (!this.mesh || !this.scene) return;
+
+    // Get the outline pass from scene userData
+    const outlinePass = (this.scene as any)?.userData?.outlinePass;
+    if (outlinePass) {
+      // Remove player mesh from outline pass
+      outlinePass.removeOutlineObject(this.mesh);
+      this.hasOutlineEffect = false;
     }
   }
 }

@@ -7,7 +7,9 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { CellShadingPass } from './shaders/CellShadingPass.js';
+import { OutlinePass } from './shaders/OutlinePass.js';
 import { HUD } from './components/HUD';
 import { SettingsPanel } from './components/SettingsPanel.js';
 import { EntityManager } from './core/EntityManager';
@@ -32,14 +34,26 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x1e3c72); // Space Harrier blue gradient
 
-// Postprocessing: Cell shading + Bloom composer
+// Postprocessing: SSAO + Cell shading + Outline + Bloom composer
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+
+// SSAO pass for realistic ambient occlusion
+const ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+ssaoPass.kernelRadius = 16; // Radius of the SSAO kernel
+ssaoPass.minDistance = 0.005; // Minimum distance for occlusion
+ssaoPass.maxDistance = 0.1; // Maximum distance for occlusion
+ssaoPass.output = SSAOPass.OUTPUT.Default; // Default combines SSAO with scene
+composer.addPass(ssaoPass);
 
 // Cell shading pass (Borderlands-style)
 const cellShadingPass = new CellShadingPass(window.innerWidth, window.innerHeight);
 cellShadingPass.enabled = false;
 composer.addPass(cellShadingPass);
+
+// Outline pass for silhouette effects
+const outlinePass = new OutlinePass(scene, camera, window.innerWidth, window.innerHeight);
+composer.addPass(outlinePass);
 
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -143,6 +157,7 @@ const audioManager = new AudioManager();
 // Initialize Settings Panel
 const settingsPanel = new SettingsPanel();
 settingsPanel.setCellShadingPass(cellShadingPass);
+settingsPanel.setSSAOPass(ssaoPass);
 settingsPanel.setAudioManager(audioManager);
 
 // Set up debug panel callbacks
@@ -187,6 +202,8 @@ settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
 (scene as any).userData['hud'] = hud;
 (scene as any).userData['entityManager'] = entityManager;
 (scene as any).userData['camera'] = camera;
+(scene as any).userData['outlinePass'] = outlinePass;
+(scene as any).userData['ssaoPass'] = ssaoPass;
 
 // Configure procedural generation settings
 const proceduralSettings: ProceduralGenerationSettings = {
@@ -413,63 +430,30 @@ function handleAction(action: Action, isDown: boolean) {
   }
 }
 
-// Apply/restore bright bloom material override for a whole entity type
+// Apply/restore outline effect for a whole entity type using the new outline pass
 function applyDebugBloomOverride(
   type: EntityType,
   enable: boolean,
   emissiveHex: number,
-  forceDisableBloomOnRestore: boolean,
+  _forceDisableBloomOnRestore: boolean,
 ): void {
   const ents = (scene.userData['entityManager'] as any)?.getEntitiesByType(type) as
     | any[]
     | undefined;
   if (!ents) return;
+
+  const outlineColor = new THREE.Color(emissiveHex);
+
   for (const e of ents) {
     const meshObject = e.mesh as THREE.Object3D | undefined;
     if (!meshObject) continue;
 
-    // Handle both single Mesh and Group objects (like GLTF models)
-    const meshesToProcess: THREE.Mesh[] = [];
-
-    if (meshObject instanceof THREE.Mesh) {
-      // Simple mesh (Obstacles, Enemies)
-      meshesToProcess.push(meshObject);
-    } else if (meshObject instanceof THREE.Group) {
-      // Group with mesh children (PowerUps from GLTF)
-      meshObject.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          meshesToProcess.push(child);
-        }
-      });
-    }
-
-    // Apply material to all found meshes
-    for (const m of meshesToProcess) {
-      if (enable) {
-        if (!m.userData.originalMaterial) {
-          m.userData.originalMaterial = m.material;
-        }
-        // Create bloom material that preserves textures
-        const originalMat = m.userData.originalMaterial;
-        const bloomMaterial = originalMat.clone();
-
-        // Add bloom effect while preserving original properties
-        bloomMaterial.emissive = new THREE.Color(emissiveHex);
-        bloomMaterial.emissiveIntensity = 2.0; // Lower intensity to not overpower textures
-        bloomMaterial.transparent = true;
-        bloomMaterial.opacity = 0.95;
-
-        m.material = bloomMaterial;
-        m.layers.enable(1);
-      } else {
-        if (m.userData.originalMaterial) {
-          m.material = m.userData.originalMaterial;
-          delete m.userData.originalMaterial;
-        }
-        if (forceDisableBloomOnRestore) {
-          m.layers.disable(1);
-        }
-      }
+    if (enable) {
+      // Add object to outline pass with the specified color
+      outlinePass.addOutlineObject(meshObject, outlineColor);
+    } else {
+      // Remove object from outline pass
+      outlinePass.removeOutlineObject(meshObject);
     }
   }
 }
@@ -939,8 +923,12 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   // Keep composer in sync with viewport
   composer.setSize(window.innerWidth, window.innerHeight);
+  // Update SSAO pass resolution
+  ssaoPass.setSize(window.innerWidth, window.innerHeight);
   // Update cell shading pass resolution
   cellShadingPass.setSize(window.innerWidth, window.innerHeight);
+  // Update outline pass resolution
+  outlinePass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Start the animation loop

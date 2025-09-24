@@ -137,8 +137,6 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.SphereGeometry(0.15, 8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0xffff00 : 0xff4444,
-          emissive: new THREE.Color(this.owner === 'player' ? 0xffff00 : 0xff4444),
-          emissiveIntensity: 1.5,
         });
         // Use default exponent (set in ctor) for late growth
         break;
@@ -148,8 +146,6 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.ConeGeometry(0.15, 0.8, 6);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ff00 : 0xff0000,
-          emissive: new THREE.Color(this.owner === 'player' ? 0x00ff00 : 0xff0000),
-          emissiveIntensity: 1.4,
         });
         break;
 
@@ -158,8 +154,6 @@ export class Projectile extends BaseEntity {
         geometry = new THREE.CapsuleGeometry(0.12, 0.6, 4, 8);
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0x00ffff : 0xff00ff,
-          emissive: new THREE.Color(this.owner === 'player' ? 0x00ffff : 0xff00ff),
-          emissiveIntensity: 1.8,
           transparent: true,
           opacity: 0.95,
         });
@@ -169,12 +163,7 @@ export class Projectile extends BaseEntity {
         // Glowing plasma ball
         geometry = new THREE.SphereGeometry(0.34, 12, 8);
         material = new THREE.MeshLambertMaterial({
-          color: 0x000000,
-          emissive: new THREE.Color(0x66ccff),
-          emissiveIntensity: 3.0,
-          transparent: false,
-          opacity: 1.0,
-          blending: THREE.AdditiveBlending,
+          color: 0x66ccff,
         });
         break;
 
@@ -182,12 +171,9 @@ export class Projectile extends BaseEntity {
         // Large fireball
         geometry = new THREE.SphereGeometry(0.55, 12, 10);
         material = new THREE.MeshLambertMaterial({
-          color: 0x000000,
-          emissive: new THREE.Color(0xff6622),
-          emissiveIntensity: 3.2,
+          color: 0xff6622,
           transparent: true,
           opacity: 0.95,
-          blending: THREE.AdditiveBlending,
         });
         break;
 
@@ -199,7 +185,6 @@ export class Projectile extends BaseEntity {
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
-    this.mesh.layers.enable(1); // Bloom layer
 
     // Align pill/laser along XZ plane
     if (this.projectileType === ProjectileSubType.LASER) {
@@ -215,6 +200,51 @@ export class Projectile extends BaseEntity {
     }
 
     this.scene.add(this.mesh);
+
+    // Apply outline effect for glow
+    this.applyOutlineEffect();
+  }
+
+  private applyOutlineEffect(): void {
+    if (!this.mesh || !this.scene) return;
+
+    // Get the outline pass from scene userData
+    const outlinePass = (this.scene as any)?.userData?.outlinePass;
+    if (!outlinePass) return;
+
+    // Define outline colors based on projectile type and owner
+    const getOutlineColor = (): THREE.Color => {
+      switch (this.projectileType) {
+        case ProjectileSubType.BULLET:
+          return new THREE.Color(this.owner === 'player' ? 0xffff00 : 0xff4444);
+        case ProjectileSubType.MISSILE:
+          return new THREE.Color(this.owner === 'player' ? 0x00ff00 : 0xff0000);
+        case ProjectileSubType.LASER:
+          return new THREE.Color(this.owner === 'player' ? 0x00ffff : 0xff00ff);
+        case ProjectileSubType.PLASMA:
+          return new THREE.Color(0x66ccff);
+        case ProjectileSubType.FIREBALL:
+          return new THREE.Color(0xff6622);
+        default:
+          return new THREE.Color(0xffffff);
+      }
+    };
+
+    // Add projectile to outline system
+    outlinePass.addOutlineObject(this.mesh, getOutlineColor());
+  }
+
+  public override destroy(): void {
+    // Remove from outline system before destroying
+    if (this.mesh && this.scene) {
+      const outlinePass = (this.scene as any)?.userData?.outlinePass;
+      if (outlinePass) {
+        outlinePass.removeOutlineObject(this.mesh);
+      }
+    }
+
+    // Call parent destroy
+    super.destroy();
   }
 
   protected onUpdate(deltaTime: number): void {
