@@ -95,7 +95,7 @@ export class PowerUp extends BaseEntity {
         this.collisionBounds = { radius: 2.8 * radiusScale };
         this.magnetRange = 28.0 * magnetRangeScale; // Lives are more attractive
         this.bobHeight = 0.8;
-        this.visualScale *= 8;
+        this.visualScale *= 2; 
         break;
 
       case PowerUpSubType.SPEED:
@@ -129,12 +129,11 @@ export class PowerUp extends BaseEntity {
         return;
       }
 
+
       // Clone the model for this instance
       this.mesh = model.clone();
 
-      // Debug: Check model bounds
-      const box = new THREE.Box3().setFromObject(this.mesh);
-      box.getSize(new THREE.Vector3());
+
 
       // Apply bloom material effects
       this.applyBloomMaterial();
@@ -146,6 +145,7 @@ export class PowerUp extends BaseEntity {
 
       // Set position (make sure it's at the right location)
       this.mesh.position.copy(this.position);
+
 
       // Apply current rotation to the new mesh
       this.mesh.rotation.y = this.currentRotation;
@@ -242,7 +242,6 @@ export class PowerUp extends BaseEntity {
   }
 
   private createFallbackMesh(): void {
-    console.log(`🔄 Creating fallback mesh for ${this.powerUpType}`);
 
     let geometry: THREE.BufferGeometry;
     let material: THREE.Material;
@@ -322,6 +321,7 @@ export class PowerUp extends BaseEntity {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = false;
     this.mesh.scale.setScalar(this.visualScale);
+
     this.mesh.layers.enable(1); // Bloom layer
     if (this.scene) {
       this.scene.add(this.mesh);
@@ -485,9 +485,9 @@ export class PowerUp extends BaseEntity {
         break;
 
       case PowerUpSubType.LIFE:
-        // Heartbeat pulsing
+        // Heartbeat pulsing - use visualScale as base instead of 1.0
         const heartbeat = Math.sin(time * 8.0) * 0.1 + Math.sin(time * 2.0) * 0.1;
-        this.mesh.scale.setScalar(1.0 + heartbeat);
+        this.mesh.scale.setScalar(this.visualScale * (1.0 + heartbeat));
         break;
 
       case PowerUpSubType.SPEED:

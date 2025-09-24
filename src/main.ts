@@ -766,7 +766,6 @@ function animate() {
       entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
       // Give the player a tiny reserve so we don't spawn every frame until pickup
       (player as any).ammo = 0.5;
-      hud?.updateAmmo(Math.floor((player as any).ammo));
     }
 
     // Enforce ground collision / constant hover height unless actively flying down
