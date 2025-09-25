@@ -429,6 +429,14 @@ function updateLayoutAndController() {
 // Initial setup
 updateLayoutAndController();
 
+// Force re-initialization after page is fully loaded to ensure proper mobile detection
+// This fixes the issue where the dynamic virtual joystick doesn't appear on desktop clean loads
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    updateLayoutAndController();
+  }, 100); // Small delay to ensure window dimensions are stable
+});
+
 // Connect virtual controller to settings panel
 settingsPanel.setVirtualController(virtualController);
 settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) => {
