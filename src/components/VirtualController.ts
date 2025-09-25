@@ -14,6 +14,8 @@ export class VirtualController {
   private isEnabled: boolean = false;
   private isLeftHanded: boolean = false;
   private isFirePressed: boolean = false;
+  private isDesktopMode: boolean = false;
+  private joystickZone!: HTMLElement;
 
   constructor(events: VirtualControllerEvents) {
     this.events = events;
@@ -50,9 +52,9 @@ export class VirtualController {
   }
 
   private createJoystick(): void {
-    const joystickZone = document.createElement('div');
-    joystickZone.id = 'joystick-zone';
-    joystickZone.style.cssText = `
+    this.joystickZone = document.createElement('div');
+    this.joystickZone.id = 'joystick-zone';
+    this.joystickZone.style.cssText = `
       position: absolute;
       bottom: 20px;
       left: 20px;
@@ -66,13 +68,20 @@ export class VirtualController {
       transition: all 0.2s ease;
     `;
 
-    this.container.appendChild(joystickZone);
+    this.container.appendChild(this.joystickZone);
 
-    // Create NippleJS joystick
-    this.joystickManager = nipplejs.create({
-      zone: joystickZone,
-      mode: 'static',
-      position: { left: '50%', top: '50%' },
+    // Don't create nipplejs instance yet - wait for setMode() to be called
+  }
+
+  private createNippleJSInstance(): void {
+    if (this.joystickManager) {
+      this.joystickManager.destroy();
+    }
+
+    const config = {
+      zone: this.isDesktopMode ? this.container : this.joystickZone,
+      mode: this.isDesktopMode ? 'dynamic' : 'static',
+      position: this.isDesktopMode ? undefined : { left: '50%', top: '50%' },
       color: '#ff6600',
       size: 80,
       threshold: 0.1,
@@ -84,12 +93,16 @@ export class VirtualController {
       restOpacity: 0.6,
       lockX: false,
       lockY: false,
-    });
+    };
+
+    this.joystickManager = nipplejs.create(config);
 
     // Handle joystick events
     this.joystickManager.on('start', () => {
-      joystickZone.style.background = 'rgba(255, 102, 0, 0.2)';
-      joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.6)';
+      if (this.joystickZone) {
+        this.joystickZone.style.background = 'rgba(255, 102, 0, 0.2)';
+        this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.6)';
+      }
     });
 
     this.joystickManager.on('move', (_evt: any, data: any) => {
@@ -110,8 +123,10 @@ export class VirtualController {
     });
 
     this.joystickManager.on('end', () => {
-      joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
-      joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
+      if (this.joystickZone) {
+        this.joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
+      }
       if (this.events.onMoveEnd) {
         this.events.onMoveEnd();
       }
@@ -212,6 +227,31 @@ export class VirtualController {
     this.updateLayout();
   }
 
+  public setMode(isDesktop: boolean): void {
+    this.isDesktopMode = isDesktop;
+
+    // Recreate nipplejs with the correct configuration for the mode
+    this.createNippleJSInstance();
+
+    if (isDesktop) {
+      // Desktop mode: dynamic joystick, container captures events
+      this.container.style.display = 'block';
+      this.container.style.pointerEvents = 'auto';
+      this.joystickZone.style.display = 'none';
+      this.fireButton.style.display = 'none';
+    } else {
+      // Mobile mode: static joystick in zone
+      this.container.style.display = 'block';
+      this.container.style.pointerEvents = 'auto';
+      this.joystickZone.style.display = 'block';
+      this.fireButton.style.display = 'block';
+    }
+  }
+
+  public isDesktopModeActive(): boolean {
+    return this.isDesktopMode;
+  }
+
   private updateLayout(): void {
     const joystickZone = document.getElementById('joystick-zone');
     if (!joystickZone) return;
@@ -277,8 +317,8 @@ export class VirtualController {
     });
 
     this.joystickManager.on('end', () => {
-      joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
-      joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
+      this.joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
+      this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
       if (this.events.onMoveEnd) {
         this.events.onMoveEnd();
       }
@@ -300,38 +340,10 @@ export class VirtualController {
   }
 
   private updateControllerVisibility(): void {
-    // Improved mobile/tablet detection
-    const userAgent = navigator.userAgent.toLowerCase();
-    const mobileKeywords = [
-      'mobile',
-      'android',
-      'iphone',
-      'ipad',
-      'ipod',
-      'blackberry',
-      'windows phone',
-      'opera mini',
-      'iemobile',
-      'tablet',
-    ];
-
-    const hasMobileKeyword = mobileKeywords.some(keyword => userAgent.includes(keyword));
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const isTablet =
-      userAgent.includes('tablet') ||
-      userAgent.includes('ipad') ||
-      (userAgent.includes('android') && !userAgent.includes('mobile'));
-
-    const isMobile = hasMobileKeyword || hasTouch || isTablet;
-
-    // Show on mobile/tablet, hide on desktop
-    if (isMobile) {
-      this.container.style.display = 'block';
-      this.isEnabled = true;
-    } else {
-      this.container.style.display = 'none';
-      this.isEnabled = false;
-    }
+    // Always show the container - mode switching will handle visibility
+    // The container is needed for both mobile (static joystick) and desktop (dynamic joystick)
+    this.container.style.display = 'block';
+    this.isEnabled = true;
   }
 
   public destroy(): void {

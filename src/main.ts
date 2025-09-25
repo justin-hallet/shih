@@ -78,6 +78,8 @@ function isMobileDevice(): boolean {
 
 // Determine if we should use mobile layout
 function shouldUseMobileLayout(): boolean {
+  const isMobile = isMobileDevice();
+
   switch (layoutStyle) {
     case 'mobile':
       return true;
@@ -85,7 +87,7 @@ function shouldUseMobileLayout(): boolean {
       return false;
     case 'auto':
     default:
-      return isMobileDevice();
+      return isMobile;
   }
 }
 
@@ -407,12 +409,9 @@ const virtualController = new VirtualController({
 function updateLayoutAndController() {
   const useMobile = shouldUseMobileLayout();
 
-  // Update virtual controller
-  if (useMobile) {
-    virtualController.setEnabled(true);
-  } else {
-    virtualController.setEnabled(false);
-  }
+  // Update virtual controller mode
+  virtualController.setEnabled(true);
+  virtualController.setMode(!useMobile); // Desktop mode = true, Mobile mode = false
 
   // Update HUD layout (CSS will handle the responsive changes)
   const hudElement = document.getElementById('game-hud');
@@ -602,10 +601,7 @@ function applyVisualizationToScene() {
 applyVisualizationToScene();
 
 let mouseX = 0;
-let mouseY = 0;
-let isMouseDragging = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
+const mouseY = 0;
 
 // Keyboard event listeners using bindings
 function handleAction(action: Action, isDown: boolean) {
@@ -780,15 +776,9 @@ window.addEventListener('keyup', event => {
   }
 });
 
-// Mouse drag controls for camera rotation and movement
+// Right mouse button for firing
 window.addEventListener('mousedown', event => {
-  if (event.button === 0) {
-    // Left mouse button
-    isMouseDragging = true;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
-    event.preventDefault();
-  } else if (event.button === 2) {
+  if (event.button === 2) {
     // Right mouse button - fire
     handleAction('fire', true);
     event.preventDefault();
@@ -796,91 +786,9 @@ window.addEventListener('mousedown', event => {
 });
 
 window.addEventListener('mouseup', event => {
-  if (event.button === 0) {
-    // Left mouse button
-    isMouseDragging = false;
-    // Stop movement actions when mouse is released
-    handleAction('left_movement', false);
-    handleAction('right_movement', false);
-    handleAction('ascend', false);
-    handleAction('descend', false);
-  } else if (event.button === 2) {
+  if (event.button === 2) {
     // Right mouse button - stop fire
     handleAction('fire', false);
-  }
-});
-
-window.addEventListener('mousemove', event => {
-  if (isMouseDragging) {
-    const deltaX = event.clientX - lastMouseX;
-    const deltaY = event.clientY - lastMouseY;
-
-    // Horizontal movement based on movement style
-    const horizontalThreshold = 2;
-    if (Math.abs(deltaX) > horizontalThreshold) {
-      if (deltaX > 0) {
-        handleAction('right_movement', true);
-        handleAction('left_movement', false);
-      } else {
-        handleAction('left_movement', true);
-        handleAction('right_movement', false);
-      }
-    } else {
-      handleAction('left_movement', false);
-      handleAction('right_movement', false);
-    }
-
-    // Vertical movement with invert Y support
-    const verticalThreshold = 2;
-    if (Math.abs(deltaY) > verticalThreshold) {
-      const yUp = invertY ? deltaY > 0 : deltaY < 0;
-      if (yUp) {
-        handleAction('ascend', true);
-        handleAction('descend', false);
-      } else {
-        handleAction('descend', true);
-        handleAction('ascend', false);
-      }
-    } else {
-      handleAction('ascend', false);
-      handleAction('descend', false);
-    }
-
-    // Mouse left/right movement triggers player movement based on movement style
-    if (cameraController.getMouseControlEnabled()) {
-      const mouseSensitivity = 0.005;
-
-      if (movementStrafe) {
-        // Strafe mode: mouse left/right strafes the player, up/down controls camera
-        if (Math.abs(deltaX) > 2) {
-          // Only respond to significant mouse movement
-          if (deltaX > 0) {
-            handleAction('right_movement', true);
-            handleAction('left_movement', false);
-          } else {
-            handleAction('left_movement', true);
-            handleAction('right_movement', false);
-          }
-        } else {
-          // Stop strafing when mouse stops moving horizontally
-          handleAction('left_movement', false);
-          handleAction('right_movement', false);
-        }
-
-        // Vertical mouse movement controls camera in strafe mode
-        mouseY += deltaY * mouseSensitivity;
-      } else {
-        // Turn mode: mouse left/right turns the camera, like keyboard A/D
-        if (Math.abs(deltaX) > 2) {
-          // Only respond to significant mouse movement
-          mouseX += deltaX * mouseSensitivity;
-        }
-        mouseY += deltaY * mouseSensitivity; // Vertical rotation (for future use)
-      }
-    }
-
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
   }
 });
 
