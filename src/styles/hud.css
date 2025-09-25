@@ -1,10 +1,12 @@
 /**
  * Classic Space Harrier HUD Styles
  * Retro arcade aesthetic with pixelated fonts and transparent overlays
+ * Responsive layout using CSS Grid - no device-specific logic
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
+/* Base HUD Container */
 .game-hud {
   position: absolute;
   top: 0;
@@ -23,106 +25,238 @@
     0px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-/* Top HUD Container - Dynamic Responsive Gradient */
-.hud-top {
+/* Main HUD Container - CSS Grid Layout */
+.hud-container {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
-  height: 80px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.6) 0%,
-    rgba(0, 0, 0, 0.3) 70%,
-    transparent 100%
-  );
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 16px 32px;
-  box-sizing: border-box;
-  transition: all 0.3s ease;
-}
-
-/* Bottom HUD Container - Dynamic Responsive Gradient */
-.hud-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 80px;
-  background: linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.6) 0%,
-    rgba(0, 0, 0, 0.3) 70%,
-    transparent 100%
-  );
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding: 16px 32px;
-  box-sizing: border-box;
-  transition: all 0.3s ease;
-}
-
-/* Dynamic gradient overlay for better mobile visibility */
-.hud-top::before,
-.hud-bottom::before {
-  content: '';
-  position: absolute;
   left: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  opacity: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto 1fr auto auto auto auto auto;
+  gap: 8px;
+  padding: 16px 32px;
+  box-sizing: border-box;
 }
 
-.hud-top::before {
+/* Background Gradients */
+.hud-container::before {
+  content: '';
+  position: absolute;
   top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(0, 0, 0, 0.4) 60%,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.3) 70%,
     transparent 100%
   );
+  pointer-events: none;
+  z-index: -1;
 }
 
-.hud-bottom::before {
+.hud-container::after {
+  content: '';
+  position: absolute;
   bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
   background: linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(0, 0, 0, 0.4) 60%,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.3) 70%,
     transparent 100%
   );
+  pointer-events: none;
+  z-index: -1;
 }
 
-/* Enhanced gradient for mobile devices */
+/* Individual HUD Elements */
+.hud-element {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Desktop Layout (default) */
+.settings-top-row {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.score-element {
+  grid-column: 2;
+  grid-row: 1;
+  align-items: flex-end;
+}
+
+.fps-element {
+  grid-column: 2;
+  grid-row: 7;
+  align-items: flex-end;
+}
+
+.stage-element {
+  grid-column: 2;
+  grid-row: 8;
+  align-items: flex-end;
+}
+
+.ammo-element {
+  grid-column: 1;
+  grid-row: 4;
+  align-items: flex-start;
+}
+
+.weapon-element {
+  grid-column: 1;
+  grid-row: 5;
+  align-items: flex-start;
+}
+
+.shield-element {
+  grid-column: 1;
+  grid-row: 6;
+  align-items: flex-start;
+}
+
+.lives-element {
+  grid-column: 1;
+  grid-row: 7;
+  align-items: flex-start;
+}
+
+.speed-element {
+  grid-column: 1;
+  grid-row: 8;
+  align-items: flex-start;
+}
+
+/* Mobile Layout - Responsive with CSS Variables */
 @media (max-width: 768px) {
-  .hud-top::before,
-  .hud-bottom::before {
-    opacity: 1;
+  .hud-container {
+    /* CSS Variables for consistent spacing */
+    --mobile-spacing-unit: 9vh;
+    --mobile-margin-horizontal: 2vw;
+    --mobile-margin-vertical: 1vh;
+    --mobile-gap-horizontal: 2vw;
+
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: var(--mobile-margin-vertical) var(--mobile-margin-horizontal);
+    display: block; /* Override grid for mobile */
+  }
+
+  .hud-container::before,
+  .hud-container::after {
+    opacity: 0.8;
+  }
+
+  /* Mobile positioning - using CSS variables for consistency */
+  .settings-top-row {
+    position: absolute;
+    top: var(--mobile-margin-vertical);
+    left: var(--mobile-margin-horizontal);
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--mobile-gap-horizontal);
+  }
+
+  /* Add spacing to TOP score stat within settings row */
+  .settings-top-row .stat {
+    margin-left: 1vw;
+  }
+
+  /* Left column - using calculated positions with CSS variables */
+  .ammo-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
+    left: var(--mobile-margin-horizontal);
+  }
+
+  .weapon-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
+    left: var(--mobile-margin-horizontal);
+  }
+
+  .shield-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 3);
+    left: var(--mobile-margin-horizontal);
+  }
+
+  .lives-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 4);
+    left: var(--mobile-margin-horizontal);
+  }
+
+  .speed-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 5);
+    left: var(--mobile-margin-horizontal);
+  }
+
+  /* Right column - aligned with left column using same variables */
+  .score-element {
+    position: absolute;
+    top: var(--mobile-margin-vertical);
+    right: var(--mobile-margin-horizontal);
+  }
+
+  .fps-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
+    right: var(--mobile-margin-horizontal);
+  }
+
+  .stage-element {
+    position: absolute;
+    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
+    right: var(--mobile-margin-horizontal);
+  }
+
+  /* Minimal stat gaps for mobile - match specification */
+  .stat {
+    gap: 1px;
+  }
+
+  /* Remove extra gaps from hud elements on mobile */
+  .hud-element {
+    gap: 0px;
   }
 }
 
-/* Mobile optimization - prevent scrolling and improve touch */
-body {
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-  touch-action: manipulation;
-}
-
-html,
-body {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
-}
-
-/* Mobile Settings Button */
-.mobile-settings-button {
+/* Settings Button */
+.settings-button {
+  display: block;
+  background: linear-gradient(135deg, #ff6600 0%, #cc4400 100%);
+  border: 2px solid #ffaa44;
+  border-radius: 8px;
+  color: white;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+  z-index: 1001;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
@@ -131,53 +265,22 @@ body {
   touch-action: manipulation;
 }
 
-.mobile-settings-button:hover {
-  background: linear-gradient(135deg, #ff7700 0%, #dd5500 100%) !important;
-  border-color: #ffbb55 !important;
+.settings-button:hover {
+  background: linear-gradient(135deg, #ff7700 0%, #dd5500 100%);
+  border-color: #ffbb55;
 }
 
-.mobile-settings-button:active {
-  background: linear-gradient(135deg, #ee5500 0%, #bb3300 100%) !important;
+.settings-button:active {
+  background: linear-gradient(135deg, #ee5500 0%, #bb3300 100%);
+  transform: scale(0.95);
 }
 
-/* Mobile-specific button adjustments */
-@media (max-width: 480px) {
-  .mobile-settings-button {
-    font-size: 14px !important;
-    padding: 8px 12px !important;
-    border-radius: 10px !important;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  .mobile-settings-button {
-    font-size: 10px !important;
-    padding: 4px 8px !important;
-  }
-}
-
-/* Individual HUD Elements */
-.hud-element {
+/* Stat Elements */
+.stat {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-}
-
-.hud-top-left {
-  align-items: flex-start;
-}
-
-.hud-top-right {
-  align-items: flex-end;
-}
-
-.hud-bottom-left {
-  align-items: flex-start;
-}
-
-.hud-bottom-right {
-  align-items: flex-end;
+  min-width: 90px;
 }
 
 /* HUD Text Styling */
@@ -200,26 +303,50 @@ body {
   font-weight: 900;
   letter-spacing: 1px;
   color: #ffffff;
-  font-variant-numeric: tabular-nums; /* Monospace numbers */
-  min-width: 120px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    2px 2px 0px #000000,
+    -2px -2px 0px #000000,
+    2px -2px 0px #000000,
+    -2px 2px 0px #000000,
+    0px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-/* Special styling for top/bottom alignment */
-.hud-top-left .hud-value {
+/* Text Alignment Based on Position */
+.settings-top-row .hud-value,
+.ammo-element .hud-value,
+.weapon-element .hud-value,
+.shield-element .hud-value,
+.lives-element .hud-value,
+.speed-element .hud-value {
   text-align: left;
 }
 
-.hud-top-right .hud-value {
-  text-align: right;
-}
-
-.hud-bottom-left .hud-value {
+.settings-top-row .hud-label,
+.ammo-element .hud-label,
+.weapon-element .hud-label,
+.shield-element .hud-label,
+.lives-element .hud-label,
+.speed-element .hud-label {
   text-align: left;
 }
 
-.hud-bottom-right .hud-value {
+.score-element .hud-value,
+.fps-element .hud-value,
+.stage-element .hud-value {
   text-align: right;
+}
+
+.score-element .hud-label,
+.fps-element .hud-label,
+.stage-element .hud-label {
+  text-align: right;
+}
+
+/* Segments styling */
+.segments {
+  display: flex;
+  gap: 3px;
 }
 
 /* Lives Display */
@@ -297,14 +424,11 @@ body {
   }
 }
 
-/* Mobile-First Responsive Design */
-
-/* Base mobile styles (320px+) */
+/* Mobile Responsive Adjustments */
 @media (max-width: 480px) {
-  .hud-top,
-  .hud-bottom {
+  .hud-container {
     padding: 6px 8px;
-    height: 45px;
+    gap: 2px;
   }
 
   .hud-label {
@@ -314,82 +438,34 @@ body {
 
   .hud-value {
     font-size: 14px;
-    min-width: 50px;
   }
 
   .hud-life {
     font-size: 12px;
   }
 
-  /* Compact bottom stats for mobile */
-  #stats-bottom-left {
-    gap: 6px !important;
+  .settings-button {
+    font-size: 10px;
+    padding: 4px 8px;
   }
 
   .stat {
-    gap: 2px !important;
+    min-width: 50px;
+    gap: 1px;
   }
 
   /* Smaller segments for mobile */
-  #shield-segments span,
-  #weapon-segments span,
-  #speed-segments span {
+  .segments span {
     width: 6px !important;
     height: 4px !important;
   }
 }
 
-/* Small tablets and large phones (481px - 768px) */
-@media (min-width: 481px) and (max-width: 768px) {
-  .hud-top,
-  .hud-bottom {
-    padding: 10px 14px;
-    height: 55px;
-  }
-
-  .hud-label {
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
-
-  .hud-value {
-    font-size: 17px;
-    min-width: 70px;
-  }
-
-  .hud-life {
-    font-size: 15px;
-  }
-
-  #stats-bottom-left {
-    gap: 8px !important;
-  }
-}
-
-/* Tablets and small desktops (769px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .hud-top,
-  .hud-bottom {
-    padding: 14px 20px;
-    height: 70px;
-  }
-
-  .hud-label {
-    font-size: 13px;
-  }
-
-  .hud-value {
-    font-size: 22px;
-    min-width: 100px;
-  }
-}
-
 /* Landscape orientation adjustments */
 @media (orientation: landscape) and (max-height: 500px) {
-  .hud-top,
-  .hud-bottom {
-    height: 35px;
+  .hud-container {
     padding: 4px 8px;
+    gap: 1px;
   }
 
   .hud-label {
@@ -400,23 +476,16 @@ body {
     font-size: 12px;
   }
 
-  #stats-bottom-left {
-    flex-direction: row !important;
-    flex-wrap: wrap;
-    gap: 8px !important;
-  }
-
-  .stat {
-    min-width: auto !important;
+  .settings-button {
+    font-size: 8px;
+    padding: 2px 6px;
   }
 }
 
 /* Ultra-wide screens */
 @media (min-width: 1920px) {
-  .hud-top,
-  .hud-bottom {
+  .hud-container {
     padding: 20px 40px;
-    height: 90px;
   }
 
   .hud-label {
@@ -425,8 +494,22 @@ body {
 
   .hud-value {
     font-size: 28px;
-    min-width: 140px;
   }
+}
+
+/* Mobile optimization - prevent scrolling and improve touch */
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+
+html,
+body {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }
 
 /* Retro CRT Effect (Optional) */

@@ -34,7 +34,7 @@ export class HUD {
     this.hudElement = this.createHUD();
     parentElement.appendChild(this.hudElement);
     this.updateDisplay();
-    this.setupMobileControls();
+    this.setupSettingsButton();
   }
 
   private createHUD(): HTMLElement {
@@ -43,70 +43,78 @@ export class HUD {
     hud.className = 'game-hud';
 
     hud.innerHTML = `
-      <!-- Top HUD Elements -->
-      <div class="hud-top">
-        <div class="hud-element hud-top-left" style="flex-direction: row; align-items: center; gap: 12px;">
-          <button id="mobile-settings-btn" class="mobile-settings-button" style="
-            display: block;
-            background: linear-gradient(135deg, #ff6600 0%, #cc4400 100%);
-            border: 2px solid #ffaa44;
-            border-radius: 8px;
-            color: white;
-            font-family: 'Orbitron', monospace;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 6px 10px;
-            cursor: pointer;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            transition: all 0.2s ease;
-            pointer-events: auto;
-            z-index: 1001;
-          ">⚙</button>
-          <div style="display: flex; flex-direction: column; align-items: flex-start;">
+      <div class="hud-container">
+        <!-- Settings Button and TOP Score Row -->
+        <div class="hud-element settings-top-row">
+          <button id="settings-btn" class="settings-button">⚙</button>
+          <div class="stat">
             <span class="hud-label">TOP</span>
             <span class="hud-value" id="top-score">1710570</span>
           </div>
         </div>
-        <div class="hud-element hud-top-right">
-          <span class="hud-label">SCORE</span>
-          <span class="hud-value" id="current-score">0</span>
-        </div>
-      </div>
 
-      <!-- Bottom HUD Elements -->
-      <div class="hud-bottom">
-        <div class="hud-element hud-bottom-left">
-          <div id="stats-bottom-left" style="display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
-            <div class="stat" id="stat-ammo" style="display:flex; flex-direction:column; gap:4px; min-width:90px;">
-              <span class="hud-label" style="font-size:10px; opacity:0.8;">AMMO</span>
-              <span class="hud-value" id="ammo-value">0</span>
-            </div>
-            <div class="stat" id="stat-weapon" style="display:flex; flex-direction:column; gap:4px;">
-              <span class="hud-label" style="font-size:10px; opacity:0.8;">WEAPON</span>
-              <div id="weapon-segments" style="display:flex; gap:3px;"></div>
-            </div>
-            <div class="stat" id="stat-shield" style="display:flex; flex-direction:column; gap:4px;">
-              <span class="hud-label" style="font-size:10px; opacity:0.8;">SHIELD</span>
-              <div id="shield-segments" style="display:flex; gap:3px;"></div>
-            </div>
-            <div class="stat" id="stat-lives" style="display:flex; flex-direction:column; gap:4px;">
-              <span class="hud-label" style="font-size:10px; opacity:0.8;">LIVES</span>
-              <div class="lives-display" id="lives-display"></div>
-            </div>
-            <div class="stat" id="stat-speed" style="display:flex; flex-direction:column; gap:4px; min-width:90px;">
-              <span class="hud-label" style="font-size:10px; opacity:0.8;">SPEED</span>
-              <div id="speed-segments" style="display:flex; gap:3px;"></div>
-            </div>
+        <!-- Current Score -->
+        <div class="hud-element score-element">
+          <div class="stat">
+            <span class="hud-label">SCORE</span>
+            <span class="hud-value" id="current-score">0</span>
           </div>
         </div>
-        <div class="hud-element hud-bottom-right">
-          <div class="hud-fps" style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin-bottom:6px;">
-            <span class="hud-label" style="font-size:10px; opacity:0.8;">FPS</span>
+
+        <!-- FPS -->
+        <div class="hud-element fps-element">
+          <div class="stat">
+            <span class="hud-label">FPS</span>
             <span class="hud-value" id="fps-value">0</span>
           </div>
-          <span class="hud-label">STAGE</span>
-          <span class="hud-value" id="current-stage">1</span>
+        </div>
+
+        <!-- Stage -->
+        <div class="hud-element stage-element">
+          <div class="stat">
+            <span class="hud-label">STAGE</span>
+            <span class="hud-value" id="current-stage">1</span>
+          </div>
+        </div>
+
+        <!-- Ammo -->
+        <div class="hud-element ammo-element">
+          <div class="stat">
+            <span class="hud-label">AMMO</span>
+            <span class="hud-value" id="ammo-value">0</span>
+          </div>
+        </div>
+
+        <!-- Weapon -->
+        <div class="hud-element weapon-element">
+          <div class="stat">
+            <span class="hud-label">WEAPON</span>
+            <div id="weapon-segments" class="segments"></div>
+          </div>
+        </div>
+
+        <!-- Shield -->
+        <div class="hud-element shield-element">
+          <div class="stat">
+            <span class="hud-label">SHIELD</span>
+            <div id="shield-segments" class="segments"></div>
+          </div>
+        </div>
+
+        <!-- Lives -->
+        <div class="hud-element lives-element">
+          <div class="stat">
+            <span class="hud-label">LIVES</span>
+            <div class="lives-display" id="lives-display"></div>
+          </div>
+        </div>
+
+        <!-- Speed -->
+        <div class="hud-element speed-element">
+          <div class="stat">
+            <span class="hud-label">SPEED</span>
+            <div id="speed-segments" class="segments"></div>
+          </div>
         </div>
       </div>
     `;
@@ -116,6 +124,7 @@ export class HUD {
 
   // Update the HUD display with current game state
   public updateDisplay(): void {
+    // Get all elements once
     const topScoreEl = document.getElementById('top-score');
     const currentScoreEl = document.getElementById('current-score');
     const currentStageEl = document.getElementById('current-stage');
@@ -125,9 +134,11 @@ export class HUD {
     const ammoValueEl = document.getElementById('ammo-value');
     const speedSegsEl = document.getElementById('speed-segments');
 
+    // Update text values
     if (topScoreEl) topScoreEl.textContent = this.gameState.topScore.toString();
     if (currentScoreEl) currentScoreEl.textContent = this.gameState.currentScore.toString();
     if (currentStageEl) currentStageEl.textContent = this.gameState.stage.toString();
+    if (ammoValueEl) ammoValueEl.textContent = this.gameState.ammo.toString();
 
     // Update lives display
     if (livesDisplayEl) {
@@ -173,7 +184,6 @@ export class HUD {
       }
     }
 
-    if (ammoValueEl) ammoValueEl.textContent = `${this.gameState.ammo}`;
     // Update speed segments (0-5)
     if (speedSegsEl) {
       speedSegsEl.innerHTML = '';
@@ -244,18 +254,12 @@ export class HUD {
     if (fpsEl) fpsEl.textContent = fps.toString();
   }
 
-  private setupMobileControls(): void {
-    const mobileSettingsBtn = document.getElementById('mobile-settings-btn');
-    const isMobile =
-      window.innerWidth <= 768 ||
-      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  private setupSettingsButton(): void {
+    const settingsBtn = document.getElementById('settings-btn');
 
-    if (mobileSettingsBtn) {
-      // Always show the button now
-      mobileSettingsBtn.style.display = 'block';
-
+    if (settingsBtn) {
       // Add click handler
-      mobileSettingsBtn.addEventListener('click', e => {
+      settingsBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
         if (this.settingsCallback) {
@@ -264,27 +268,27 @@ export class HUD {
       });
 
       // Add hover effects
-      mobileSettingsBtn.addEventListener('mousedown', () => {
-        mobileSettingsBtn.style.transform = 'scale(0.95)';
-        mobileSettingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
+      settingsBtn.addEventListener('mousedown', () => {
+        settingsBtn.style.transform = 'scale(0.95)';
+        settingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
       });
 
-      mobileSettingsBtn.addEventListener('mouseup', () => {
-        mobileSettingsBtn.style.transform = 'scale(1)';
-        mobileSettingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      settingsBtn.addEventListener('mouseup', () => {
+        settingsBtn.style.transform = 'scale(1)';
+        settingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
       });
 
-      // Touch events for mobile
-      mobileSettingsBtn.addEventListener('touchstart', e => {
+      // Touch events
+      settingsBtn.addEventListener('touchstart', e => {
         e.preventDefault();
-        mobileSettingsBtn.style.transform = 'scale(0.95)';
-        mobileSettingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
+        settingsBtn.style.transform = 'scale(0.95)';
+        settingsBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.5)';
       });
 
-      mobileSettingsBtn.addEventListener('touchend', e => {
+      settingsBtn.addEventListener('touchend', e => {
         e.preventDefault();
-        mobileSettingsBtn.style.transform = 'scale(1)';
-        mobileSettingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        settingsBtn.style.transform = 'scale(1)';
+        settingsBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
         if (this.settingsCallback) {
           this.settingsCallback();
         }
@@ -297,16 +301,7 @@ export class HUD {
   }
 
   public handleResize(): void {
-    // Re-setup mobile controls on resize/rotation
-    const mobileSettingsBtn = document.getElementById('mobile-settings-btn');
-    const isMobile =
-      window.innerWidth <= 768 ||
-      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (mobileSettingsBtn) {
-      // Show/hide button based on current screen size
-      mobileSettingsBtn.style.display = isMobile ? 'block' : 'block'; // Always show now
-    }
+    // No device-specific logic needed - CSS handles responsive layout
   }
 
   public destroy(): void {
