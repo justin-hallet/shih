@@ -16,7 +16,7 @@ export class SettingsPanel {
   private audioManager?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private collisionDebugRenderer?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private virtualController?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  private onControlsChange?: (type: string, enabled: boolean) => void;
+  private onControlsChange?: (type: string, value: boolean | string) => void;
 
   constructor() {
     this.createPanel();
@@ -495,20 +495,34 @@ export class SettingsPanel {
     ]);
 
     // Movement Settings Group
-    const movementGroup = this.createControlGroup('Movement Settings', [
-      { label: 'Movement Style: Strafe', key: 'movementStrafe', enabled: true },
+    const movementGroup = this.createDropdownGroup('Movement Settings', [
+      {
+        label: 'Movement Style',
+        key: 'movementStyle',
+        options: ['Strafe', 'Turn'],
+        defaultValue: 'Strafe',
+      },
+    ]);
+
+    // Additional Movement Toggles
+    const movementToggles = this.createControlGroup('Movement Options', [
       { label: 'Invert Y Axis', key: 'invertY', enabled: false },
     ]);
 
     // Layout Settings Group
-    const layoutGroup = this.createControlGroup('Layout Settings', [
-      { label: 'Force Mobile Layout', key: 'forceMobileLayout', enabled: false },
-      { label: 'Force Desktop Layout', key: 'forceDesktopLayout', enabled: false },
+    const layoutGroup = this.createDropdownGroup('Layout Settings', [
+      {
+        label: 'Layout Style',
+        key: 'layoutStyle',
+        options: ['Auto', 'Mobile', 'Desktop'],
+        defaultValue: 'Auto',
+      },
     ]);
 
     section.appendChild(title);
     section.appendChild(virtualControllerGroup);
     section.appendChild(movementGroup);
+    section.appendChild(movementToggles);
     section.appendChild(layoutGroup);
 
     return section;
@@ -553,6 +567,59 @@ export class SettingsPanel {
 
     group.appendChild(header);
     group.appendChild(togglesContainer);
+
+    return group;
+  }
+
+  private createDropdownGroup(
+    groupName: string,
+    dropdowns: Array<{
+      label: string;
+      key: string;
+      options: string[];
+      defaultValue: string;
+    }>,
+  ): HTMLElement {
+    const group = document.createElement('div');
+    group.style.cssText = `
+      margin-bottom: 12px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.3);
+      border-radius: 6px;
+    `;
+
+    // Group header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
+      color: #ffaa44;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    `;
+    header.textContent = groupName;
+
+    // Dropdowns container
+    const dropdownsContainer = document.createElement('div');
+    dropdownsContainer.style.cssText = `
+      padding-left: 4px;
+    `;
+
+    dropdowns.forEach(dropdown => {
+      const dropdownRow = this.createDropdownRow(
+        dropdown.label,
+        dropdown.key,
+        dropdown.options,
+        dropdown.defaultValue,
+      );
+      dropdownsContainer.appendChild(dropdownRow);
+    });
+
+    group.appendChild(header);
+    group.appendChild(dropdownsContainer);
 
     return group;
   }
@@ -702,6 +769,64 @@ export class SettingsPanel {
 
     row.appendChild(labelEl);
     row.appendChild(toggle);
+
+    return row;
+  }
+
+  private createDropdownRow(
+    label: string,
+    id: string,
+    options: string[],
+    defaultValue: string,
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 5px 0;
+    `;
+
+    const labelEl = document.createElement('label');
+    labelEl.style.cssText = `
+      color: #ffcc00;
+      font-size: 11px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    labelEl.textContent = label;
+
+    const select = document.createElement('select');
+    select.id = id;
+    select.style.cssText = `
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #ff6600;
+      border-radius: 4px;
+      color: #ffcc00;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+    `;
+
+    // Add options
+    options.forEach(optionText => {
+      const option = document.createElement('option');
+      option.value = optionText.toLowerCase();
+      option.textContent = optionText;
+      if (optionText === defaultValue) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    select.addEventListener('change', e => {
+      const target = e.target as HTMLSelectElement;
+      this.handleDropdownChange(id, target.value);
+    });
+
+    row.appendChild(labelEl);
+    row.appendChild(select);
 
     return row;
   }
@@ -906,31 +1031,27 @@ export class SettingsPanel {
         }
         this.onControlsChange?.(id, value);
         break;
-      case 'movementStrafe':
-        // Update movement style - will be handled in main.ts
-        this.onControlsChange?.(id, value);
-        break;
       case 'invertY':
         // Update Y axis inversion - will be handled in main.ts
-        this.onControlsChange?.(id, value);
-        break;
-      case 'forceMobileLayout':
-        // Ensure only one layout override is active
-        if (value) {
-          this.updateToggleState('forceDesktopLayout', false);
-        }
-        this.onControlsChange?.(id, value);
-        break;
-      case 'forceDesktopLayout':
-        // Ensure only one layout override is active
-        if (value) {
-          this.updateToggleState('forceMobileLayout', false);
-        }
         this.onControlsChange?.(id, value);
         break;
       case 'wireframe':
       case 'surface':
         this.onDisplayToggle?.(id, value);
+        break;
+    }
+  }
+
+  private handleDropdownChange(id: string, value: string): void {
+    switch (id) {
+      case 'movementStyle':
+        // Convert dropdown value to boolean for backward compatibility
+        const isStrafe = value === 'strafe';
+        this.onControlsChange?.('movementStrafe', isStrafe);
+        break;
+      case 'layoutStyle':
+        // Handle layout style changes
+        this.onControlsChange?.('layoutStyle', value);
         break;
     }
   }
@@ -1016,7 +1137,9 @@ export class SettingsPanel {
     this.virtualController = controller;
   }
 
-  public setControlsChangeCallback(callback: (type: string, enabled: boolean) => void): void {
+  public setControlsChangeCallback(
+    callback: (type: string, value: boolean | string) => void,
+  ): void {
     this.onControlsChange = callback;
   }
 

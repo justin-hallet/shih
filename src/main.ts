@@ -408,19 +408,15 @@ updateLayoutAndController();
 
 // Connect virtual controller to settings panel
 settingsPanel.setVirtualController(virtualController);
-settingsPanel.setControlsChangeCallback((type: string, enabled: boolean) => {
+settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) => {
   if (type === 'leftHandedControls') {
-    virtualController.setLeftHanded(enabled);
+    virtualController.setLeftHanded(value as boolean);
   } else if (type === 'movementStrafe') {
-    movementStrafe = enabled;
+    movementStrafe = value as boolean;
   } else if (type === 'invertY') {
-    invertY = enabled;
-  } else if (type === 'forceMobileLayout') {
-    layoutStyle = enabled ? 'mobile' : 'auto';
-    // Trigger layout update
-    updateLayoutAndController();
-  } else if (type === 'forceDesktopLayout') {
-    layoutStyle = enabled ? 'desktop' : 'auto';
+    invertY = value as boolean;
+  } else if (type === 'layoutStyle') {
+    layoutStyle = value as 'auto' | 'mobile' | 'desktop';
     // Trigger layout update
     updateLayoutAndController();
   }
