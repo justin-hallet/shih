@@ -1,37 +1,55 @@
 /**
- * Core type definitions for Space Harrier game
+ * Core game types and enums
  */
 
-// Entity Types
+// Entity types
 export enum EntityType {
   PLAYER = 'player',
   ENEMY = 'enemy',
   OBSTACLE = 'obstacle',
-  PROJECTILE = 'projectile',
   POWERUP = 'powerup',
+  PROJECTILE = 'projectile',
 }
 
-// Obstacle Subtypes
-export enum ObstacleSubType {
-  TREE = 'tree',
-  ROCK = 'rock',
-  PILLAR = 'pillar',
-  VEHICLE = 'vehicle',
-  BUILDING = 'building',
-  CRYSTAL = 'crystal',
+// Camera modes for different viewing perspectives
+export enum CameraMode {
+  FOLLOW = 'follow',
+  ISOMETRIC = 'isometric',
+  OVERHEAD = 'overhead',
 }
 
-// Enemy Subtypes
-export enum EnemySubType {
-  GRUNT = 'grunt',
-  SOLDIER = 'soldier',
-  FLYER = 'flyer',
-  TANK = 'tank',
-  BOSS = 'boss',
-  DRAGON = 'dragon',
+// Entity state
+export enum EntityState {
+  IDLE = 'idle',
+  ACTIVE = 'active',
+  MOVING = 'moving',
+  ATTACKING = 'attacking',
+  DAMAGED = 'damaged',
+  DYING = 'dying',
+  DEAD = 'dead',
 }
 
-// Projectile Subtypes
+// Animation types
+export enum AnimationType {
+  IDLE = 'idle',
+  MOVING = 'moving',
+  ATTACKING = 'attacking',
+  FLOATING = 'floating',
+  SPINNING = 'spinning',
+  EXPLODING = 'exploding',
+  DYING = 'dying',
+}
+
+// Weapon types
+export enum WeaponType {
+  BULLET = 1,
+  MISSILE = 2,
+  LASER = 3,
+  PLASMA = 4,
+  FIREBALL = 5,
+}
+
+// Projectile sub-types
 export enum ProjectileSubType {
   BULLET = 'bullet',
   MISSILE = 'missile',
@@ -40,46 +58,119 @@ export enum ProjectileSubType {
   FIREBALL = 'fireball',
 }
 
-// PowerUp Subtypes
-export enum PowerUpSubType {
+// PowerUp types
+export enum PowerUpType {
   AMMO = 'ammo',
   SHIELD = 'shield',
-  LIFE = 'life',
-  SPEED = 'speed',
   WEAPON_UPGRADE = 'weapon_upgrade',
+  SPEED = 'speed',
+  LIFE = 'life',
 }
 
-// Animation Types
-export enum AnimationType {
-  IDLE = 'idle',
-  MOVING = 'moving',
-  ATTACKING = 'attacking',
-  DYING = 'dying',
-  EXPLODING = 'exploding',
-  SPINNING = 'spinning',
-  FLOATING = 'floating',
+// PowerUp sub-types (enum for compatibility)
+export const PowerUpSubType = {
+  AMMO: 'ammo' as const,
+  SHIELD: 'shield' as const,
+  WEAPON_UPGRADE: 'weapon_upgrade' as const,
+  SPEED: 'speed' as const,
+  LIFE: 'life' as const,
+} as const;
+
+// Enemy types
+export enum EnemyType {
+  GRUNT = 'grunt',
+  SOLDIER = 'soldier',
+  TANK = 'tank',
+  FLYER = 'flyer',
+  DRAGON = 'dragon',
+  BOSS = 'boss',
 }
 
-import * as THREE from 'three';
-
-// Game Vector3 - use THREE.Vector3 for proper Three.js integration with all Vector3 methods
-export type GameVector3 = THREE.Vector3;
-
-// Entity State
-export enum EntityState {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  DYING = 'dying',
-  DEAD = 'dead',
-  SPAWNING = 'spawning',
+// Enemy sub-types (enum for compatibility)
+export enum EnemySubType {
+  GRUNT = 'grunt',
+  SOLDIER = 'soldier',
+  TANK = 'tank',
+  FLYER = 'flyer',
+  DRAGON = 'dragon',
+  BOSS = 'boss',
 }
 
-// Collision Bounds
+// Obstacle types
+export enum ObstacleType {
+  ROCK = 'rock',
+  TREE = 'tree',
+  CRYSTAL = 'crystal',
+  PILLAR = 'pillar',
+  BUILDING = 'building',
+  VEHICLE = 'vehicle',
+}
+
+// Obstacle sub-types (enum for compatibility)
+export enum ObstacleSubType {
+  ROCK = 'rock',
+  TREE = 'tree',
+  CRYSTAL = 'crystal',
+  PILLAR = 'pillar',
+  BUILDING = 'building',
+  VEHICLE = 'vehicle',
+}
+
+// Difficulty levels
+export enum DifficultyLevel {
+  EASY = 'easy',
+  NORMAL = 'normal',
+  HARD = 'hard',
+  NIGHTMARE = 'nightmare',
+}
+
+// Game states
+export enum GameState {
+  MENU = 'menu',
+  PLAYING = 'playing',
+  PAUSED = 'paused',
+  GAME_OVER = 'game_over',
+  VICTORY = 'victory',
+}
+
+// Audio types
+export enum AudioType {
+  SFX = 'sfx',
+  MUSIC = 'music',
+  AMBIENT = 'ambient',
+}
+
+// Input types
+export enum InputType {
+  KEYBOARD = 'keyboard',
+  MOUSE = 'mouse',
+  GAMEPAD = 'gamepad',
+  TOUCH = 'touch',
+}
+
+// Movement types
+export enum MovementType {
+  STRAFE = 'strafe',
+  TURN = 'turn',
+}
+
+// Layout types
+export enum LayoutType {
+  AUTO = 'auto',
+  MOBILE = 'mobile',
+  DESKTOP = 'desktop',
+}
+
+// Utility types
+export interface GameVector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface CollisionBounds {
-  radius: number; // For sphere collision
-  box?: {
-    width: number;
-    height: number;
-    depth: number;
-  };
+  radius?: number;
+  width?: number;
+  height?: number;
+  depth?: number;
 }

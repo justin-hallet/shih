@@ -18,7 +18,14 @@ import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
-import { ProjectileSubType, EntityType, PowerUpSubType } from './core/types';
+import {
+  EntityType,
+  PowerUpType,
+  PowerUpSubType,
+  ProjectileSubType,
+  CameraMode,
+} from './core/types';
+import { CameraController } from './core/CameraController';
 import { AudioManager } from './core/AudioManager';
 import { PowerUp } from './core/entities/PowerUp';
 import { Enemy } from './core/entities/Enemy';
@@ -85,6 +92,9 @@ function shouldUseMobileLayout(): boolean {
 // Create basic Three.js scene for testing
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); // Increased far plane
+
+// Initialize camera controller
+const cameraController = new CameraController(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -260,6 +270,14 @@ settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
     }
   }
 });
+
+settingsPanel.setCameraModeChangeCallback((mode: string) => {
+  const cameraMode = CameraController.stringToCameraMode(mode);
+  cameraController.setCameraMode(cameraMode);
+  console.log(
+    `🎥 Camera mode changed to: ${CameraController.getCameraModeDisplayName(cameraMode)}`,
+  );
+});
 // Ensure userData exists
 (scene as any).userData = (scene as any).userData || {};
 (scene as any).userData['hud'] = hud;
@@ -323,6 +341,9 @@ const player = entityManager.spawnPlayer({
   y: initialTerrainY + HOVER_HEIGHT,
   z: tileCenter,
 });
+
+// Set player in camera controller
+cameraController.setPlayer(player);
 
 // Set player reference in debug panel now that it's created
 settingsPanel.setPlayer(player);
@@ -581,6 +602,7 @@ function applyVisualizationToScene() {
 applyVisualizationToScene();
 
 let mouseX = 0;
+let mouseY = 0;
 let isMouseDragging = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -693,14 +715,14 @@ function applyDebugBloomOverride(
 }
 
 // Helper function to get PowerUp's original outline color
-function getPowerUpOutlineColor(powerUpType: PowerUpSubType): THREE.Color | null {
+function getPowerUpOutlineColor(powerUpType: PowerUpType): THREE.Color | null {
   // These colors should match the ones in PowerUp.ts applyBloomMaterial method
-  const bloomColors: Record<PowerUpSubType, number> = {
-    [PowerUpSubType.AMMO]: 0xffee66, // bright yellow
-    [PowerUpSubType.SHIELD]: 0x66ccff, // blue
-    [PowerUpSubType.LIFE]: 0xff3333, // red
-    [PowerUpSubType.SPEED]: 0x33ff33, // green
-    [PowerUpSubType.WEAPON_UPGRADE]: 0xffaa44, // orange
+  const bloomColors: Record<PowerUpType, number> = {
+    [PowerUpType.AMMO]: 0xffee66, // bright yellow
+    [PowerUpType.SHIELD]: 0x66ccff, // blue
+    [PowerUpType.LIFE]: 0xff3333, // red
+    [PowerUpType.SPEED]: 0x33ff33, // green
+    [PowerUpType.WEAPON_UPGRADE]: 0xffaa44, // orange
   };
 
   const colorHex = bloomColors[powerUpType];
@@ -824,9 +846,37 @@ window.addEventListener('mousemove', event => {
       handleAction('descend', false);
     }
 
-    // Only update camera rotation in turn mode
-    if (!movementStrafe) {
-      mouseX += deltaX * 0.005; // Horizontal rotation sensitivity
+    // Mouse left/right movement triggers player movement based on movement style
+    if (cameraController.getMouseControlEnabled()) {
+      const mouseSensitivity = 0.005;
+
+      if (movementStrafe) {
+        // Strafe mode: mouse left/right strafes the player, up/down controls camera
+        if (Math.abs(deltaX) > 2) {
+          // Only respond to significant mouse movement
+          if (deltaX > 0) {
+            handleAction('right_movement', true);
+            handleAction('left_movement', false);
+          } else {
+            handleAction('left_movement', true);
+            handleAction('right_movement', false);
+          }
+        } else {
+          // Stop strafing when mouse stops moving horizontally
+          handleAction('left_movement', false);
+          handleAction('right_movement', false);
+        }
+
+        // Vertical mouse movement controls camera in strafe mode
+        mouseY += deltaY * mouseSensitivity;
+      } else {
+        // Turn mode: mouse left/right turns the camera, like keyboard A/D
+        if (Math.abs(deltaX) > 2) {
+          // Only respond to significant mouse movement
+          mouseX += deltaX * mouseSensitivity;
+        }
+        mouseY += deltaY * mouseSensitivity; // Vertical rotation (for future use)
+      }
     }
 
     lastMouseX = event.clientX;
@@ -959,19 +1009,9 @@ function animate() {
     distanceTraveled += playerPos.distanceTo(lastPlayerPosition);
     lastPlayerPosition.copy(playerPos);
 
-    // Manual camera controls with mouse drag rotation
-    // Third-person camera that orbits around player (much closer, lower angle)
-    const cameraDistance = 12;
-    const cameraHeight = 4;
-
-    // Calculate camera position based on mouse rotation
-    const cameraX = player.position.x + Math.sin(mouseX) * cameraDistance;
-    const cameraZ = player.position.z + Math.cos(mouseX) * cameraDistance;
-    const cameraY = player.position.y + cameraHeight; // keep camera above, pitch not used for motion
-
-    camera.position.set(cameraX, cameraY, cameraZ);
-    // Look at a point above the player to position player lower in viewport
-    camera.lookAt(player.position.x, player.position.y + 3, player.position.z);
+    // Update camera controller with mouse input and let it handle positioning
+    cameraController.setMouseRotation(mouseX, mouseY);
+    cameraController.update();
 
     // Check for biome changes
     const currentBiome = biomeManager.getBiomeAt(player.position.x, player.position.z);
@@ -1017,8 +1057,8 @@ function animate() {
         player.position.add(left);
         isStrafing = true;
         strafeDirection = 'left';
-      } else {
-        // Turn mode - rotate camera
+      } else if (cameraController.getMouseControlEnabled()) {
+        // Turn mode - rotate camera (only if camera allows mouse control)
         mouseX += turnRate * deltaTime;
         isTurning = true;
         turnDirection = 'left';
@@ -1034,8 +1074,8 @@ function animate() {
         player.position.add(right);
         isStrafing = true;
         strafeDirection = 'right';
-      } else {
-        // Turn mode - rotate camera
+      } else if (cameraController.getMouseControlEnabled()) {
+        // Turn mode - rotate camera (only if camera allows mouse control)
         mouseX -= turnRate * deltaTime;
         isTurning = true;
         turnDirection = 'right';
@@ -1043,12 +1083,12 @@ function animate() {
     }
 
     // Legacy turn/strafe actions (for compatibility)
-    if (actionDown['turn_left']) {
+    if (actionDown['turn_left'] && cameraController.getMouseControlEnabled()) {
       mouseX += turnRate * deltaTime;
       isTurning = true;
       turnDirection = 'left';
     }
-    if (actionDown['turn_right']) {
+    if (actionDown['turn_right'] && cameraController.getMouseControlEnabled()) {
       mouseX -= turnRate * deltaTime;
       isTurning = true;
       turnDirection = 'right';
@@ -1115,7 +1155,7 @@ function animate() {
         y: player.position.y,
         z: player.position.z + fwd.z * 4,
       };
-      entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
+      entityManager.spawnPowerUp(PowerUpType.AMMO, spawn);
       // Give the player enough ammo for several shots so they can continue fighting
       (player as any).ammo = 5.0; // 10 shots worth (0.5 per shot)
     }

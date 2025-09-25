@@ -17,6 +17,7 @@ export class SettingsPanel {
   private collisionDebugRenderer?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private virtualController?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private onControlsChange?: (type: string, value: boolean | string) => void;
+  private onCameraModeChange?: (mode: string) => void;
 
   constructor() {
     this.createPanel();
@@ -156,6 +157,7 @@ export class SettingsPanel {
     // Add sections
     content.appendChild(this.createCellShadingSection());
     content.appendChild(this.createWeaponSection());
+    content.appendChild(this.createCameraSection());
     content.appendChild(this.createAudioSection());
     content.appendChild(this.createControlsSection());
     content.appendChild(this.createDebugSection());
@@ -419,6 +421,42 @@ export class SettingsPanel {
         { value: '5', text: '5 - Fireball' },
       ],
       currentWeapon,
+    );
+
+    section.appendChild(title);
+    section.appendChild(selectRow);
+
+    return section;
+  }
+
+  private createCameraSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(255, 102, 0, 0.1);
+      border: 1px solid #ff6600;
+      border-radius: 8px;
+    `;
+
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      margin: 0 0 10px 0;
+      color: #ff6600;
+      font-size: 13px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    title.textContent = '📷 CAMERA MODE';
+
+    const selectRow = this.createSelectRow(
+      'Camera Perspective',
+      'cameraMode',
+      [
+        { value: 'follow', text: 'Follow - Third Person' },
+        { value: 'isometric', text: 'Isometric' },
+        { value: 'overhead', text: 'Overhead - Top Down' },
+      ],
+      'follow',
     );
 
     section.appendChild(title);
@@ -1118,6 +1156,8 @@ export class SettingsPanel {
   private handleSelectChange(id: string, value: string): void {
     if (id === 'weaponType') {
       this.onWeaponChange?.(parseInt(value));
+    } else if (id === 'cameraMode') {
+      this.onCameraModeChange?.(value);
     }
   }
 
@@ -1219,6 +1259,10 @@ export class SettingsPanel {
 
   public setAudioChangeCallback(callback: (type: string, value: number) => void): void {
     this.onAudioChange = callback;
+  }
+
+  public setCameraModeChangeCallback(callback: (mode: string) => void): void {
+    this.onCameraModeChange = callback;
   }
 
   public toggle(): void {
