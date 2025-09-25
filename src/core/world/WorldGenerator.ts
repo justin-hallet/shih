@@ -31,6 +31,8 @@ export class WorldGenerator {
   // Movement optimization
   private isStrafeModeEnabled: boolean = true;
   private playerForwardDirection: THREE.Vector3 = new THREE.Vector3(0, 0, -1);
+  private lastCullTime: number = 0;
+  private cullCooldown: number = 2000; // Only cull chunks every 2 seconds to prevent thrashing
 
   // Performance tracking
   private generationStats = {
@@ -231,6 +233,13 @@ export class WorldGenerator {
   }
 
   /**
+   * Disable directional chunk culling optimization (for debugging performance issues)
+   */
+  public disableDirectionalCulling(): void {
+    this.isStrafeModeEnabled = false;
+  }
+
+  /**
    * Update player forward direction for chunk culling optimization
    */
   public setPlayerForwardDirection(direction: THREE.Vector3): void {
@@ -284,28 +293,35 @@ export class WorldGenerator {
 
       let shouldUnload = distance > unloadRadius;
 
-      // Strafe mode optimization: aggressively cull chunks behind the player
+      // Strafe mode optimization: cull chunks behind the player (with throttling)
       if (this.isStrafeModeEnabled && !shouldUnload) {
-        // Calculate chunk center in world coordinates
-        const chunkWorldX =
-          chunk.coordinate.x * this.settings.tileSize + this.settings.tileSize / 2;
-        const chunkWorldZ =
-          chunk.coordinate.z * this.settings.tileSize + this.settings.tileSize / 2;
+        const currentTime = Date.now();
 
-        // Vector from player to chunk center
-        const toChunk = new THREE.Vector3(
-          chunkWorldX - this.streamingState.playerPosition.x,
-          0,
-          chunkWorldZ - this.streamingState.playerPosition.z,
-        );
+        // Only perform directional culling periodically to prevent thrashing
+        if (currentTime - this.lastCullTime > this.cullCooldown) {
+          // Calculate chunk center in world coordinates
+          const chunkWorldX =
+            chunk.coordinate.x * this.settings.tileSize + this.settings.tileSize / 2;
+          const chunkWorldZ =
+            chunk.coordinate.z * this.settings.tileSize + this.settings.tileSize / 2;
 
-        // Check if chunk is behind the player (dot product < 0)
-        const dotProduct = toChunk.dot(this.playerForwardDirection);
+          // Vector from player to chunk center
+          const toChunk = new THREE.Vector3(
+            chunkWorldX - this.streamingState.playerPosition.x,
+            0,
+            chunkWorldZ - this.streamingState.playerPosition.z,
+          );
 
-        // Cull chunks that are significantly behind the player (more than 2 tile distances)
-        // This prevents culling chunks that might still be visible at the edge of view
-        if (dotProduct < -this.settings.tileSize * 2) {
-          shouldUnload = true;
+          // Check if chunk is behind the player (dot product < 0)
+          const dotProduct = toChunk.dot(this.playerForwardDirection);
+
+          // More conservative culling: only cull chunks that are very far behind (3+ tiles)
+          // and ensure they're also outside the normal preload radius
+          if (dotProduct < -this.settings.tileSize * 3 && distance > preloadRadius * 0.8) {
+            shouldUnload = true;
+            // Update cull time only when we actually cull something
+            this.lastCullTime = currentTime;
+          }
         }
       }
 

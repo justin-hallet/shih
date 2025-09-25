@@ -309,6 +309,9 @@ const proceduralSettings: ProceduralGenerationSettings = {
 const biomeManager = new BiomeManager();
 const worldGenerator = new WorldGenerator(scene, entityManager, proceduralSettings);
 
+// Temporarily disable directional culling if it's causing performance issues
+// worldGenerator.disableDirectionalCulling();
+
 // Spawn player at origin above ground
 // Spawn player at center of world - start at tile (0,0) center
 const tileCenter = 100; // Half of tileSize (200/2) to center in first tile
