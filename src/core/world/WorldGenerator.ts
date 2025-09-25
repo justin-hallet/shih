@@ -41,6 +41,20 @@ export class WorldGenerator {
     averageGenerationTime: 0,
   };
 
+  // Global powerup system
+  private globalPowerUpConfig = {
+    maxPerChunk: 3, // Maximum powerups per chunk
+    baseSpawnChance: 0.15, // 15% base chance for powerups in any chunk
+    rarityWeights: new Map([
+      ['ammo', 50], // Most common (50% of spawns)
+      ['shield', 25], // 25% of spawns
+      ['weapon_upgrade', 15], // 15% of spawns
+      ['speed', 8], // 8% of spawns
+      ['life', 2], // Rarest (2% of spawns)
+    ]),
+    debugOverride: 'auto' as 'auto' | 'ammo' | 'shield' | 'weapon_upgrade' | 'speed' | 'life',
+  };
+
   constructor(
     scene: THREE.Scene,
     entityManager: EntityManager,
@@ -230,6 +244,25 @@ export class WorldGenerator {
    */
   public setMovementMode(isStrafeModeEnabled: boolean): void {
     this.isStrafeModeEnabled = isStrafeModeEnabled;
+  }
+
+  /**
+   * Set powerup debug override (affects new chunks only)
+   */
+  public setPowerUpDebugOverride(
+    type: 'auto' | 'ammo' | 'shield' | 'weapon_upgrade' | 'speed' | 'life',
+  ): void {
+    this.globalPowerUpConfig.debugOverride = type;
+    console.log(
+      `🎮 PowerUp Debug Override: ${type === 'auto' ? 'Random (Auto)' : type.toUpperCase()}`,
+    );
+  }
+
+  /**
+   * Get current powerup debug override
+   */
+  public getPowerUpDebugOverride(): string {
+    return this.globalPowerUpConfig.debugOverride;
   }
 
   /**
@@ -705,37 +738,65 @@ export class WorldGenerator {
 
   private spawnPowerUps(
     chunk: WorldChunk,
-    spawnRules: BiomeSpawnRules,
+    _spawnRules: BiomeSpawnRules,
     maxRemaining: number,
   ): number {
     let spawned = 0;
 
+    // Use global powerup system instead of biome-specific rules
+    const config = this.globalPowerUpConfig;
+
     // First check: Should we spawn ANY PowerUps in this chunk?
-    const powerUpSpawnChance = spawnRules.spawnProbabilities.get(EntityType.POWERUP) || 0;
-    if (Math.random() > powerUpSpawnChance || maxRemaining <= 0) {
+    if (Math.random() > config.baseSpawnChance || maxRemaining <= 0) {
       return 0; // No PowerUps for this chunk
     }
 
-    // If we're spawning PowerUps, check each type individually
-    for (const rule of spawnRules.powerUpRules) {
-      if (spawned >= maxRemaining) break;
+    // Determine how many powerups to spawn (1 to maxPerChunk)
+    const maxToSpawn = Math.min(config.maxPerChunk, maxRemaining);
+    const numToSpawn = Math.floor(Math.random() * maxToSpawn) + 1;
 
-      if (Math.random() < rule.probability) {
-        const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
+    for (let i = 0; i < numToSpawn; i++) {
+      const powerUpType = this.selectPowerUpType();
+      const position = this.getRandomPositionInChunk(chunk.coordinate, chunk.heightMap);
 
-        const clampedY = this.clampAboveTerrain(position.x, position.z, position.y + 0.5, 0.25);
-        const powerUp = this.entityManager.spawnPowerUp(rule.type as any, {
-          x: position.x,
-          y: clampedY, // slightly above ground
-          z: position.z,
-        });
+      const clampedY = this.clampAboveTerrain(position.x, position.z, position.y + 0.5, 0.25);
+      this.entityManager.spawnPowerUp(powerUpType as any, {
+        x: position.x,
+        y: clampedY, // slightly above ground
+        z: position.z,
+      });
 
-        spawned++;
-        // No need to track entity in chunk - we'll find it by position when needed
-      }
+      spawned++;
     }
 
     return spawned;
+  }
+
+  // Select powerup type based on rarity weights or debug override
+  private selectPowerUpType(): string {
+    const config = this.globalPowerUpConfig;
+
+    // Check for debug override
+    if (config.debugOverride !== 'auto') {
+      return config.debugOverride;
+    }
+
+    // Use weighted random selection based on rarity
+    const totalWeight = Array.from(config.rarityWeights.values()).reduce(
+      (sum, weight) => sum + weight,
+      0,
+    );
+    let randomValue = Math.random() * totalWeight;
+
+    for (const [type, weight] of config.rarityWeights.entries()) {
+      randomValue -= weight;
+      if (randomValue <= 0) {
+        return type;
+      }
+    }
+
+    // Fallback to ammo if something goes wrong
+    return 'ammo';
   }
 
   private applyContentTemplates(chunk: WorldChunk): void {

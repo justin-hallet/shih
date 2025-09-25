@@ -551,11 +551,20 @@ export class PowerUp extends BaseEntity {
         break;
       }
       case PowerUpSubType.SPEED: {
-        const currentLevel = sceneUser.speedLevel || 1;
-        const boostedLevel = Math.min(5, currentLevel + 1);
-        const originalLevel = currentLevel;
+        // Cancel any existing speed boost timeout
+        if (sceneUser.speedBoostTimeout) {
+          clearTimeout(sceneUser.speedBoostTimeout);
+        }
 
-        // Apply speed boost
+        // Store original speed level if not already boosted
+        if (!sceneUser.originalSpeedLevel) {
+          sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
+        }
+
+        // Apply speed boost: always +1 from original level (not current)
+        const originalLevel = sceneUser.originalSpeedLevel;
+        const boostedLevel = Math.min(5, originalLevel + 1);
+
         sceneUser.speedLevel = boostedLevel;
         const baseSpeed = sceneUser.baseSpeed || 50;
         sceneUser.railsSpeed = baseSpeed * boostedLevel;
@@ -563,10 +572,15 @@ export class PowerUp extends BaseEntity {
 
         // Random duration between 5-10 seconds
         const duration = 5000 + Math.random() * 5000;
-        setTimeout(() => {
+        sceneUser.speedBoostTimeout = setTimeout(() => {
+          // Restore original speed level
           sceneUser.speedLevel = originalLevel;
           sceneUser.railsSpeed = baseSpeed * originalLevel;
           hud?.updateSpeed(originalLevel);
+
+          // Clear boost state
+          sceneUser.speedBoostTimeout = null;
+          sceneUser.originalSpeedLevel = null;
         }, duration);
         break;
       }

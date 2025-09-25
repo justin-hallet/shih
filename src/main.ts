@@ -501,7 +501,8 @@ type Action =
   | 'adjust_edge_threshold'
   | 'adjust_color_levels'
   | 'toggle_debug_panel'
-  | 'toggle_collision_debug';
+  | 'toggle_collision_debug'
+  | 'cycle_powerup_debug';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -550,6 +551,8 @@ const KeyBindings: Record<string, Action> = {
   KeyB: 'adjust_color_levels',
   // Debug panel
   Backquote: 'toggle_debug_panel', // ~ key
+  // PowerUp debug
+  KeyP: 'cycle_powerup_debug', // P key
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -640,6 +643,13 @@ function handleAction(action: Action, isDown: boolean) {
       const enabled = !collisionDebugRenderer.isEnabled();
       collisionDebugRenderer.setEnabled(enabled);
       scene.userData['collisionDebugEnabled'] = enabled;
+    } else if (action === 'cycle_powerup_debug') {
+      // Cycle through powerup debug modes
+      const modes = ['auto', 'ammo', 'shield', 'weapon_upgrade', 'speed', 'life'] as const;
+      const current = worldGenerator.getPowerUpDebugOverride();
+      const currentIndex = modes.indexOf(current as any);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      worldGenerator.setPowerUpDebugOverride(modes[nextIndex]);
     }
   }
 }
@@ -718,12 +728,26 @@ window.addEventListener('keyup', event => {
   if (action) {
     handleAction(action, false);
     if (action === 'speed_up') {
+      // Cancel any active speed boost when manually adjusting speed
+      if (scene.userData['speedBoostTimeout']) {
+        clearTimeout(scene.userData['speedBoostTimeout']);
+        scene.userData['speedBoostTimeout'] = null;
+        scene.userData['originalSpeedLevel'] = null;
+      }
+
       const currentLevel = scene.userData['speedLevel'] || 1;
       const newLevel = Math.min(5, currentLevel + 1);
       scene.userData['speedLevel'] = newLevel;
       scene.userData['railsSpeed'] = getSpeedFromLevel(newLevel);
       hud?.updateSpeed(newLevel);
     } else if (action === 'speed_down') {
+      // Cancel any active speed boost when manually adjusting speed
+      if (scene.userData['speedBoostTimeout']) {
+        clearTimeout(scene.userData['speedBoostTimeout']);
+        scene.userData['speedBoostTimeout'] = null;
+        scene.userData['originalSpeedLevel'] = null;
+      }
+
       const currentLevel = scene.userData['speedLevel'] || 1;
       const newLevel = Math.max(1, currentLevel - 1);
       scene.userData['speedLevel'] = newLevel;
