@@ -558,7 +558,7 @@ const KeyBindings: Record<string, Action> = {
 const actionDown: Partial<Record<Action, boolean>> = {};
 
 // Terrain visualization state
-let showWireframe = true;
+let showWireframe = false;
 let showSurface = true;
 
 // Persist visualization flags on scene so new tiles can read them
@@ -1115,8 +1115,8 @@ function animate() {
         z: player.position.z + fwd.z * 4,
       };
       entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
-      // Give the player a tiny reserve so we don't spawn every frame until pickup
-      (player as any).ammo = 0.5;
+      // Give the player enough ammo for several shots so they can continue fighting
+      (player as any).ammo = 5.0; // 10 shots worth (0.5 per shot)
     }
 
     // Enforce ground collision / constant hover height unless actively flying down

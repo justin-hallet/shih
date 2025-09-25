@@ -63,8 +63,8 @@ export class Player extends BaseEntity {
     // Player stats
     this.maxHealth = 100;
     this.health = this.maxHealth;
-    this.maxAmmo = 999;
-    this.ammo = this.maxAmmo;
+    this.maxAmmo = 250; // Reduced from 999 to match HUD max
+    this.ammo = 0; // Will be set by main.ts initialization
     this.maxShield = 50;
     this.shield = 0;
     this.weaponLevel = 1;
