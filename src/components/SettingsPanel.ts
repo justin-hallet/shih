@@ -474,7 +474,6 @@ export class SettingsPanel {
 
     // Virtual Controller Group
     const virtualControllerGroup = this.createControlGroup('Virtual Controller (Mobile)', [
-      { label: 'Enable Touch Controls', key: 'virtualController', enabled: true },
       { label: 'Left-Handed Layout', key: 'leftHandedControls', enabled: false },
     ]);
 
@@ -870,12 +869,6 @@ export class SettingsPanel {
           this.collisionDebugRenderer.setEnabled(value);
         }
         break;
-      case 'virtualController':
-        if (this.virtualController) {
-          this.virtualController.setEnabled(value);
-        }
-        this.onControlsChange?.(id, value);
-        break;
       case 'leftHandedControls':
         if (this.virtualController) {
           this.virtualController.setLeftHanded(value);
@@ -1006,7 +999,6 @@ export class SettingsPanel {
 
     // Sync virtual controller controls
     if (this.virtualController) {
-      this.updateToggleState('virtualController', this.virtualController.isControllerEnabled());
       this.updateToggleState('leftHandedControls', this.virtualController.isControllerLeftHanded());
     }
   }

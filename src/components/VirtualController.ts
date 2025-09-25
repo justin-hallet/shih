@@ -21,6 +21,8 @@ export class VirtualController {
     this.createJoystick();
     this.createFireButton();
     this.setupEventListeners();
+    // Set initial visibility based on screen size
+    this.updateControllerVisibility();
   }
 
   private createContainer(): void {
@@ -187,18 +189,13 @@ export class VirtualController {
   }
 
   public setEnabled(enabled: boolean): void {
-    this.isEnabled = enabled;
-    this.container.style.display = enabled ? 'block' : 'none';
-
-    // Auto-enable on mobile devices
-    if (enabled) {
-      const isMobile =
-        window.innerWidth <= 768 ||
-        /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-      if (isMobile) {
-        this.container.style.display = 'block';
-      }
+    // Manual override - if explicitly disabled, respect that
+    if (!enabled) {
+      this.isEnabled = false;
+      this.container.style.display = 'none';
+    } else {
+      // If enabled, use automatic mobile/desktop detection
+      this.updateControllerVisibility();
     }
   }
 
@@ -231,14 +228,21 @@ export class VirtualController {
     this.updateLayout();
 
     // Auto-show/hide based on screen size
+    this.updateControllerVisibility();
+  }
+
+  private updateControllerVisibility(): void {
     const isMobile =
       window.innerWidth <= 768 ||
       /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    if (this.isEnabled && isMobile) {
+    // Show on mobile, hide on desktop
+    if (isMobile) {
       this.container.style.display = 'block';
-    } else if (!this.isEnabled) {
+      this.isEnabled = true;
+    } else {
       this.container.style.display = 'none';
+      this.isEnabled = false;
     }
   }
 
