@@ -27,6 +27,61 @@ import './styles/hud.css';
 // eslint-disable-next-line no-console
 console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
 
+// Movement settings
+let movementStrafe = true; // true = strafe mode, false = turn mode
+let invertY = false;
+
+// Layout settings
+let layoutStyle: 'auto' | 'mobile' | 'desktop' = 'auto'; // User override for layout
+
+// Improved mobile/tablet detection
+function isMobileDevice(): boolean {
+  // Check user agent for mobile/tablet indicators
+  const userAgent = navigator.userAgent.toLowerCase();
+  const mobileKeywords = [
+    'mobile',
+    'android',
+    'iphone',
+    'ipad',
+    'ipod',
+    'blackberry',
+    'windows phone',
+    'opera mini',
+    'iemobile',
+    'tablet',
+  ];
+
+  const hasMobileKeyword = mobileKeywords.some(keyword => userAgent.includes(keyword));
+
+  // Check for touch capability
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  // Check if browser is requesting mobile site
+  const requestsMobileSite =
+    userAgent.includes('mobile') || userAgent.includes('mobi') || window.innerWidth <= 768; // Fallback for width
+
+  // Detect tablets specifically (they often don't include 'mobile' in UA)
+  const isTablet =
+    userAgent.includes('tablet') ||
+    userAgent.includes('ipad') ||
+    (userAgent.includes('android') && !userAgent.includes('mobile'));
+
+  return hasMobileKeyword || hasTouch || requestsMobileSite || isTablet;
+}
+
+// Determine if we should use mobile layout
+function shouldUseMobileLayout(): boolean {
+  switch (layoutStyle) {
+    case 'mobile':
+      return true;
+    case 'desktop':
+      return false;
+    case 'auto':
+    default:
+      return isMobileDevice();
+  }
+}
+
 // Create basic Three.js scene for testing
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); // Increased far plane
@@ -282,23 +337,24 @@ const virtualController = new VirtualController({
     // Map joystick input to movement actions
     const threshold = 0.3; // Dead zone threshold
 
-    // Handle horizontal movement (strafe)
+    // Handle horizontal movement (strafe or turn based on setting)
     if (Math.abs(direction.x) > threshold) {
       if (direction.x > 0) {
-        handleAction('strafe_right', true);
-        handleAction('strafe_left', false);
+        handleAction('right_movement', true);
+        handleAction('left_movement', false);
       } else {
-        handleAction('strafe_left', true);
-        handleAction('strafe_right', false);
+        handleAction('left_movement', true);
+        handleAction('right_movement', false);
       }
     } else {
-      handleAction('strafe_left', false);
-      handleAction('strafe_right', false);
+      handleAction('left_movement', false);
+      handleAction('right_movement', false);
     }
 
-    // Handle vertical movement (ascend/descend)
+    // Handle vertical movement (ascend/descend with invert Y support)
     if (Math.abs(direction.y) > threshold) {
-      if (direction.y > 0) {
+      const yUp = invertY ? direction.y > 0 : direction.y < 0;
+      if (yUp) {
         handleAction('ascend', true);
         handleAction('descend', false);
       } else {
@@ -312,8 +368,8 @@ const virtualController = new VirtualController({
   },
   onMoveEnd: () => {
     // Stop all movement when joystick is released
-    handleAction('strafe_left', false);
-    handleAction('strafe_right', false);
+    handleAction('left_movement', false);
+    handleAction('right_movement', false);
     handleAction('ascend', false);
     handleAction('descend', false);
   },
@@ -323,19 +379,50 @@ const virtualController = new VirtualController({
   },
 });
 
-// Auto-enable virtual controller on mobile devices
-const isMobile =
-  window.innerWidth <= 768 ||
-  /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-virtualController.setEnabled(isMobile);
+// Function to update layout and controller based on current settings
+function updateLayoutAndController() {
+  const useMobile = shouldUseMobileLayout();
+
+  // Update virtual controller
+  if (useMobile) {
+    virtualController.setEnabled(true);
+  } else {
+    virtualController.setEnabled(false);
+  }
+
+  // Update HUD layout (CSS will handle the responsive changes)
+  const hudElement = document.getElementById('game-hud');
+  if (hudElement) {
+    if (useMobile) {
+      hudElement.classList.add('mobile-layout');
+      hudElement.classList.remove('desktop-layout');
+    } else {
+      hudElement.classList.add('desktop-layout');
+      hudElement.classList.remove('mobile-layout');
+    }
+  }
+}
+
+// Initial setup
+updateLayoutAndController();
 
 // Connect virtual controller to settings panel
 settingsPanel.setVirtualController(virtualController);
 settingsPanel.setControlsChangeCallback((type: string, enabled: boolean) => {
-  if (type === 'virtualController') {
-    virtualController.setEnabled(enabled);
-  } else if (type === 'leftHandedControls') {
+  if (type === 'leftHandedControls') {
     virtualController.setLeftHanded(enabled);
+  } else if (type === 'movementStrafe') {
+    movementStrafe = enabled;
+  } else if (type === 'invertY') {
+    invertY = enabled;
+  } else if (type === 'forceMobileLayout') {
+    layoutStyle = enabled ? 'mobile' : 'auto';
+    // Trigger layout update
+    updateLayoutAndController();
+  } else if (type === 'forceDesktopLayout') {
+    layoutStyle = enabled ? 'desktop' : 'auto';
+    // Trigger layout update
+    updateLayoutAndController();
   }
 });
 
@@ -391,6 +478,8 @@ worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter)
 type Action =
   | 'ascend'
   | 'descend'
+  | 'left_movement'
+  | 'right_movement'
   | 'turn_left'
   | 'turn_right'
   | 'strafe_left'
@@ -419,19 +508,22 @@ const KeyBindings: Record<string, Action> = {
   // Movement
   KeyW: 'ascend',
   ArrowUp: 'ascend',
+  Numpad8: 'ascend',
   KeyS: 'descend',
   ArrowDown: 'descend',
-  KeyA: 'turn_left',
-  ArrowLeft: 'turn_left',
-  KeyD: 'turn_right',
-  ArrowRight: 'turn_right',
-  KeyQ: 'strafe_left',
-  KeyE: 'strafe_right',
+  Numpad2: 'descend',
+  KeyA: 'left_movement',
+  ArrowLeft: 'left_movement',
+  Numpad4: 'left_movement',
+  KeyD: 'right_movement',
+  ArrowRight: 'right_movement',
+  Numpad6: 'right_movement',
   // Fire
   Space: 'fire',
   Enter: 'fire',
   ShiftLeft: 'fire',
   ShiftRight: 'fire',
+  Numpad5: 'fire',
   // Speed adjust
   Equal: 'speed_up', // '+' (requires Shift on US keyboards)
   NumpadAdd: 'speed_up',
@@ -489,6 +581,7 @@ applyVisualizationToScene();
 let mouseX = 0;
 let isMouseDragging = false;
 let lastMouseX = 0;
+let lastMouseY = 0;
 
 // Keyboard event listeners using bindings
 function handleAction(action: Action, isDown: boolean) {
@@ -634,12 +727,17 @@ window.addEventListener('keyup', event => {
   }
 });
 
-// Mouse drag controls for camera rotation
+// Mouse drag controls for camera rotation and movement
 window.addEventListener('mousedown', event => {
   if (event.button === 0) {
     // Left mouse button
     isMouseDragging = true;
     lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+    event.preventDefault();
+  } else if (event.button === 2) {
+    // Right mouse button - fire
+    handleAction('fire', true);
     event.preventDefault();
   }
 });
@@ -648,16 +746,60 @@ window.addEventListener('mouseup', event => {
   if (event.button === 0) {
     // Left mouse button
     isMouseDragging = false;
+    // Stop movement actions when mouse is released
+    handleAction('left_movement', false);
+    handleAction('right_movement', false);
+    handleAction('ascend', false);
+    handleAction('descend', false);
+  } else if (event.button === 2) {
+    // Right mouse button - stop fire
+    handleAction('fire', false);
   }
 });
 
 window.addEventListener('mousemove', event => {
   if (isMouseDragging) {
     const deltaX = event.clientX - lastMouseX;
+    const deltaY = event.clientY - lastMouseY;
 
-    mouseX += deltaX * 0.005; // Horizontal rotation sensitivity
+    // Horizontal movement based on movement style
+    const horizontalThreshold = 2;
+    if (Math.abs(deltaX) > horizontalThreshold) {
+      if (deltaX > 0) {
+        handleAction('right_movement', true);
+        handleAction('left_movement', false);
+      } else {
+        handleAction('left_movement', true);
+        handleAction('right_movement', false);
+      }
+    } else {
+      handleAction('left_movement', false);
+      handleAction('right_movement', false);
+    }
+
+    // Vertical movement with invert Y support
+    const verticalThreshold = 2;
+    if (Math.abs(deltaY) > verticalThreshold) {
+      const yUp = invertY ? deltaY > 0 : deltaY < 0;
+      if (yUp) {
+        handleAction('ascend', true);
+        handleAction('descend', false);
+      } else {
+        handleAction('descend', true);
+        handleAction('ascend', false);
+      }
+    } else {
+      handleAction('ascend', false);
+      handleAction('descend', false);
+    }
+
+    // Only update camera rotation in turn mode
+    if (!movementStrafe) {
+      mouseX += deltaX * 0.005; // Horizontal rotation sensitivity
+    }
 
     lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
   }
 });
 
@@ -806,18 +948,57 @@ function animate() {
     const terrainHeight = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
     const groundDistance = player.position.y - terrainHeight;
 
-    // Immediate turning left/right (A/Left, D/Right) by adjusting orbit angle (same path as mouse)
+    // Handle left/right movement based on movement style
+    let isStrafing = false;
+    let strafeDirection: 'left' | 'right' | null = null;
+    let isTurning = false;
+    let turnDirection: 'left' | 'right' | null = null;
+
+    if (actionDown['left_movement']) {
+      if (movementStrafe) {
+        // Strafe mode - move sideways
+        const left = new THREE.Vector3(-1, 0, 0);
+        left.applyQuaternion(camera.quaternion);
+        left.multiplyScalar(moveSpeed * deltaTime);
+        player.position.add(left);
+        isStrafing = true;
+        strafeDirection = 'left';
+      } else {
+        // Turn mode - rotate camera
+        mouseX += turnRate * deltaTime;
+        isTurning = true;
+        turnDirection = 'left';
+      }
+    }
+
+    if (actionDown['right_movement']) {
+      if (movementStrafe) {
+        // Strafe mode - move sideways
+        const right = new THREE.Vector3(1, 0, 0);
+        right.applyQuaternion(camera.quaternion);
+        right.multiplyScalar(moveSpeed * deltaTime);
+        player.position.add(right);
+        isStrafing = true;
+        strafeDirection = 'right';
+      } else {
+        // Turn mode - rotate camera
+        mouseX -= turnRate * deltaTime;
+        isTurning = true;
+        turnDirection = 'right';
+      }
+    }
+
+    // Legacy turn/strafe actions (for compatibility)
     if (actionDown['turn_left']) {
       mouseX += turnRate * deltaTime;
+      isTurning = true;
+      turnDirection = 'left';
     }
     if (actionDown['turn_right']) {
       mouseX -= turnRate * deltaTime;
+      isTurning = true;
+      turnDirection = 'right';
     }
-
-    // Strafe (Q/E) and update animation state
-    let isStrafing = false;
-    let strafeDirection: 'left' | 'right' | null = null;
-
     if (actionDown['strafe_left']) {
       const left = new THREE.Vector3(-1, 0, 0);
       left.applyQuaternion(camera.quaternion);
@@ -835,14 +1016,11 @@ function animate() {
       strafeDirection = 'right';
     }
 
-    // Also consider turning as strafing when near ground
+    // Also consider turning as strafing when near ground (for animation)
     if (!isStrafing && groundDistance < 2.0) {
-      if (actionDown['turn_left']) {
+      if (isTurning && turnDirection) {
         isStrafing = true;
-        strafeDirection = 'left';
-      } else if (actionDown['turn_right']) {
-        isStrafing = true;
-        strafeDirection = 'right';
+        strafeDirection = turnDirection;
       }
     }
 
@@ -850,13 +1028,7 @@ function animate() {
     const isAscending = actionDown['ascend'] || false;
     const isDescending = actionDown['descend'] || false;
 
-    // Track turning for banking animation
-    const isTurning = actionDown['turn_left'] || actionDown['turn_right'] || false;
-    const turnDirection = actionDown['turn_left']
-      ? 'left'
-      : actionDown['turn_right']
-        ? 'right'
-        : null;
+    // Use the isTurning and turnDirection from movement handling above
 
     // Update player animation states
     (player as any).setStrafing(isStrafing, strafeDirection);
@@ -1096,6 +1268,9 @@ function handleResize() {
 
   // Update virtual controller for mobile rotation
   virtualController.handleResize();
+
+  // Update layout based on new screen size
+  updateLayoutAndController();
 }
 
 // Handle window resize and orientation changes

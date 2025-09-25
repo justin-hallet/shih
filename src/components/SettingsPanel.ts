@@ -247,6 +247,23 @@ export class SettingsPanel {
     this.container.addEventListener('wheel', e => {
       e.stopPropagation();
     });
+
+    // Add touch event handlers for mobile support
+    this.container.addEventListener('touchstart', e => {
+      e.stopPropagation();
+    });
+
+    this.container.addEventListener('touchend', e => {
+      e.stopPropagation();
+    });
+
+    this.container.addEventListener('touchmove', e => {
+      e.stopPropagation();
+    });
+
+    this.container.addEventListener('touchcancel', e => {
+      e.stopPropagation();
+    });
   }
 
   private createCellShadingSection(): HTMLElement {
@@ -477,8 +494,22 @@ export class SettingsPanel {
       { label: 'Left-Handed Layout', key: 'leftHandedControls', enabled: false },
     ]);
 
+    // Movement Settings Group
+    const movementGroup = this.createControlGroup('Movement Settings', [
+      { label: 'Movement Style: Strafe', key: 'movementStrafe', enabled: true },
+      { label: 'Invert Y Axis', key: 'invertY', enabled: false },
+    ]);
+
+    // Layout Settings Group
+    const layoutGroup = this.createControlGroup('Layout Settings', [
+      { label: 'Force Mobile Layout', key: 'forceMobileLayout', enabled: false },
+      { label: 'Force Desktop Layout', key: 'forceDesktopLayout', enabled: false },
+    ]);
+
     section.appendChild(title);
     section.appendChild(virtualControllerGroup);
+    section.appendChild(movementGroup);
+    section.appendChild(layoutGroup);
 
     return section;
   }
@@ -872,6 +903,28 @@ export class SettingsPanel {
       case 'leftHandedControls':
         if (this.virtualController) {
           this.virtualController.setLeftHanded(value);
+        }
+        this.onControlsChange?.(id, value);
+        break;
+      case 'movementStrafe':
+        // Update movement style - will be handled in main.ts
+        this.onControlsChange?.(id, value);
+        break;
+      case 'invertY':
+        // Update Y axis inversion - will be handled in main.ts
+        this.onControlsChange?.(id, value);
+        break;
+      case 'forceMobileLayout':
+        // Ensure only one layout override is active
+        if (value) {
+          this.updateToggleState('forceDesktopLayout', false);
+        }
+        this.onControlsChange?.(id, value);
+        break;
+      case 'forceDesktopLayout':
+        // Ensure only one layout override is active
+        if (value) {
+          this.updateToggleState('forceMobileLayout', false);
         }
         this.onControlsChange?.(id, value);
         break;

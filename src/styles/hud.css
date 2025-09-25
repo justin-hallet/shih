@@ -141,103 +141,101 @@
 }
 
 /* Mobile Layout - Responsive with CSS Variables */
-@media (max-width: 768px) {
-  .hud-container {
-    /* CSS Variables for consistent spacing */
-    --mobile-spacing-unit: 9vh;
-    --mobile-margin-horizontal: 2vw;
-    --mobile-margin-vertical: 1vh;
-    --mobile-gap-horizontal: 2vw;
+.game-hud.mobile-layout .hud-container {
+  /* CSS Variables for consistent spacing */
+  --mobile-spacing-unit: 9vh;
+  --mobile-margin-horizontal: 2vw;
+  --mobile-margin-vertical: 1vh;
+  --mobile-gap-horizontal: 2vw;
 
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    padding: var(--mobile-margin-vertical) var(--mobile-margin-horizontal);
-    display: block; /* Override grid for mobile */
-  }
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: var(--mobile-margin-vertical) var(--mobile-margin-horizontal);
+  display: block; /* Override grid for mobile */
+}
 
-  .hud-container::before,
-  .hud-container::after {
-    opacity: 0.8;
-  }
+.game-hud.mobile-layout .hud-container::before,
+.game-hud.mobile-layout .hud-container::after {
+  opacity: 0.8;
+}
 
-  /* Mobile positioning - using CSS variables for consistency */
-  .settings-top-row {
-    position: absolute;
-    top: var(--mobile-margin-vertical);
-    left: var(--mobile-margin-horizontal);
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--mobile-gap-horizontal);
-  }
+/* Mobile positioning - using CSS variables for consistency */
+.game-hud.mobile-layout .settings-top-row {
+  position: absolute;
+  top: var(--mobile-margin-vertical);
+  left: var(--mobile-margin-horizontal);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--mobile-gap-horizontal);
+}
 
-  /* Add spacing to TOP score stat within settings row */
-  .settings-top-row .stat {
-    margin-left: 1vw;
-  }
+/* Add spacing to TOP score stat within settings row */
+.game-hud.mobile-layout .settings-top-row .stat {
+  margin-left: 1vw;
+}
 
-  /* Left column - using calculated positions with CSS variables */
-  .ammo-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
-    left: var(--mobile-margin-horizontal);
-  }
+/* Left column - using calculated positions with CSS variables */
+.game-hud.mobile-layout .ammo-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
+  left: var(--mobile-margin-horizontal);
+}
 
-  .weapon-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
-    left: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .weapon-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
+  left: var(--mobile-margin-horizontal);
+}
 
-  .shield-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 3);
-    left: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .shield-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 3);
+  left: var(--mobile-margin-horizontal);
+}
 
-  .lives-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 4);
-    left: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .lives-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 4);
+  left: var(--mobile-margin-horizontal);
+}
 
-  .speed-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 5);
-    left: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .speed-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 5);
+  left: var(--mobile-margin-horizontal);
+}
 
-  /* Right column - aligned with left column using same variables */
-  .score-element {
-    position: absolute;
-    top: var(--mobile-margin-vertical);
-    right: var(--mobile-margin-horizontal);
-  }
+/* Right column - aligned with left column using same variables */
+.game-hud.mobile-layout .score-element {
+  position: absolute;
+  top: var(--mobile-margin-vertical);
+  right: var(--mobile-margin-horizontal);
+}
 
-  .fps-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
-    right: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .fps-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 1);
+  right: var(--mobile-margin-horizontal);
+}
 
-  .stage-element {
-    position: absolute;
-    top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
-    right: var(--mobile-margin-horizontal);
-  }
+.game-hud.mobile-layout .stage-element {
+  position: absolute;
+  top: calc(var(--mobile-margin-vertical) + var(--mobile-spacing-unit) * 2);
+  right: var(--mobile-margin-horizontal);
+}
 
-  /* Minimal stat gaps for mobile - match specification */
-  .stat {
-    gap: 1px;
-  }
+/* Minimal stat gaps for mobile - match specification */
+.game-hud.mobile-layout .stat {
+  gap: 1px;
+}
 
-  /* Remove extra gaps from hud elements on mobile */
-  .hud-element {
-    gap: 0px;
-  }
+/* Remove extra gaps from hud elements on mobile */
+.game-hud.mobile-layout .hud-element {
+  gap: 0px;
 }
 
 /* Settings Button */
