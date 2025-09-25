@@ -34,7 +34,7 @@ export class BiomeManager {
         seed: 12345,
         octaves: 4,
         frequency: 0.01,
-        amplitude: 0.3,
+        amplitude: 0.7, // Increased from 0.3 for more varied desert terrain
         persistence: 0.5,
         lacunarity: 2.0,
       },
@@ -66,7 +66,7 @@ export class BiomeManager {
         seed: 54321,
         octaves: 6,
         frequency: 0.008,
-        amplitude: 0.4,
+        amplitude: 0.8, // Increased from 0.4 for more varied forest valleys
         persistence: 0.6,
         lacunarity: 1.8,
       },
@@ -99,7 +99,7 @@ export class BiomeManager {
         seed: 98765,
         octaves: 8,
         frequency: 0.015,
-        amplitude: 0.6,
+        amplitude: 1.0, // Increased from 0.6 for more dramatic crystal cave terrain
         persistence: 0.4,
         lacunarity: 2.5,
       },
@@ -162,7 +162,7 @@ export class BiomeManager {
         seed: 22222,
         octaves: 5,
         frequency: 0.005,
-        amplitude: 0.2,
+        amplitude: 0.5, // Increased from 0.2 for more varied ice plateaus
         persistence: 0.5,
         lacunarity: 2.0,
       },
@@ -194,7 +194,7 @@ export class BiomeManager {
         seed: 98765,
         octaves: 5,
         frequency: 0.012,
-        amplitude: 0.6,
+        amplitude: 1.2, // Increased from 0.6 for more dramatic lava field mountains
         persistence: 0.7,
         lacunarity: 2.2,
       },
@@ -257,7 +257,7 @@ export class BiomeManager {
         seed: 33333,
         octaves: 7,
         frequency: 0.007,
-        amplitude: 0.5,
+        amplitude: 0.9, // Increased from 0.5 for more varied alien jungle terrain
         persistence: 0.6,
         lacunarity: 1.9,
       },
@@ -289,7 +289,7 @@ export class BiomeManager {
         seed: 77777,
         octaves: 8,
         frequency: 0.006,
-        amplitude: 0.8,
+        amplitude: 1.5, // Increased from 0.8 for towering mountain peaks
         persistence: 0.8,
         lacunarity: 2.5,
       },

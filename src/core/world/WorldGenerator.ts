@@ -474,8 +474,8 @@ export class WorldGenerator {
         // Sample continuous height function at exact world coordinates
         const height = this.getContinuousHeightAt(worldX, worldZ);
 
-        // Normalize height to [0, 1] range for heightmap
-        data[z * resolution + x] = Math.max(0, Math.min(1, (height + 20) / 40));
+        // Normalize height to [0, 1] range for heightmap - expanded range for more dramatic terrain
+        data[z * resolution + x] = Math.max(0, Math.min(1, (height + 50) / 100));
       }
     }
 
@@ -483,7 +483,7 @@ export class WorldGenerator {
       width: resolution,
       height: resolution,
       data,
-      scale: 20, // Reasonable height scale
+      scale: 50, // Increased from 20 for taller peaks and deeper valleys
       offset: 0,
     };
   }
@@ -1194,7 +1194,7 @@ export class WorldGenerator {
   private getContinuousHeightAt(worldX: number, worldZ: number): number {
     // Multi-octave noise for varied terrain
     let height = 0;
-    let amplitude = 10.0;
+    let amplitude = 25.0; // Increased from 10.0 for more dramatic height variation
     let frequency = 0.008;
     const octaves = 4;
     const persistence = 0.55;
@@ -1209,8 +1209,8 @@ export class WorldGenerator {
       frequency *= lacunarity;
     }
 
-    // Add large-scale features
-    height += this.continuousNoise(worldX * 0.0015, worldZ * 0.0015) * 25;
+    // Add large-scale features for dramatic landscape variations
+    height += this.continuousNoise(worldX * 0.0015, worldZ * 0.0015) * 60;
 
     // Add fine detail
     height += this.continuousNoise(worldX * 0.04, worldZ * 0.04) * 2;
