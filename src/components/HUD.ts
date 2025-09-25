@@ -11,7 +11,7 @@ export interface GameState {
   shieldSegments: number; // 0-8
   weaponLevel: number; // 0-5
   ammo: number; // 0-250
-  speed: number; // 5-500
+  speed: number; // 1-5 (speed level)
 }
 
 export class HUD {
@@ -184,17 +184,14 @@ export class HUD {
       }
     }
 
-    // Update speed segments (0-5)
+    // Update speed segments (1-5 levels)
     if (speedSegsEl) {
       speedSegsEl.innerHTML = '';
       const segments = 5;
-      const filled = Math.max(
-        0,
-        Math.min(segments, Math.round((this.gameState.speed / 500) * segments)),
-      );
+      const currentLevel = Math.max(1, Math.min(5, this.gameState.speed));
       for (let i = 0; i < segments; i++) {
         const seg = document.createElement('span');
-        const active = i < filled;
+        const active = i < currentLevel;
         seg.style.display = 'inline-block';
         seg.style.width = '16px';
         seg.style.height = '6px';
@@ -235,8 +232,8 @@ export class HUD {
     this.updateDisplay();
   }
 
-  public updateSpeed(speed: number): void {
-    this.gameState.speed = Math.max(5, Math.min(500, speed));
+  public updateSpeed(speedLevel: number): void {
+    this.gameState.speed = Math.max(1, Math.min(5, speedLevel));
     this.updateDisplay();
   }
 

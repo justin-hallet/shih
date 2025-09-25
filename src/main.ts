@@ -718,9 +718,17 @@ window.addEventListener('keyup', event => {
   if (action) {
     handleAction(action, false);
     if (action === 'speed_up') {
-      scene.userData['railsSpeed'] = Math.min(500, (scene.userData['railsSpeed'] || 50) + 5);
+      const currentLevel = scene.userData['speedLevel'] || 1;
+      const newLevel = Math.min(5, currentLevel + 1);
+      scene.userData['speedLevel'] = newLevel;
+      scene.userData['railsSpeed'] = getSpeedFromLevel(newLevel);
+      hud?.updateSpeed(newLevel);
     } else if (action === 'speed_down') {
-      scene.userData['railsSpeed'] = Math.max(5, (scene.userData['railsSpeed'] || 50) - 5);
+      const currentLevel = scene.userData['speedLevel'] || 1;
+      const newLevel = Math.max(1, currentLevel - 1);
+      scene.userData['speedLevel'] = newLevel;
+      scene.userData['railsSpeed'] = getSpeedFromLevel(newLevel);
+      hud?.updateSpeed(newLevel);
     }
     event.preventDefault();
   }
@@ -820,8 +828,22 @@ const startingShield = 4; // 0-8
 const startingLives = 3; // 1-8
 const startingWeapon = 1; // 1-5 (default 1)
 const startingAmmo = 150; // 0-250
-const startingSpeed = (scene.userData['railsSpeed'] || 50) as number; // current rails speed
-(scene as any).userData['baseRailsSpeed'] = startingSpeed;
+
+// New simplified speed system: 5 levels (1-5)
+// Level 1 = current default speed (50), levels 2-5 are multipliers
+const baseSpeed = 50; // Base speed for level 1
+const startingSpeedLevel = 1; // Default to level 1 (minimum)
+(scene as any).userData['speedLevel'] = startingSpeedLevel;
+(scene as any).userData['baseSpeed'] = baseSpeed;
+
+// Calculate actual speed from level
+function getSpeedFromLevel(level: number): number {
+  return baseSpeed * level;
+}
+
+// Initialize actual speed
+const startingSpeed = getSpeedFromLevel(startingSpeedLevel);
+(scene as any).userData['railsSpeed'] = startingSpeed;
 
 player.shield = startingShield;
 player.maxShield = 8;
@@ -831,7 +853,7 @@ hud?.updateLives(startingLives);
 hud?.updateShieldSegments(startingShield);
 hud?.updateWeaponLevel(startingWeapon);
 hud?.updateAmmo(startingAmmo);
-hud?.updateSpeed(startingSpeed);
+hud?.updateSpeed(startingSpeedLevel);
 
 // Game state tracking
 let frameCount = 0;
@@ -888,7 +910,11 @@ function animate() {
     const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
     if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
     const currentSpeed = scene.userData['railsSpeed'];
-    player.position.addScaledVector(forwardDir, currentSpeed * deltaTime);
+
+    // Set player velocity instead of directly modifying position for smooth movement
+    player.velocity.x = forwardDir.x * currentSpeed;
+    player.velocity.z = forwardDir.z * currentSpeed;
+    // Keep existing Y velocity for vertical movement
 
     // Update player rotation to match movement direction
     (player as any).setRotation(mouseX);
@@ -1214,7 +1240,7 @@ function animate() {
     );
 
     // Update HUD speed readout with current rails speed
-    hud?.updateSpeed((scene.userData['railsSpeed'] || 50) as number);
+    hud?.updateSpeed((scene.userData['speedLevel'] || 1) as number);
     // eslint-disable-next-line no-console
     console.log(`🎯 Entities: ${entityManager.getEntityCount()} total`);
     // eslint-disable-next-line no-console

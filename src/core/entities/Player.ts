@@ -70,8 +70,8 @@ export class Player extends BaseEntity {
     this.weaponLevel = 1;
     this.invulnerableTime = 0;
 
-    // Movement properties
-    this.maxSpeed = 10.0;
+    // Movement properties - increased to accommodate speed levels 1-5 (50-250 units/sec)
+    this.maxSpeed = 300.0; // Allow for speed boosts beyond level 5
     this.acceleration = 20.0;
     this.deceleration = 15.0;
 

@@ -551,14 +551,23 @@ export class PowerUp extends BaseEntity {
         break;
       }
       case PowerUpSubType.SPEED: {
-        const base = sceneUser.baseRailsSpeed || 50;
-        const boosted = Math.min(500, base * 1.5);
-        sceneUser.railsSpeed = boosted;
-        hud?.updateSpeed(boosted);
+        const currentLevel = sceneUser.speedLevel || 1;
+        const boostedLevel = Math.min(5, currentLevel + 1);
+        const originalLevel = currentLevel;
+
+        // Apply speed boost
+        sceneUser.speedLevel = boostedLevel;
+        const baseSpeed = sceneUser.baseSpeed || 50;
+        sceneUser.railsSpeed = baseSpeed * boostedLevel;
+        hud?.updateSpeed(boostedLevel);
+
+        // Random duration between 5-10 seconds
+        const duration = 5000 + Math.random() * 5000;
         setTimeout(() => {
-          sceneUser.railsSpeed = base;
-          hud?.updateSpeed(base);
-        }, 5000);
+          sceneUser.speedLevel = originalLevel;
+          sceneUser.railsSpeed = baseSpeed * originalLevel;
+          hud?.updateSpeed(originalLevel);
+        }, duration);
         break;
       }
       case PowerUpSubType.WEAPON_UPGRADE: {
