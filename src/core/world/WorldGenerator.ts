@@ -28,6 +28,10 @@ export class WorldGenerator {
   private templates: ContentTemplate[];
   private difficultyScaling: DifficultyScaling;
 
+  // Movement optimization
+  private isStrafeModeEnabled: boolean = true;
+  private playerForwardDirection: THREE.Vector3 = new THREE.Vector3(0, 0, -1);
+
   // Performance tracking
   private generationStats = {
     chunksGenerated: 0,
@@ -219,6 +223,20 @@ export class WorldGenerator {
     }
   }
 
+  /**
+   * Update movement mode for chunk culling optimization
+   */
+  public setMovementMode(isStrafeModeEnabled: boolean): void {
+    this.isStrafeModeEnabled = isStrafeModeEnabled;
+  }
+
+  /**
+   * Update player forward direction for chunk culling optimization
+   */
+  public setPlayerForwardDirection(direction: THREE.Vector3): void {
+    this.playerForwardDirection.copy(direction).normalize();
+  }
+
   public update(): void {
     const startTime = Date.now();
 
@@ -264,7 +282,34 @@ export class WorldGenerator {
           Math.pow(chunk.coordinate.z - playerTile.z, 2),
       );
 
-      if (distance > unloadRadius) {
+      let shouldUnload = distance > unloadRadius;
+
+      // Strafe mode optimization: aggressively cull chunks behind the player
+      if (this.isStrafeModeEnabled && !shouldUnload) {
+        // Calculate chunk center in world coordinates
+        const chunkWorldX =
+          chunk.coordinate.x * this.settings.tileSize + this.settings.tileSize / 2;
+        const chunkWorldZ =
+          chunk.coordinate.z * this.settings.tileSize + this.settings.tileSize / 2;
+
+        // Vector from player to chunk center
+        const toChunk = new THREE.Vector3(
+          chunkWorldX - this.streamingState.playerPosition.x,
+          0,
+          chunkWorldZ - this.streamingState.playerPosition.z,
+        );
+
+        // Check if chunk is behind the player (dot product < 0)
+        const dotProduct = toChunk.dot(this.playerForwardDirection);
+
+        // Cull chunks that are significantly behind the player (more than 2 tile distances)
+        // This prevents culling chunks that might still be visible at the edge of view
+        if (dotProduct < -this.settings.tileSize * 2) {
+          shouldUnload = true;
+        }
+      }
+
+      if (shouldUnload) {
         this.streamingState.unloadingQueue.push(chunkId);
       }
     }

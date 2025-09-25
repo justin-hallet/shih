@@ -898,6 +898,10 @@ function animate() {
     const playerPos = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
     worldGenerator.updatePlayerPosition(playerPos);
 
+    // Update world generator with movement mode and forward direction for chunk culling optimization
+    worldGenerator.setMovementMode(movementStrafe);
+    worldGenerator.setPlayerForwardDirection(forwardDir);
+
     // Track distance traveled for scoring
     distanceTraveled += playerPos.distanceTo(lastPlayerPosition);
     lastPlayerPosition.copy(playerPos);
