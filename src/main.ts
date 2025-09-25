@@ -843,9 +843,9 @@ window.addEventListener('contextmenu', event => {
 let lastShotTime = 0;
 const shotCooldown = 0.1; // 10 bullets per second
 
-// Position camera to follow behind player (elevated for world view)
-camera.position.set(0, 8, 12);
-camera.lookAt(0, 0, 0);
+// Position camera to follow behind player (much closer, player lower in frame)
+camera.position.set(0, 3, 5);
+camera.lookAt(0, 3, 0); // Look above origin to position player lower in viewport
 
 // Initialize player stats and HUD (Borderlands-style bottom-left)
 const startingShield = 4; // 0-8
@@ -960,9 +960,9 @@ function animate() {
     lastPlayerPosition.copy(playerPos);
 
     // Manual camera controls with mouse drag rotation
-    // Third-person camera that orbits around player
-    const cameraDistance = 25;
-    const cameraHeight = 10;
+    // Third-person camera that orbits around player (much closer, lower angle)
+    const cameraDistance = 12;
+    const cameraHeight = 4;
 
     // Calculate camera position based on mouse rotation
     const cameraX = player.position.x + Math.sin(mouseX) * cameraDistance;
@@ -970,7 +970,8 @@ function animate() {
     const cameraY = player.position.y + cameraHeight; // keep camera above, pitch not used for motion
 
     camera.position.set(cameraX, cameraY, cameraZ);
-    camera.lookAt(player.position.x, player.position.y, player.position.z);
+    // Look at a point above the player to position player lower in viewport
+    camera.lookAt(player.position.x, player.position.y + 3, player.position.z);
 
     // Check for biome changes
     const currentBiome = biomeManager.getBiomeAt(player.position.x, player.position.z);
