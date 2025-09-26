@@ -77,7 +77,8 @@ export class Projectile extends BaseEntity {
   private initializeByType(): void {
     switch (this.projectileType) {
       case ProjectileSubType.BULLET:
-        this.damage = this.owner === 'player' ? 15 : 10;
+        // Player damage should come from Player entity, enemy damage is random
+        this.damage = this.owner === 'player' ? 15 : 0.5 + Math.random() * 0.5; // Enemy: 0.5-1.0 random
         this.speed = 20.0;
         this.lifetime = 3.0;
         this.collisionBounds = { radius: 0.1 };
@@ -85,7 +86,7 @@ export class Projectile extends BaseEntity {
         break;
 
       case ProjectileSubType.MISSILE:
-        this.damage = this.owner === 'player' ? 40 : 30;
+        this.damage = this.owner === 'player' ? 40 : 0.6 + Math.random() * 0.4; // Enemy: 0.6-1.0 random
         this.speed = 12.0;
         this.lifetime = 8.0;
         this.explosive = true;
@@ -96,7 +97,7 @@ export class Projectile extends BaseEntity {
         break;
 
       case ProjectileSubType.LASER:
-        this.damage = this.owner === 'player' ? 25 : 20;
+        this.damage = this.owner === 'player' ? 25 : 0.5 + Math.random() * 0.5; // Enemy: 0.5-1.0 random
         this.speed = 30.0;
         this.lifetime = 2.0;
         this.piercing = true; // Goes through targets
@@ -105,7 +106,7 @@ export class Projectile extends BaseEntity {
         break;
 
       case ProjectileSubType.PLASMA:
-        this.damage = this.owner === 'player' ? 35 : 25;
+        this.damage = this.owner === 'player' ? 35 : 0.7 + Math.random() * 0.3; // Enemy: 0.7-1.0 random
         this.speed = 8.0;
         this.lifetime = 4.0;
         this.explosive = true;
@@ -115,7 +116,7 @@ export class Projectile extends BaseEntity {
         break;
 
       case ProjectileSubType.FIREBALL:
-        this.damage = this.owner === 'player' ? 50 : 40;
+        this.damage = this.owner === 'player' ? 50 : 0.8 + Math.random() * 0.2; // Enemy: 0.8-1.0 random
         this.speed = 6.0;
         this.lifetime = 6.0;
         this.explosive = true;

@@ -224,14 +224,12 @@ function createPlayButton() {
 
 // Game start function
 function startGame() {
-
-
   // Remove play overlay completely
   const playOverlay = document.getElementById('play-overlay');
   if (playOverlay) {
     playOverlay.remove();
   }
-  
+
   // Request fullscreen on mobile devices
   if (isMobileDevice()) {
     if (document.documentElement.requestFullscreen) {
@@ -249,7 +247,6 @@ function startGame() {
 
   // Start audio/music
   audioManager.playWelcomeSound();
-
 
   // Any other game initialization can go here
   console.log('🎮 Game started!');
@@ -551,7 +548,9 @@ type Action =
   | 'adjust_color_levels'
   | 'toggle_debug_panel'
   | 'toggle_collision_debug'
-  | 'cycle_powerup_debug';
+  | 'cycle_powerup_debug'
+  | 'debug_hurt'
+  | 'debug_kill';
 
 const KeyBindings: Record<string, Action> = {
   // Movement
@@ -602,6 +601,9 @@ const KeyBindings: Record<string, Action> = {
   Backquote: 'toggle_debug_panel', // ~ key
   // PowerUp debug
   KeyP: 'cycle_powerup_debug', // P key
+  // Debug damage/life
+  KeyH: 'debug_hurt', // H key - apply random damage
+  KeyK: 'debug_kill', // K key - remove a life
 };
 
 const actionDown: Partial<Record<Action, boolean>> = {};
@@ -697,6 +699,36 @@ function handleAction(action: Action, isDown: boolean) {
       const currentIndex = modes.indexOf(current as any);
       const nextIndex = (currentIndex + 1) % modes.length;
       worldGenerator.setPowerUpDebugOverride(modes[nextIndex]);
+    } else if (action === 'debug_hurt') {
+      // Apply random damage to player (0.5 to 2.0 damage)
+      if (player) {
+        const randomDamage = 0.5 + Math.random() * 1.5;
+        console.log(`🩸 Debug: Applying ${randomDamage.toFixed(2)} damage to player`);
+        player.takeDamage(randomDamage);
+      }
+    } else if (action === 'debug_kill') {
+      // Remove a life from player (simulate death without going through damage)
+      if (player) {
+        const hud = (scene as any)?.userData?.hud;
+        if (hud) {
+          const currentLives = hud.getGameState?.().lives ?? 0;
+          if (currentLives > 0) {
+            const newLives = currentLives - 1;
+            hud.updateLives?.(newLives);
+            console.log(`💀 Debug: Removed a life. Lives remaining: ${newLives}`);
+
+            // If no lives left, trigger game over
+            if (newLives <= 0) {
+              console.log('💀 Debug: No lives remaining - triggering game over');
+              // Set player health to 0 and trigger death
+              player.health = 0;
+              player.die();
+            }
+          } else {
+            console.log('💀 Debug: No lives to remove');
+          }
+        }
+      }
     }
   }
 }
@@ -819,7 +851,7 @@ camera.position.set(0, 3, 5);
 camera.lookAt(0, 3, 0); // Look above origin to position player lower in viewport
 
 // Initialize player stats and HUD (Borderlands-style bottom-left)
-const startingShield = 4; // 0-8
+const startingHealth = 8; // 0-8 (displayed as shield segments)
 const startingLives = 3; // 1-8
 const startingWeapon = 1; // 1-5 (default 1)
 const startingAmmo = 150; // 0-250
@@ -840,12 +872,11 @@ function getSpeedFromLevel(level: number): number {
 const startingSpeed = getSpeedFromLevel(startingSpeedLevel);
 (scene as any).userData['railsSpeed'] = startingSpeed;
 
-player.shield = startingShield;
-player.maxShield = 8;
+player.health = startingHealth;
 player.weaponLevel = startingWeapon;
 player.ammo = startingAmmo;
 hud?.updateLives(startingLives);
-hud?.updateShieldSegments(startingShield);
+hud?.updateShieldSegments(startingHealth); // Health displayed as shield segments
 hud?.updateWeaponLevel(startingWeapon);
 hud?.updateAmmo(startingAmmo);
 hud?.updateSpeed(startingSpeedLevel);
@@ -903,12 +934,19 @@ function animate() {
 
     // Rails shooter constant forward motion parallel to the floor (yaw only)
     const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
-    if (!(scene.userData['railsSpeed'] > 0)) scene.userData['railsSpeed'] = 50;
-    const currentSpeed = scene.userData['railsSpeed'];
+
+    // Don't reset rails speed if game is over
+    if (!scene.userData['gameOver'] && !(scene.userData['railsSpeed'] > 0)) {
+      scene.userData['railsSpeed'] = 50;
+    }
+    const currentSpeed = scene.userData['railsSpeed'] || 0;
 
     // Set player velocity instead of directly modifying position for smooth movement
-    player.velocity.x = forwardDir.x * currentSpeed;
-    player.velocity.z = forwardDir.z * currentSpeed;
+    // Only move if game is not over
+    if (!scene.userData['gameOver']) {
+      player.velocity.x = forwardDir.x * currentSpeed;
+      player.velocity.z = forwardDir.z * currentSpeed;
+    }
     // Keep existing Y velocity for vertical movement
 
     // Update player rotation to match movement direction

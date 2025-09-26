@@ -57,7 +57,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.GRUNT:
         this.health = 60;
         this.maxHealth = 60;
-        this.attackDamage = 15;
+        this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
         this.attackRange = 2.5;
         this.attackCooldown = 1.5;
         this.animationType = AnimationType.MOVING;
@@ -68,7 +68,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.SOLDIER:
         this.health = 100;
         this.maxHealth = 100;
-        this.attackDamage = 20;
+        this.attackDamage = 0.2 + Math.random() * 0.3; // 0.2-0.5 random damage
         this.attackRange = 4.0;
         this.attackCooldown = 1.0;
         this.animationType = AnimationType.MOVING;
@@ -79,7 +79,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.FLYER:
         this.health = 80;
         this.maxHealth = 80;
-        this.attackDamage = 12;
+        this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
         this.attackRange = 5.0;
         this.attackCooldown = 0.8;
         this.animationType = AnimationType.FLOATING;
@@ -91,7 +91,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.TANK:
         this.health = 300;
         this.maxHealth = 300;
-        this.attackDamage = 40;
+        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss-level)
         this.attackRange = 6.0;
         this.attackCooldown = 2.0;
         this.animationType = AnimationType.MOVING;
@@ -102,7 +102,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.BOSS:
         this.health = 1000;
         this.maxHealth = 1000;
-        this.attackDamage = 75;
+        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
         this.attackRange = 8.0;
         this.attackCooldown = 3.0;
         this.animationType = AnimationType.ATTACKING;
@@ -113,7 +113,7 @@ export class Enemy extends BaseEntity {
       case EnemySubType.DRAGON:
         this.health = 500;
         this.maxHealth = 500;
-        this.attackDamage = 60;
+        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
         this.attackRange = 7.0;
         this.attackCooldown = 1.5;
         this.animationType = AnimationType.FLOATING;
@@ -434,25 +434,8 @@ export class Enemy extends BaseEntity {
   }
 
   protected override onTakeDamage(_damage: number): void {
-    // Visual feedback for damage
-    if (
-      this.mesh &&
-      this.mesh instanceof THREE.Mesh &&
-      this.mesh.material instanceof THREE.MeshBasicMaterial
-    ) {
-      const originalColor = this.mesh.material.color.clone();
-      this.mesh.material.color.setHex(0xff0000);
-
-      setTimeout(() => {
-        if (
-          this.mesh &&
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
-        ) {
-          this.mesh.material.color.copy(originalColor);
-        }
-      }, 150);
-    }
+    // Visual feedback for damage - red silhouette outline
+    this.createDamageOutline();
 
     // Play enemy hit sound
     Enemy.audioManager?.playEnemyHitSound(this.position);
@@ -462,6 +445,24 @@ export class Enemy extends BaseEntity {
 
     // Knockback effect
     this.velocity.z += 0.5; // Push away from player
+  }
+
+  private createDamageOutline(): void {
+    if (!this.mesh || !this.scene) return;
+
+    // Get the outline pass from scene userData
+    const outlinePass = (this.scene as any)?.userData?.outlinePass;
+    if (outlinePass) {
+      // Add enemy mesh to outline pass with red color (same as player damage)
+      outlinePass.addOutlineObject(this.mesh, new THREE.Color(0xff3333));
+
+      // Remove the outline after a short duration
+      setTimeout(() => {
+        if (this.mesh && outlinePass) {
+          outlinePass.removeOutlineObject(this.mesh);
+        }
+      }, 200); // Slightly longer than the original color flash (150ms)
+    }
   }
 
   protected override onDie(): void {

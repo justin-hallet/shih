@@ -11,8 +11,6 @@ export class Player extends BaseEntity {
   // Player-specific properties
   public ammo: number;
   public maxAmmo: number;
-  public shield: number;
-  public maxShield: number;
   public weaponLevel: number;
   public invulnerableTime: number;
 
@@ -60,13 +58,11 @@ export class Player extends BaseEntity {
   constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
-    // Player stats
-    this.maxHealth = 100;
+    // Player stats - health is now 0-8 scale (displayed as shield segments)
+    this.maxHealth = 8;
     this.health = this.maxHealth;
     this.maxAmmo = 250; // Reduced from 999 to match HUD max
     this.ammo = 0; // Will be set by main.ts initialization
-    this.maxShield = 50;
-    this.shield = 0;
     this.weaponLevel = 1;
     this.invulnerableTime = 0;
 
@@ -569,40 +565,181 @@ export class Player extends BaseEntity {
     this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
   }
 
-  public addShield(amount: number): void {
-    this.shield = Math.min(this.maxShield, this.shield + amount);
-  }
-
   public upgradeWeapon(): void {
     this.weaponLevel = Math.min(5, this.weaponLevel + 1);
   }
 
-  // Override damage to handle shield
+  // Calculate projectile damage based on player's weapon level
+  public getProjectileDamage(projectileType: string): number {
+    switch (projectileType) {
+      case 'bullet':
+        return 15; // Base bullet damage
+      case 'missile':
+        return 40; // Base missile damage
+      case 'laser':
+        return 25; // Base laser damage
+      case 'plasma':
+        return 35; // Base plasma damage
+      case 'fireball':
+        return 50; // Base fireball damage
+      default:
+        return 10; // Default damage
+    }
+  }
+
+  // Centralized power-up handling - all power-up logic should be here
+  public powerUp(type: string, amount: number = 1): void {
+    // Get HUD reference from scene
+    const sceneUser = (this.scene as any)?.userData || {};
+    const hud = sceneUser.hud as any;
+
+    switch (type) {
+      case 'ammo':
+        this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
+        hud?.updateAmmo(this.ammo);
+        break;
+
+      case 'health': // Previously called 'shield' but now it's health
+        this.health = Math.min(this.maxHealth, this.health + amount);
+        hud?.updateShieldSegments(this.health);
+        break;
+
+      case 'life':
+        const currentLives = Math.min(8, (hud?.getGameState?.().lives || 0) + amount);
+        hud?.updateLives(currentLives);
+        break;
+
+      case 'speed':
+        // Cancel any existing speed boost timeout
+        if (sceneUser.speedBoostTimeout) {
+          clearTimeout(sceneUser.speedBoostTimeout);
+        }
+
+        // Store original speed level if not already boosted
+        if (!sceneUser.originalSpeedLevel) {
+          sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
+        }
+
+        // Apply speed boost: always +1 from original level (not current)
+        const originalLevel = sceneUser.originalSpeedLevel;
+        const boostedLevel = Math.min(5, originalLevel + amount);
+
+        sceneUser.speedLevel = boostedLevel;
+        const baseSpeed = sceneUser.baseSpeed || 50;
+        sceneUser.railsSpeed = baseSpeed * boostedLevel;
+        hud?.updateSpeed(boostedLevel);
+
+        // Random duration between 5-10 seconds
+        const duration = 5000 + Math.random() * 5000;
+        sceneUser.speedBoostTimeout = setTimeout(() => {
+          // Restore original speed level
+          sceneUser.speedLevel = originalLevel;
+          sceneUser.railsSpeed = baseSpeed * originalLevel;
+          hud?.updateSpeed(originalLevel);
+
+          // Clear boost state
+          sceneUser.speedBoostTimeout = null;
+          sceneUser.originalSpeedLevel = null;
+        }, duration);
+        break;
+
+      case 'weapon':
+        // Cycle levels 1→5, then wrap to 1
+        const nextLevel = (this.weaponLevel % 5) + 1;
+        this.weaponLevel = nextLevel;
+        hud?.updateWeaponLevel(nextLevel);
+        break;
+
+      default:
+        console.warn(`Unknown power-up type: ${type}`);
+    }
+  }
+
+  // Override damage to work directly with health (0-8 scale)
   public override takeDamage(damage: number): void {
     if (this.invulnerableTime > 0) return;
 
     // Play enemy/projectile damage sound
     this.audioManager?.playDamageSound('enemy', this.position);
 
-    let actualDamage = damage;
+    // Damage directly reduces health (clamped to 0-8 range)
+    this.health = Math.max(0, this.health - damage);
 
-    // Shield absorbs damage first
-    if (this.shield > 0) {
-      const shieldAbsorbed = Math.min(this.shield, damage);
-      this.shield -= shieldAbsorbed;
-      actualDamage -= shieldAbsorbed;
-    }
+    // Update HUD to show health as shield segments
+    const sceneUser = (this.scene as any)?.userData || {};
+    const hud = sceneUser.hud as any;
+    hud?.updateShieldSegments?.(this.health);
 
-    if (actualDamage > 0) {
-      super.takeDamage(actualDamage);
-      // Grant brief invulnerability
-      this.invulnerableTime = 1.5;
+    // Grant brief invulnerability
+    this.invulnerableTime = 1.5;
+
+    // Check if health reached 0
+    if (this.health <= 0) {
+      this.die();
     }
   }
 
   protected override onDie(): void {
-    this.animationType = AnimationType.EXPLODING;
+    this.animationType = AnimationType.DYING;
     this.velocity.set(0, 0, 0);
+
+    // Handle player respawn logic
+    this.handlePlayerDeath();
+  }
+
+  private handlePlayerDeath(): void {
+    // Get HUD reference from scene
+    const sceneUser = (this.scene as any)?.userData || {};
+    const hud = sceneUser.hud as any;
+
+    if (hud) {
+      // Reduce life and check for game over
+      const currentLives = hud.getGameState?.().lives ?? 0;
+      const newLives = Math.max(0, currentLives - 1);
+      hud.updateLives?.(newLives);
+
+      if (newLives > 0) {
+        // Player has lives left - respawn after a short delay
+        console.log(`💀 Player died! Lives remaining: ${newLives}`);
+        setTimeout(() => {
+          this.respawnPlayer();
+        }, 2000); // 2 second delay
+      } else {
+        // No lives left AND health is 0 - trigger game over
+        console.log('💀 Game Over! No lives remaining and health is 0.');
+        this.triggerGameOver();
+      }
+    }
+  }
+
+  private triggerGameOver(): void {
+    // Stop rails movement
+    const sceneUser = (this.scene as any)?.userData || {};
+    sceneUser.railsSpeed = 0;
+    sceneUser.gameOver = true;
+
+    // Stop player movement
+    this.velocity.set(0, 0, 0);
+
+    // Keep player in DEAD state (don't respawn)
+    // The game loop should handle game over UI/restart logic
+
+    console.log('🛑 Rails stopped - Game Over!');
+  }
+
+  private respawnPlayer(): void {
+    // Reset player state
+    this.state = EntityState.ACTIVE;
+    this.animationType = AnimationType.IDLE;
+    this.health = this.maxHealth; // Reset to full health (8 segments)
+    this.invulnerableTime = 3.0; // 3 seconds of invulnerability after respawn
+
+    // Update HUD to show full health as shield segments
+    const sceneUser = (this.scene as any)?.userData || {};
+    const hud = sceneUser.hud as any;
+    hud?.updateShieldSegments?.(this.health);
+
+    console.log('🔄 Player respawned!');
   }
 
   protected override onDestroy(): void {
@@ -613,27 +750,12 @@ export class Player extends BaseEntity {
   public override onCollision(other: BaseEntity): void {
     if (this.state !== EntityState.ACTIVE) return;
 
-    // Colliding with obstacles reduces shield, then lives
+    // Colliding with obstacles reduces health directly
     if (other.type === EntityType.OBSTACLE) {
       if (this.invulnerableTime > 0) return; // brief i-frames
-      this.invulnerableTime = 0.5; // half a second of invulnerability between hits
 
-      // Play obstacle collision sound
-      this.audioManager?.playDamageSound('obstacle', this.position);
-
-      const hud: any = (this.scene as any)?.userData?.hud;
-
-      if (this.shield > 0) {
-        this.shield = Math.max(0, this.shield - 1);
-        hud?.updateShieldSegments?.(this.shield);
-      } else {
-        // Reduce life and restore shield to max (8 segments default)
-        const currentLives = hud?.getGameState?.().lives ?? 0;
-        const newLives = Math.max(0, currentLives - 1);
-        hud?.updateLives?.(newLives);
-        this.shield = Math.min(this.maxShield || 8, 8);
-        hud?.updateShieldSegments?.(this.shield);
-      }
+      // Take 1 damage from obstacle collision
+      this.takeDamage(1);
     }
   }
 

@@ -526,72 +526,29 @@ export class PowerUp extends BaseEntity {
     return false;
   }
 
-  // Apply power-up effect to player
+  // Apply power-up effect to player - now uses centralized player.powerUp() method
   public applyToPlayer(player: IEntity): void {
-    const sceneUser = (this.scene as any)?.userData || {};
-    const hud = sceneUser.hud as any;
+    const playerEntity = player as any;
+
+    // Map power-up types to player.powerUp() method calls
     switch (this.powerUpType) {
-      case PowerUpSubType.AMMO: {
-        (player as any).ammo = Math.min(250, ((player as any).ammo || 0) + (this.value || 10));
-        hud?.updateAmmo((player as any).ammo);
+      case PowerUpSubType.AMMO:
+        playerEntity.powerUp('ammo', this.value || 10);
         break;
-      }
-      case PowerUpSubType.SHIELD: {
-        const maxShield = (player as any).maxShield || 8;
-        (player as any).shield = Math.min(
-          maxShield,
-          ((player as any).shield || 0) + (this.value || 1),
-        );
-        hud?.updateShieldSegments((player as any).shield);
+      case PowerUpSubType.SHIELD:
+        playerEntity.powerUp('health', this.value || 1); // Shield now restores health
         break;
-      }
-      case PowerUpSubType.LIFE: {
-        const currentLives = Math.min(8, (hud?.getGameState?.().lives || 0) + 1);
-        hud?.updateLives(currentLives);
+      case PowerUpSubType.LIFE:
+        playerEntity.powerUp('life', 1);
         break;
-      }
-      case PowerUpSubType.SPEED: {
-        // Cancel any existing speed boost timeout
-        if (sceneUser.speedBoostTimeout) {
-          clearTimeout(sceneUser.speedBoostTimeout);
-        }
-
-        // Store original speed level if not already boosted
-        if (!sceneUser.originalSpeedLevel) {
-          sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
-        }
-
-        // Apply speed boost: always +1 from original level (not current)
-        const originalLevel = sceneUser.originalSpeedLevel;
-        const boostedLevel = Math.min(5, originalLevel + 1);
-
-        sceneUser.speedLevel = boostedLevel;
-        const baseSpeed = sceneUser.baseSpeed || 50;
-        sceneUser.railsSpeed = baseSpeed * boostedLevel;
-        hud?.updateSpeed(boostedLevel);
-
-        // Random duration between 5-10 seconds
-        const duration = 5000 + Math.random() * 5000;
-        sceneUser.speedBoostTimeout = setTimeout(() => {
-          // Restore original speed level
-          sceneUser.speedLevel = originalLevel;
-          sceneUser.railsSpeed = baseSpeed * originalLevel;
-          hud?.updateSpeed(originalLevel);
-
-          // Clear boost state
-          sceneUser.speedBoostTimeout = null;
-          sceneUser.originalSpeedLevel = null;
-        }, duration);
+      case PowerUpSubType.SPEED:
+        playerEntity.powerUp('speed', 1);
         break;
-      }
-      case PowerUpSubType.WEAPON_UPGRADE: {
-        const current = (player as any).weaponLevel || 0;
-        // Cycle levels 1→5, then wrap to 1
-        const nextLevel = (current % 5) + 1;
-        (player as any).weaponLevel = nextLevel;
-        hud?.updateWeaponLevel(nextLevel);
+      case PowerUpSubType.WEAPON_UPGRADE:
+        playerEntity.powerUp('weapon', 1);
         break;
-      }
+      default:
+        console.warn(`Unknown power-up type: ${this.powerUpType}`);
     }
   }
 
