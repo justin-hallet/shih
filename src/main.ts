@@ -91,6 +91,10 @@ function shouldUseMobileLayout(): boolean {
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); // Increased far plane
 
+// Add fog to mask world edges at chunk unload distance (calculated later)
+const fogColor = 0x1e3c72; // Match clear color for seamless blending
+// Fog parameters will be set after procedural settings are defined
+
 // Initialize camera controller
 const cameraController = new CameraController(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -98,11 +102,14 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x1e3c72); // Space Harrier blue gradient
+renderer.setClearColor(fogColor); // Use same color as fog // Space Harrier blue gradient
 
 // Postprocessing: SSAO + Cell shading + Outline + Bloom composer
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+// Ensure fog is rendered in the post-processing pipeline
+renderPass.clear = true;
+composer.addPass(renderPass);
 
 // SSAO pass for realistic ambient occlusion
 const ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
@@ -334,7 +341,7 @@ let gameStage = 1;
 // Initialize Entity System with higher limits for infinite world
 const entityManager = new EntityManager({
   scene,
-  maxEntities: 35000, // Increased for expanded terrain coverage (1089 chunks × ~30 entities each)
+  maxEntities: 35000, // High limit for safety (49 chunks × ~30 entities = ~1470 max expected)
 });
 
 if (appDiv) {
@@ -428,9 +435,11 @@ settingsPanel.setCameraModeChangeCallback((mode: string) => {
 (scene as any).userData['collisionDebugRenderer'] = collisionDebugRenderer;
 
 // Configure procedural generation settings
+const CHUNK_GRID_SIZE = 11; // 11x11 grid of chunks around player for better coverage
+const TILE_SIZE = 200; // Size of each tile in world units
 const proceduralSettings: ProceduralGenerationSettings = {
   worldRadius: 5000, // 5km radius world
-  tileSize: 200, // Larger 200-unit tiles for proper screen coverage
+  tileSize: TILE_SIZE, // Larger 200-unit tiles for proper screen coverage
 
   biomeNoiseParams: {
     seed: 12345,
@@ -449,9 +458,10 @@ const proceduralSettings: ProceduralGenerationSettings = {
     cull: 1500, // Remove beyond 1500 units
   },
 
-  preloadDistance: 1000, // 1000 ÷ 200 = 5 tile radius for proper coverage
-  unloadDistance: 1500, // Unload chunks 1500 units away (ORIGINAL SETTINGS)
-  maxLoadedChunks: 121, // (5×2+1)² = 11×11 = 121 chunks for complete coverage
+  // All chunk loading parameters calculated from grid size with extra buffer
+  preloadDistance: Math.floor(CHUNK_GRID_SIZE / 2) * TILE_SIZE, // Grid radius * tileSize = 5 * 200 = 1000
+  unloadDistance: Math.floor(CHUNK_GRID_SIZE / 2) * TILE_SIZE + 3 * TILE_SIZE, // Preload + 3 tile buffer = 1600
+  maxLoadedChunks: CHUNK_GRID_SIZE * CHUNK_GRID_SIZE, // 11 * 11 = 121 chunks
 
   terrainResolution: 65, // 65x65 heightmap per tile (for 64x64 subdivisions)
   detailDensity: 1.0, // Normal detail density
@@ -460,8 +470,23 @@ const proceduralSettings: ProceduralGenerationSettings = {
   contentDensity: 1.2, // 20% more content
 
   generateAsync: true,
-  maxGenerationTime: 32, // Allow 32ms per frame for faster terrain generation
+  maxGenerationTime: 50, // Balanced generation time for smooth 60fps performance
 };
+
+// Configure fog to mask world edges at chunk boundaries
+const fogNear = proceduralSettings.preloadDistance * 0.9; // Start fog at 90% of preload distance (900)
+const fogFar = proceduralSettings.unloadDistance; // Full fog at chunk unload distance (1600)
+scene.fog = new THREE.Fog(fogColor, fogNear, fogFar);
+
+// Debug chunk loading parameters
+console.log(`🗺️ Chunk Config: Grid=${CHUNK_GRID_SIZE}x${CHUNK_GRID_SIZE}, TileSize=${TILE_SIZE}`);
+console.log(
+  `📏 Preload: ${proceduralSettings.preloadDistance} units (${Math.ceil(proceduralSettings.preloadDistance / TILE_SIZE)} tiles)`,
+);
+console.log(
+  `📤 Unload: ${proceduralSettings.unloadDistance} units (${Math.ceil(proceduralSettings.unloadDistance / TILE_SIZE)} tiles)`,
+);
+console.log(`📦 Max chunks: ${proceduralSettings.maxLoadedChunks}`);
 
 // Initialize Procedural World Generation System
 const biomeManager = new BiomeManager();

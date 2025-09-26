@@ -32,7 +32,7 @@ export class WorldGenerator {
   private isStrafeModeEnabled: boolean = true;
   private playerForwardDirection: THREE.Vector3 = new THREE.Vector3(0, 0, -1);
   private lastCullTime: number = 0;
-  private cullCooldown: number = 2000; // Only cull chunks every 2 seconds to prevent thrashing
+  private cullCooldown: number = 500; // Cull chunks every 0.5 seconds for smoother streaming
 
   // Performance tracking
   private generationStats = {
@@ -369,9 +369,15 @@ export class WorldGenerator {
     if (this.streamingState.loadedChunks.size >= this.settings.maxLoadedChunks) return;
 
     const maxTime = this.settings.maxGenerationTime;
+    const maxChunksPerFrame = 3; // Limit chunks per frame for smoother generation
     const startTime = Date.now();
+    let chunksProcessed = 0;
 
-    while (this.streamingState.loadingQueue.length > 0 && Date.now() - startTime < maxTime) {
+    while (
+      this.streamingState.loadingQueue.length > 0 &&
+      Date.now() - startTime < maxTime &&
+      chunksProcessed < maxChunksPerFrame
+    ) {
       const coordinate = this.streamingState.loadingQueue.shift();
       if (!coordinate) break;
       const chunk = this.generateChunk(coordinate);
@@ -379,6 +385,7 @@ export class WorldGenerator {
       const chunkId = this.tileCoordinateToId(coordinate);
       this.streamingState.loadedChunks.set(chunkId, chunk);
       this.streamingState.totalChunksLoaded++;
+      chunksProcessed++;
     }
   }
 
