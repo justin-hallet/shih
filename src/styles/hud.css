@@ -14,7 +14,7 @@
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 1001;
   font-family: 'Orbitron', monospace;
   color: white;
   text-shadow:
@@ -254,7 +254,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
   pointer-events: auto;
-  z-index: 1001;
+  z-index: 1002;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;

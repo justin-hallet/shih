@@ -784,22 +784,6 @@ window.addEventListener('keyup', event => {
   }
 });
 
-// Right mouse button for firing
-window.addEventListener('mousedown', event => {
-  if (event.button === 2) {
-    // Right mouse button - fire
-    handleAction('fire', true);
-    event.preventDefault();
-  }
-});
-
-window.addEventListener('mouseup', event => {
-  if (event.button === 2) {
-    // Right mouse button - stop fire
-    handleAction('fire', false);
-  }
-});
-
 // Prevent context menu on right click
 window.addEventListener('contextmenu', event => {
   event.preventDefault();

@@ -14,6 +14,7 @@ export class VirtualController {
   private isEnabled: boolean = false;
   private isLeftHanded: boolean = false;
   private isFirePressed: boolean = false;
+  private isFirePressedByJoystick: boolean = false;
   private isDesktopMode: boolean = false;
   private joystickZone!: HTMLElement;
 
@@ -30,7 +31,7 @@ export class VirtualController {
       this.updateLayout();
       if (this.joystickManager) {
         this.joystickManager.destroy();
-        this.recreateJoystick();
+        this.createNippleJSInstance();
       }
     }, 100);
   }
@@ -97,38 +98,67 @@ export class VirtualController {
 
     this.joystickManager = nipplejs.create(config);
 
+
     // Handle joystick events
-    this.joystickManager.on('start', () => {
+    this.joystickManager.on('start', (_evt: any, _data: any) => {
       if (this.joystickZone) {
         this.joystickZone.style.background = 'rgba(255, 102, 0, 0.2)';
         this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.6)';
       }
+      // If _data.origEvent.button is right or middle, set isFirePressed to true
+      if (_data !== undefined && _data.origEvent !== undefined && _data.origEvent.button !== undefined) {
+        if (_data.origEvent.button === 2 || _data.origEvent.button === 3) {
+          this.isFirePressed = true;
+          this.isFirePressedByJoystick = true;
+        }
+        if (this.events.onFire) {
+          this.events.onFire(this.isFirePressed);
+        }
+      }
     });
 
-    this.joystickManager.on('move', (_evt: any, data: any) => {
+    this.joystickManager.on('move', (_evt: any, _data: any) => {
       if (this.events.onMove) {
         // Convert nipple data to normalized coordinates
-        const angle = data.angle.radian;
-        const force = Math.min(data.force, 1.0); // Clamp force to max 1.0
+        const angle = _data.angle.radian;
+        const force = Math.min(_data.force, 1.0); // Clamp force to max 1.0
         const x = Math.cos(angle) * force;
         const y = Math.sin(angle) * force;
 
         this.events.onMove({
           x: x,
           y: -y, // Invert Y for game coordinates (up is negative)
-          angle: data.angle.degree,
+          angle: _data.angle.degree,
           force: force,
         });
+      // If _data.origEvent.button is right or middle, set isFirePressed to true
+      if (_data !== undefined && _data.origEvent !== undefined && _data.origEvent.button !== undefined) {
+        if (_data.origEvent.button === 2 || _data.origEvent.button === 3) {
+          this.isFirePressed = true;
+          this.isFirePressedByJoystick = true;
+        }
+        if (this.events.onFire) {
+          this.events.onFire(this.isFirePressed);
+        }
+      }
       }
     });
 
-    this.joystickManager.on('end', () => {
+    this.joystickManager.on('end', (_evt: any, _data: any) => {
       if (this.joystickZone) {
         this.joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
         this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
       }
       if (this.events.onMoveEnd) {
         this.events.onMoveEnd();
+      }
+
+      if (this.isFirePressedByJoystick) {
+        this.isFirePressedByJoystick = false;
+        this.isFirePressed = false;
+        if (this.events.onFire) {
+          this.events.onFire(false);
+        }
       }
     });
   }
@@ -271,60 +301,6 @@ export class VirtualController {
     }
   }
 
-  private recreateJoystick(): void {
-    const joystickZone = document.getElementById('joystick-zone');
-    if (!joystickZone) return;
-
-    // Recreate NippleJS joystick with proper initialization
-    this.joystickManager = nipplejs.create({
-      zone: joystickZone,
-      mode: 'static',
-      position: { left: '50%', top: '50%' },
-      color: '#ff6600',
-      size: 80,
-      threshold: 0.1,
-      fadeTime: 150,
-      multitouch: false,
-      maxNumberOfNipples: 1,
-      dataOnly: false,
-      restJoystick: true,
-      restOpacity: 0.6,
-      lockX: false,
-      lockY: false,
-    });
-
-    // Re-setup joystick events
-    this.joystickManager.on('start', () => {
-      joystickZone.style.background = 'rgba(255, 102, 0, 0.2)';
-      joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.6)';
-    });
-
-    this.joystickManager.on('move', (_evt: any, data: any) => {
-      if (this.events.onMove) {
-        // Convert nipple data to normalized coordinates
-        const angle = data.angle.radian;
-        const force = Math.min(data.force, 1.0); // Clamp force to max 1.0
-        const x = Math.cos(angle) * force;
-        const y = Math.sin(angle) * force;
-
-        this.events.onMove({
-          x: x,
-          y: -y, // Invert Y for intuitive up/down
-          angle: angle,
-          force: force,
-        });
-      }
-    });
-
-    this.joystickManager.on('end', () => {
-      this.joystickZone.style.background = 'rgba(255, 255, 255, 0.1)';
-      this.joystickZone.style.borderColor = 'rgba(255, 102, 0, 0.3)';
-      if (this.events.onMoveEnd) {
-        this.events.onMoveEnd();
-      }
-    });
-  }
-
   public handleResize(): void {
     // Update layout on orientation change
     this.updateLayout();
@@ -335,7 +311,7 @@ export class VirtualController {
     // Recreate joystick to ensure proper initialization after resize
     if (this.joystickManager && this.isEnabled) {
       this.joystickManager.destroy();
-      this.recreateJoystick();
+      this.createNippleJSInstance();
     }
   }
 
