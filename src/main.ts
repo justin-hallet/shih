@@ -25,6 +25,7 @@ import { AudioManager } from './core/AudioManager';
 import { PowerUp } from './core/entities/PowerUp';
 import { Enemy } from './core/entities/Enemy';
 import { GameOverlay } from './components/GameOverlay';
+import { ScoreManager } from './core/ScoreManager';
 import './styles/hud.css';
 import './styles/overlay.css';
 
@@ -296,7 +297,10 @@ function resetGame() {
   // 5. Reset AudioManager - clear timeouts and stop sounds
   audioManager.reset();
 
-  // 6. Reset main game state
+  // 6. Reset ScoreManager
+  scoreManager.reset();
+
+  // 7. Reset main game state
   resetMainGameState(initialPosition);
 
   console.log('✅ Game reset complete!');
@@ -313,7 +317,6 @@ function resetMainGameState(initialPosition: { x: number; y: number; z: number }
   scene.userData['railsSpeed'] = getSpeedFromLevel(startingSpeedLevel);
 
   // Reset game state tracking
-  gameScore = 0;
   gameStage = 1;
   distanceTraveled = 0;
   frameCount = 0;
@@ -340,7 +343,6 @@ renderer.domElement.style.height = '100vh';
 
 // Initialize HUD overlay
 let hud: HUD | null = null;
-let gameScore = 0;
 let gameStage = 1;
 
 // Initialize Entity System with higher limits for infinite world
@@ -356,8 +358,29 @@ if (appDiv) {
 // Initialize Audio Manager
 const audioManager = new AudioManager();
 
+// Initialize Score Manager
+const scoreManager = new ScoreManager();
+
+// Connect score manager to HUD
+if (hud) {
+  // Set initial top score
+  hud.updateScore(0, scoreManager.getTopScore());
+
+  scoreManager.setOnScoreUpdate((score, event) => {
+    hud.updateScore(score, scoreManager.getTopScore());
+
+    // Optional: Log scoring events for debugging
+    if (event.type === 'enemy_kill' && event.details?.enemyType) {
+      console.log(`💀 Enemy kill: ${event.details.enemyType} (+${event.points} points)`);
+    }
+  });
+}
+
 // Set audio manager for Player class
 Player.setAudioManager(audioManager);
+
+// Set score manager for Enemy class
+Enemy.setScoreManager(scoreManager);
 
 // Set game over callback for Player class
 Player.setGameOverCallback(handleGameOver);
@@ -377,7 +400,10 @@ Player.setOnRespawnCallback(() => {
 
 // Initialize Game Overlay
 const gameOverlay = new GameOverlay({
-  onStateChange: (newState, oldState) => {
+  onStateChange: (newState, _oldState) => {
+    // Update score manager game state
+    scoreManager.setGamePlaying(newState === 'playing');
+
     if (newState === 'start') {
       resetGame();
       // Trigger welcome sound when entering "start" state
@@ -386,7 +412,6 @@ const gameOverlay = new GameOverlay({
       // Handle game over logic
       audioManager.stopTheme();
     }
-    // Note: oldState parameter is available but not currently used
   },
   onPlayButtonClick: () => {
     startGame();
@@ -459,7 +484,7 @@ settingsPanel.setCameraModeChangeCallback((mode: string) => {
 (scene as any).userData['collisionDebugRenderer'] = collisionDebugRenderer;
 
 // Configure procedural generation settings
-const CHUNK_GRID_SIZE = 11; // 11x11 grid of chunks around player for better coverage
+const CHUNK_GRID_SIZE = 7; //  grid of chunks around player for better coverage
 const TILE_SIZE = 200; // Size of each tile in world units
 const proceduralSettings: ProceduralGenerationSettings = {
   worldRadius: 5000, // 5km radius world
@@ -1099,7 +1124,14 @@ function animate() {
     worldGenerator.setPlayerForwardDirection(forwardDir);
 
     // Track distance traveled for scoring
-    distanceTraveled += playerPos.distanceTo(lastPlayerPosition);
+    const frameDistance = playerPos.distanceTo(lastPlayerPosition);
+    distanceTraveled += frameDistance;
+
+    // Add distance-based score (1 point per unit)
+    if (frameDistance > 0) {
+      scoreManager.addDistanceScore(frameDistance);
+    }
+
     lastPlayerPosition.copy(playerPos);
 
     // Update camera controller with mouse input and let it handle positioning
@@ -1326,13 +1358,7 @@ function animate() {
 
   // Update HUD based on actual gameplay events
   if (hud) {
-    // Update score based on distance traveled and biome exploration
-    if (frameCount % 60 === 0) {
-      const distanceScore = Math.floor(distanceTraveled * 10);
-      const explorationBonus = gameStage * 500; // Bonus for discovering new biomes
-      gameScore = distanceScore + explorationBonus;
-      hud.updateScore(gameScore);
-    }
+    // Score is now managed by ScoreManager and updated automatically via callbacks
 
     // FPS update roughly once per second
     if (fpsAccumulator - fpsLastReport >= 1.0) {

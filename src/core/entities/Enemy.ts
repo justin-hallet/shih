@@ -23,9 +23,16 @@ export class Enemy extends BaseEntity {
 
   // Audio manager reference
   private static audioManager?: any;
+  
+  // Score manager reference
+  private static scoreManager?: any;
 
   public static setAudioManager(audioManager: any): void {
     Enemy.audioManager = audioManager;
+  }
+  
+  public static setScoreManager(scoreManager: any): void {
+    Enemy.scoreManager = scoreManager;
   }
 
   constructor(
@@ -471,6 +478,9 @@ export class Enemy extends BaseEntity {
 
     // Play enemy death sound
     Enemy.audioManager?.playEnemyDeathSound(this.position);
+
+    // Add score for enemy kill
+    Enemy.scoreManager?.addEnemyKillScore(this.enemyType);
 
     // Boss death effects
     if (this.enemyType === EnemySubType.BOSS || this.enemyType === EnemySubType.DRAGON) {

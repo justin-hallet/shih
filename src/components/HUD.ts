@@ -21,7 +21,7 @@ export class HUD {
 
   constructor(parentElement: HTMLElement) {
     this.gameState = {
-      topScore: 1710570, // Classic high score from the image
+      topScore: 0, // Will be set by ScoreManager
       currentScore: 0,
       lives: 3,
       stage: 1,
@@ -204,10 +204,10 @@ export class HUD {
   }
 
   // Update game state methods
-  public updateScore(score: number): void {
-    this.gameState.currentScore = score;
-    if (score > this.gameState.topScore) {
-      this.gameState.topScore = score;
+  public updateScore(currentScore: number, topScore?: number): void {
+    this.gameState.currentScore = currentScore;
+    if (topScore !== undefined) {
+      this.gameState.topScore = topScore;
     }
     this.updateDisplay();
   }
