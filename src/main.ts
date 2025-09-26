@@ -322,6 +322,9 @@ function resetMainGameState(initialPosition: { x: number; y: number; z: number }
   lastPlayerPosition.y = initialPosition.y;
   lastPlayerPosition.z = initialPosition.z;
 
+  // Reset player distance above terrain
+  playerDistanceAbove = HOVER_HEIGHT;
+
   // Reset mouse rotation
   mouseX = 0;
 }
@@ -498,8 +501,12 @@ const worldGenerator = new WorldGenerator(scene, entityManager, proceduralSettin
 // Spawn player at origin above ground
 // Spawn player at center of world - start at tile (0,0) center
 const tileCenter = 100; // Half of tileSize (200/2) to center in first tile
-const HOVER_HEIGHT = 2.0; // desired constant height above terrain when not flying vertically
+const HOVER_HEIGHT = 2.0; // default hover height above terrain
 const MIN_FLOOR_CLEARANCE = 0.5; // minimal clearance when flying down toward the floor
+const MAX_FLIGHT_HEIGHT = 150; // maximum height player can fly (absolute world height)
+
+// Player's desired distance above terrain
+let playerDistanceAbove = HOVER_HEIGHT;
 const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
 const player = entityManager.spawnPlayer({
   x: tileCenter,
@@ -1207,18 +1214,18 @@ function animate() {
     (player as any).setVerticalMovement(isAscending, isDescending);
     (player as any).setTurning(isTurning, turnDirection);
 
-    // Up/down (W/Up and S/Down)
+    // Up/down (W/Up and S/Down) - adjust desired distance above terrain
     if (actionDown['ascend']) {
-      player.position.y += flySpeed * deltaTime;
+      playerDistanceAbove += flySpeed * deltaTime;
+      // Cap at max flight height
+      const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
+      const maxDistanceAbove = MAX_FLIGHT_HEIGHT - terrainY;
+      playerDistanceAbove = Math.min(playerDistanceAbove, maxDistanceAbove);
     }
     if (actionDown['descend']) {
-      const terrainYForDescend = worldGenerator.getTerrainHeightAt(
-        player.position.x,
-        player.position.z,
-      );
-      const minAllowedY = terrainYForDescend + MIN_FLOOR_CLEARANCE;
-      const nextY = player.position.y - flySpeed * deltaTime;
-      player.position.y = Math.max(nextY, minAllowedY);
+      playerDistanceAbove -= flySpeed * deltaTime;
+      // Don't go below minimum clearance
+      playerDistanceAbove = Math.max(playerDistanceAbove, MIN_FLOOR_CLEARANCE);
     }
 
     // If ammo has reached 0, spawn an ammo power-up ahead of the player
@@ -1237,20 +1244,9 @@ function animate() {
       (player as any).ammo = 5.0; // 10 shots worth (0.5 per shot)
     }
 
-    // Enforce ground collision / constant hover height unless actively flying down
+    // Every frame: maintain desired distance above terrain
     const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
-    const desiredY = terrainY + HOVER_HEIGHT;
-    const isPressingDown = !!actionDown['descend'];
-    // Never allow below floor clearance
-    const minClearanceY = terrainY + MIN_FLOOR_CLEARANCE;
-    if (player.position.y < minClearanceY) {
-      player.position.y = minClearanceY;
-    }
-
-    // If not actively flying down, maintain hover height
-    if (!isPressingDown && player.position.y < desiredY) {
-      player.position.y = desiredY;
-    }
+    player.position.y = terrainY + playerDistanceAbove;
 
     // Kill projectiles that hit the floor
     const projectiles = entityManager.getEntitiesByType(EntityType.PROJECTILE) as any[];
@@ -1259,25 +1255,6 @@ function animate() {
       if (p.position.y <= groundY + 0.05) {
         p.die?.();
       }
-    }
-
-    // Log player position for debugging
-    const playerTileX = Math.floor(player.position.x / 200);
-    const playerTileZ = Math.floor(player.position.z / 200);
-
-    // UPDATE HUD WITH MANUAL CONTROL INFO
-    const stageElement = document.getElementById('stage');
-    if (stageElement) {
-      const currentModel = (player as any).getCurrentModelName();
-      stageElement.innerHTML = `
-        MANUAL FLIGHT<br>
-        POS: (${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})<br>
-        TILE: (${playerTileX}, ${playerTileZ})<br>
-        MODEL: ${currentModel.toUpperCase()}<br>
-        CONTROLS: WASD + Q/E or Space/Shift + M=Model ~=Debug<br>
-        DISPLAY: O=Wireframe(${showWireframe ? 'ON' : 'OFF'}) F=Surface(${showSurface ? 'ON' : 'OFF'})<br>
-        CELL SHADING: C=Toggle(${cellShadingPass.enabled ? 'ON' : 'OFF'}) V=Edges B=Colors
-      `;
     }
   }
 
