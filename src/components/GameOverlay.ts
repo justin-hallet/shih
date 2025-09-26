@@ -192,4 +192,9 @@ export class GameOverlay {
   public isVisible(): boolean {
     return this.currentState !== 'playing' && this.overlayElement.style.display !== 'none';
   }
+
+  // Public method to trigger play button functionality (for keyboard shortcuts)
+  public triggerPlay(): void {
+    this.handlePlayButtonClick();
+  }
 }

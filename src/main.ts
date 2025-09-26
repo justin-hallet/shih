@@ -897,6 +897,14 @@ function getPowerUpOutlineColor(powerUpType: PowerUpType): THREE.Color | null {
 }
 
 window.addEventListener('keydown', event => {
+  // Check if we're on desktop and the game overlay is in 'new' state (showing play button)
+  if (!isMobileDevice() && gameOverlay.getState() === 'new') {
+    // Any keypress should trigger the play button on desktop
+    gameOverlay.triggerPlay();
+    event.preventDefault();
+    return;
+  }
+
   const action = KeyBindings[event.code];
   if (action) {
     handleAction(action, true);
