@@ -201,6 +201,63 @@ if (appDiv) {
   appDiv.style.padding = '0';
 }
 
+// Create Play button overlay
+function createPlayButton() {
+  const playOverlay = document.createElement('div');
+  playOverlay.className = 'play-overlay';
+  playOverlay.id = 'play-overlay';
+
+  const playButton = document.createElement('button');
+  playButton.className = 'play-button';
+  playButton.textContent = 'PLAY ▶';
+
+  playOverlay.appendChild(playButton);
+  document.body.appendChild(playOverlay);
+
+  // Handle play button click
+  playButton.addEventListener('click', () => {
+    startGame();
+  });
+
+  return playOverlay;
+}
+
+// Game start function
+function startGame() {
+
+
+  // Remove play overlay completely
+  const playOverlay = document.getElementById('play-overlay');
+  if (playOverlay) {
+    playOverlay.remove();
+  }
+  
+  // Request fullscreen on mobile devices
+  if (isMobileDevice()) {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn('Fullscreen request failed:', err);
+      });
+    } else if ((document.documentElement as any).webkitRequestFullscreen) {
+      (document.documentElement as any).webkitRequestFullscreen();
+    } else if ((document.documentElement as any).mozRequestFullScreen) {
+      (document.documentElement as any).mozRequestFullScreen();
+    } else if ((document.documentElement as any).msRequestFullscreen) {
+      (document.documentElement as any).msRequestFullscreen();
+    }
+  }
+
+  // Start audio/music
+  audioManager.playWelcomeSound();
+
+
+  // Any other game initialization can go here
+  console.log('🎮 Game started!');
+}
+
+// Create the play button on page load
+const playOverlay = createPlayButton();
+
 // Style the canvas to fill the screen
 renderer.domElement.style.display = 'block';
 renderer.domElement.style.width = '100vw';
@@ -451,42 +508,6 @@ settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) 
     // Trigger layout update
     updateLayoutAndController();
   }
-});
-
-// Mobile fullscreen handling
-let hasRequestedFullscreen = false;
-
-function requestFullscreenOnMobile() {
-  const isMobile =
-    window.innerWidth <= 768 ||
-    /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  // Only request fullscreen on actual mobile devices, not desktop
-  if (isMobile && !hasRequestedFullscreen) {
-    hasRequestedFullscreen = true;
-
-    // Request fullscreen only on mobile
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {
-        // Fullscreen failed, continue anyway
-      });
-    } else if ((document.documentElement as any).webkitRequestFullscreen) {
-      (document.documentElement as any).webkitRequestFullscreen();
-    } else if ((document.documentElement as any).mozRequestFullScreen) {
-      (document.documentElement as any).mozRequestFullScreen();
-    } else if ((document.documentElement as any).msRequestFullscreen) {
-      (document.documentElement as any).msRequestFullscreen();
-    }
-  } else if (!isMobile) {
-    // Mark as requested on desktop to prevent future attempts
-    hasRequestedFullscreen = true;
-  }
-}
-
-// Add first interaction listeners for fullscreen
-const firstInteractionEvents = ['touchstart', 'touchend', 'mousedown', 'keydown'];
-firstInteractionEvents.forEach(eventType => {
-  document.addEventListener(eventType, requestFullscreenOnMobile, { once: true });
 });
 
 // Set up audio manager

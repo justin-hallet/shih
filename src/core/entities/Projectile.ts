@@ -206,7 +206,7 @@ export class Projectile extends BaseEntity {
     this.updateCollisionBoundsFromMesh();
 
     // Store the base collision radius for growth scaling
-    this.baseCollisionRadius = this.collisionBounds.radius;
+    this.baseCollisionRadius = this.collisionBounds.radius * 2.0;
 
     // Apply outline effect for glow
     this.applyOutlineEffect();
