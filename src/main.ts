@@ -17,6 +17,7 @@ import { VirtualController } from './components/VirtualController';
 import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
+import { Player } from './core/entities/Player';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
 import { EntityType, PowerUpType, ProjectileSubType } from './core/types';
 import { CameraController } from './core/CameraController';
@@ -353,6 +354,12 @@ if (appDiv) {
 
 // Initialize Audio Manager
 const audioManager = new AudioManager();
+
+// Set audio manager for Player class
+Player.setAudioManager(audioManager);
+
+// Set game over callback for Player class
+Player.setGameOverCallback(handleGameOver);
 
 // Initialize Game Overlay
 const gameOverlay = new GameOverlay({
@@ -825,26 +832,8 @@ function handleAction(action: Action, isDown: boolean) {
     } else if (action === 'debug_kill') {
       // Remove a life from player (simulate death without going through damage)
       if (player) {
-        const hud = (scene as any)?.userData?.hud;
-        if (hud) {
-          const currentLives = hud.getGameState?.().lives ?? 0;
-          if (currentLives > 0) {
-            const newLives = currentLives - 1;
-            hud.updateLives?.(newLives);
-            console.log(`💀 Debug: Removed a life. Lives remaining: ${newLives}`);
-
-            // If no lives left, trigger game over
-            if (newLives <= 0) {
-              console.log('💀 Debug: No lives remaining - triggering game over');
-              // Set player health to 0 and trigger death
-              player.health = 0;
-              player.die();
-              handleGameOver();
-            }
-          } else {
-            console.log('💀 Debug: No lives to remove');
-          }
-        }
+        console.log('💀 Debug: Removing a life from player');
+        player.powerUp('life', -1);
       }
     }
   }

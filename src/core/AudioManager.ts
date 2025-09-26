@@ -164,12 +164,22 @@ export class AudioManager {
 
     // Enemy death sound - high priority, always heard
     'enemy-death': {
-      file: '/src/assets/audio/death.mp3',
+      file: '/src/assets/audio/enemy-death.mp3',
       volume: 1.8,
       spatial: true,
       loop: false,
       category: 'sfx',
       priority: 8,
+      maxInstances: 2,
+    },
+
+    'player-death': {
+      file: '/src/assets/audio/player-death.mp3',
+      volume: 1.8,
+      spatial: true,
+      loop: false,
+      category: 'sfx',
+      priority: 10,
       maxInstances: 2,
     },
 
@@ -404,6 +414,13 @@ export class AudioManager {
     if (!this.isInitialized) return;
 
     this.playSound('enemy-death', position);
+  }
+
+  // Play player death sound
+  public playPlayerDeathSound(position?: THREE.Vector3): void {
+    if (!this.isInitialized) return;
+
+    this.playSound('player-death', position);
   }
 
   private playAfterInitialized(sound: string): void {

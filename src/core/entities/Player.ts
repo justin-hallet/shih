@@ -16,6 +16,8 @@ export class Player extends BaseEntity {
 
   // Audio manager reference
   private audioManager?: any;
+  private static audioManager?: any;
+  private static gameOverCallback?: () => void;
 
   // Visual effects
   private hasOutlineEffect: boolean = false;
@@ -61,6 +63,16 @@ export class Player extends BaseEntity {
     // Initialize with default values
     this.reset();
     this.createMesh();
+  }
+
+  // Static method to set audio manager for all Player instances
+  public static setAudioManager(audioManager: any): void {
+    Player.audioManager = audioManager;
+  }
+
+  // Static method to set game over callback
+  public static setGameOverCallback(callback: () => void): void {
+    Player.gameOverCallback = callback;
   }
 
   /**
@@ -645,6 +657,7 @@ export class Player extends BaseEntity {
   }
 
   // Centralized power-up handling - all power-up logic should be here
+  // Supports both positive and negative amounts
   public powerUp(type: string, amount: number = 1): void {
     // Get HUD reference from scene
     const sceneUser = (this.scene as any)?.userData || {};
@@ -652,59 +665,90 @@ export class Player extends BaseEntity {
 
     switch (type) {
       case 'ammo':
-        this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
+        this.ammo = Math.max(0, Math.min(this.maxAmmo, this.ammo + amount));
         hud?.updateAmmo(this.ammo);
         break;
 
       case 'health': // Previously called 'shield' but now it's health
-        this.health = Math.min(this.maxHealth, this.health + amount);
+        this.health = Math.max(0, Math.min(this.maxHealth, this.health + amount));
         hud?.updateShieldSegments(this.health);
+
+        // If health reaches 0, trigger death
+        if (this.health <= 0) {
+          this.die();
+        }
         break;
 
       case 'life':
-        const currentLives = Math.min(8, (hud?.getGameState?.().lives || 0) + amount);
-        hud?.updateLives(currentLives);
+        const currentLives = hud?.getGameState?.().lives || 0;
+        const newLives = Math.max(0, Math.min(8, currentLives + amount));
+        hud?.updateLives(newLives);
+
+        // If losing a life (negative amount), play death sound and check for game over
+        if (amount < 0) {
+          // Play player death sound
+          if (Player.audioManager) {
+            Player.audioManager.playPlayerDeathSound(this.position);
+          }
+
+          console.log(`💀 Lost a life! Lives remaining: ${newLives}`);
+
+          // If no lives left, trigger game over
+          if (newLives <= 0) {
+            console.log('💀 Game Over! No lives remaining - triggering game over...');
+            this.triggerGameOver();
+          }
+        }
         break;
 
       case 'speed':
-        // Cancel any existing speed boost timeout
-        if (sceneUser.speedBoostTimeout) {
-          clearTimeout(sceneUser.speedBoostTimeout);
+        // Only handle positive speed boosts for now
+        if (amount > 0) {
+          // Cancel any existing speed boost timeout
+          if (sceneUser.speedBoostTimeout) {
+            clearTimeout(sceneUser.speedBoostTimeout);
+          }
+
+          // Store original speed level if not already boosted
+          if (!sceneUser.originalSpeedLevel) {
+            sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
+          }
+
+          // Apply speed boost: always +1 from original level (not current)
+          const originalLevel = sceneUser.originalSpeedLevel;
+          const boostedLevel = Math.min(5, originalLevel + amount);
+
+          sceneUser.speedLevel = boostedLevel;
+          const baseSpeed = sceneUser.baseSpeed || 50;
+          sceneUser.railsSpeed = baseSpeed * boostedLevel;
+          hud?.updateSpeed(boostedLevel);
+
+          // Random duration between 5-10 seconds
+          const duration = 5000 + Math.random() * 5000;
+          sceneUser.speedBoostTimeout = setTimeout(() => {
+            // Restore original speed level
+            sceneUser.speedLevel = originalLevel;
+            sceneUser.railsSpeed = baseSpeed * originalLevel;
+            hud?.updateSpeed(originalLevel);
+
+            // Clear boost state
+            sceneUser.speedBoostTimeout = null;
+            sceneUser.originalSpeedLevel = null;
+          }, duration);
         }
-
-        // Store original speed level if not already boosted
-        if (!sceneUser.originalSpeedLevel) {
-          sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
-        }
-
-        // Apply speed boost: always +1 from original level (not current)
-        const originalLevel = sceneUser.originalSpeedLevel;
-        const boostedLevel = Math.min(5, originalLevel + amount);
-
-        sceneUser.speedLevel = boostedLevel;
-        const baseSpeed = sceneUser.baseSpeed || 50;
-        sceneUser.railsSpeed = baseSpeed * boostedLevel;
-        hud?.updateSpeed(boostedLevel);
-
-        // Random duration between 5-10 seconds
-        const duration = 5000 + Math.random() * 5000;
-        sceneUser.speedBoostTimeout = setTimeout(() => {
-          // Restore original speed level
-          sceneUser.speedLevel = originalLevel;
-          sceneUser.railsSpeed = baseSpeed * originalLevel;
-          hud?.updateSpeed(originalLevel);
-
-          // Clear boost state
-          sceneUser.speedBoostTimeout = null;
-          sceneUser.originalSpeedLevel = null;
-        }, duration);
         break;
 
       case 'weapon':
-        // Cycle levels 1→5, then wrap to 1
-        const nextLevel = (this.weaponLevel % 5) + 1;
-        this.weaponLevel = nextLevel;
-        hud?.updateWeaponLevel(nextLevel);
+        if (amount > 0) {
+          // Cycle levels 1→5, then wrap to 1
+          const nextLevel = (this.weaponLevel % 5) + 1;
+          this.weaponLevel = nextLevel;
+          hud?.updateWeaponLevel(nextLevel);
+        } else {
+          // For negative amounts, decrease weapon level
+          this.weaponLevel = Math.max(1, this.weaponLevel + amount);
+          hud?.updateWeaponLevel(this.weaponLevel);
+        }
         break;
 
       default:
@@ -747,28 +791,21 @@ export class Player extends BaseEntity {
   }
 
   private handlePlayerDeath(): void {
-    // Get HUD reference from scene
+    // Use centralized powerUp system to handle life loss
+    this.powerUp('life', -1);
+
+    // If player still has lives, respawn after delay
     const sceneUser = (this.scene as any)?.userData || {};
     const hud = sceneUser.hud as any;
+    const remainingLives = hud?.getGameState?.().lives ?? 0;
 
-    if (hud) {
-      // Reduce life and check for game over
-      const currentLives = hud.getGameState?.().lives ?? 0;
-      const newLives = Math.max(0, currentLives - 1);
-      hud.updateLives?.(newLives);
-
-      if (newLives > 0) {
-        // Player has lives left - respawn after a short delay
-        console.log(`💀 Player died! Lives remaining: ${newLives}`);
-        setTimeout(() => {
-          this.respawnPlayer();
-        }, 2000); // 2 second delay
-      } else {
-        // No lives left AND health is 0 - trigger game over
-        console.log('💀 Game Over! No lives remaining and health is 0.');
-        this.triggerGameOver();
-      }
+    if (remainingLives > 0) {
+      // Player has lives left - respawn after a short delay
+      setTimeout(() => {
+        this.respawnPlayer();
+      }, 2000); // 2 second delay
     }
+    // Game over logic is now handled in powerUp('life', -1)
   }
 
   private triggerGameOver(): void {
@@ -783,7 +820,10 @@ export class Player extends BaseEntity {
     this.velocity.z = 0;
 
     // Keep player in DEAD state (don't respawn)
-    // The game loop should handle game over UI/restart logic
+    // Call the main game over function
+    if (Player.gameOverCallback) {
+      Player.gameOverCallback();
+    }
 
     console.log('🛑 Rails stopped - Game Over!');
   }
