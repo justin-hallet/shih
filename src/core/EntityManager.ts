@@ -207,6 +207,21 @@ export class EntityManager {
     this.entityCount = 0;
   }
 
+  /**
+   * Reset entity manager by removing all entities except specified ones
+   */
+  public reset(preserveEntities: IEntity[] = []): void {
+    const preserveIds = new Set(preserveEntities.map(e => e.id));
+
+    // Remove all entities except preserved ones
+    const allEntities = Array.from(this.entities.values());
+    for (const entity of allEntities) {
+      if (!preserveIds.has(entity.id)) {
+        this.remove(entity.id);
+      }
+    }
+  }
+
   // Find nearest entity of type to position
   public findNearestEntity(
     position: { x: number; y: number; z: number },

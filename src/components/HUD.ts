@@ -246,6 +246,29 @@ export class HUD {
     return { ...this.gameState };
   }
 
+  /**
+   * Reset HUD to initial game state
+   */
+  public reset(initialValues: {
+    lives: number;
+    health: number;
+    weaponLevel: number;
+    ammo: number;
+    speedLevel: number;
+    score?: number;
+    stage?: number;
+  }): void {
+    this.gameState.lives = initialValues.lives;
+    this.gameState.shieldSegments = initialValues.health;
+    this.gameState.weaponLevel = initialValues.weaponLevel;
+    this.gameState.ammo = initialValues.ammo;
+    this.gameState.speed = initialValues.speedLevel;
+    this.gameState.currentScore = initialValues.score ?? 0;
+    this.gameState.stage = initialValues.stage ?? 1;
+
+    this.updateDisplay();
+  }
+
   public updateFPS(fps: number): void {
     const fpsEl = document.getElementById('fps-value');
     if (fpsEl) fpsEl.textContent = fps.toString();

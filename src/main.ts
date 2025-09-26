@@ -18,18 +18,14 @@ import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
-import {
-  EntityType,
-  PowerUpType,
-  PowerUpSubType,
-  ProjectileSubType,
-  CameraMode,
-} from './core/types';
+import { EntityType, PowerUpType, ProjectileSubType } from './core/types';
 import { CameraController } from './core/CameraController';
 import { AudioManager } from './core/AudioManager';
 import { PowerUp } from './core/entities/PowerUp';
 import { Enemy } from './core/entities/Enemy';
+import { GameOverlay } from './components/GameOverlay';
 import './styles/hud.css';
+import './styles/overlay.css';
 
 // eslint-disable-next-line no-console
 console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
@@ -201,34 +197,10 @@ if (appDiv) {
   appDiv.style.padding = '0';
 }
 
-// Create Play button overlay
-function createPlayButton() {
-  const playOverlay = document.createElement('div');
-  playOverlay.className = 'play-overlay';
-  playOverlay.id = 'play-overlay';
-
-  const playButton = document.createElement('button');
-  playButton.className = 'play-button';
-  playButton.textContent = 'PLAY ▶';
-
-  playOverlay.appendChild(playButton);
-  document.body.appendChild(playOverlay);
-
-  // Handle play button click
-  playButton.addEventListener('click', () => {
-    startGame();
-  });
-
-  return playOverlay;
-}
-
 // Game start function
 function startGame() {
-  // Remove play overlay completely
-  const playOverlay = document.getElementById('play-overlay');
-  if (playOverlay) {
-    playOverlay.remove();
-  }
+  // Transition to "start" state (shows "GET READY!" animation)
+  gameOverlay.setState('start');
 
   // Request fullscreen on mobile devices
   if (isMobileDevice()) {
@@ -245,15 +217,109 @@ function startGame() {
     }
   }
 
-  // Start audio/music
-  audioManager.playWelcomeSound();
+  // Start theme music (welcome sound is triggered by state change event)
+  audioManager.playTheme();
 
   // Any other game initialization can go here
   console.log('🎮 Game started!');
 }
 
-// Create the play button on page load
-const playOverlay = createPlayButton();
+// Game over function
+function handleGameOver() {
+  // Set game over flag
+  scene.userData['gameOver'] = true;
+
+  // Stop player movement
+  scene.userData['railsSpeed'] = 0;
+
+  // Transition to game over state
+  gameOverlay.setState('gameover');
+
+  audioManager.playGameover();
+
+  console.log('💀 Game Over!');
+}
+
+/**
+ * Main reset function - orchestrates all component resets with proper separation of concerns
+ */
+function resetGame() {
+  console.log('🔄 Resetting game...');
+
+  // Calculate initial player position
+  const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
+  const initialPosition = {
+    x: tileCenter,
+    y: initialTerrainY + HOVER_HEIGHT,
+    z: tileCenter,
+  };
+
+  // 1. Reset EntityManager - remove all entities except player
+  if (player) {
+    entityManager.reset([player]);
+  }
+
+  // 2. Reset Player with starting values and position
+  if (player) {
+    player.reset({
+      health: startingHealth,
+      weaponLevel: startingWeapon,
+      ammo: startingAmmo,
+      position: initialPosition,
+    });
+  }
+
+  // 3. Reset HUD with starting values
+  if (hud) {
+    hud.reset({
+      lives: startingLives,
+      health: startingHealth,
+      weaponLevel: startingWeapon,
+      ammo: startingAmmo,
+      speedLevel: startingSpeedLevel,
+      score: 0,
+      stage: 1,
+    });
+  }
+
+  // 4. Reset WorldGenerator - repopulate chunks with fresh entities
+  worldGenerator.reset();
+
+  // 5. Reset AudioManager - clear timeouts and stop sounds
+  audioManager.reset();
+
+  // 6. Reset main game state
+  resetMainGameState(initialPosition);
+
+  console.log('✅ Game reset complete!');
+}
+
+/**
+ * Reset main.ts specific game state variables
+ */
+function resetMainGameState(initialPosition: { x: number; y: number; z: number }) {
+  // Reset game flags
+  scene.userData['gameOver'] = false;
+  scene.userData['speedLevel'] = startingSpeedLevel;
+  scene.userData['railsSpeed'] = getSpeedFromLevel(startingSpeedLevel);
+
+  // Reset game state tracking
+  gameScore = 0;
+  gameStage = 1;
+  distanceTraveled = 0;
+  frameCount = 0;
+  lastBiome = null;
+
+  // Reset player tracking position
+  lastPlayerPosition.x = initialPosition.x;
+  lastPlayerPosition.y = initialPosition.y;
+  lastPlayerPosition.z = initialPosition.z;
+
+  // Reset mouse rotation
+  mouseX = 0;
+}
+
+// Game overlay is already initialized above
 
 // Style the canvas to fill the screen
 renderer.domElement.style.display = 'block';
@@ -277,6 +343,24 @@ if (appDiv) {
 
 // Initialize Audio Manager
 const audioManager = new AudioManager();
+
+// Initialize Game Overlay
+const gameOverlay = new GameOverlay({
+  onStateChange: (newState, oldState) => {
+    if (newState === 'start') {
+      resetGame();
+      // Trigger welcome sound when entering "start" state
+      audioManager.playWelcome();
+    } else if (newState === 'gameover') {
+      // Handle game over logic
+      audioManager.stopTheme();
+    }
+    // Note: oldState parameter is available but not currently used
+  },
+  onPlayButtonClick: () => {
+    startGame();
+  },
+});
 
 // Initialize Settings Panel
 // Initialize collision debug renderer
@@ -723,6 +807,7 @@ function handleAction(action: Action, isDown: boolean) {
               // Set player health to 0 and trigger death
               player.health = 0;
               player.die();
+              handleGameOver();
             }
           } else {
             console.log('💀 Debug: No lives to remove');

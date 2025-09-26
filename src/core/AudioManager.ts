@@ -52,6 +52,9 @@ export class AudioManager {
   private maxConcurrentSounds: number = 8; // Maximum sounds playing at once
   private currentlyPlaying: Set<string> = new Set(); // Track currently playing sounds
 
+  // Track timeouts for cleanup
+  private activeTimeouts: Set<number> = new Set();
+
   // Sound action mappings with volumes and settings
   private readonly soundActions: Record<string, SoundAction> = {
     // Shooting sounds - low priority, queued processing
@@ -236,6 +239,15 @@ export class AudioManager {
       priority: 9,
       maxInstances: 1,
     },
+    gameover: {
+      file: '/src/assets/audio/game-over.mp3',
+      volume: 0.8,
+      spatial: false,
+      loop: false,
+      category: 'sfx',
+      priority: 9,
+      maxInstances: 1,
+    },
   };
 
   constructor() {
@@ -246,10 +258,6 @@ export class AudioManager {
   private setupUserInteractionListener(): void {
     const handleFirstInteraction = () => {
       this.hasUserInteracted = true;
-      // User interaction detected, starting welcome sequence
-
-      // Start the welcome sequence
-      this.startWelcomeSequence();
 
       // Remove the listeners since we only need this once
       document.removeEventListener('click', handleFirstInteraction);
@@ -261,88 +269,6 @@ export class AudioManager {
     document.addEventListener('click', handleFirstInteraction);
     document.addEventListener('keydown', handleFirstInteraction);
     document.addEventListener('touchstart', handleFirstInteraction);
-  }
-
-  private startWelcomeSequence(): void {
-    if (!this.isInitialized) {
-      // If not initialized yet, try again in a short while
-      setTimeout(() => this.startWelcomeSequence(), 100);
-      return;
-    }
-
-    // Start theme music
-    this.playTheme();
-
-    // Play welcome sound overlayed
-    this.playWelcome();
-
-    // Show "Get Ready!" message
-    this.showGetReadyMessage();
-  }
-
-  private showGetReadyMessage(): void {
-    // Create the "Get Ready!" overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'get-ready-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 20000;
-      pointer-events: none;
-      font-family: 'Courier New', monospace;
-      font-size: 6rem;
-      font-weight: bold;
-      color: #00ccff;
-      text-shadow: 
-        -2px -2px 0 #000000,
-        2px -2px 0 #000000,
-        -2px 2px 0 #000000,
-        2px 2px 0 #000000,
-        0 0 10px #00ccff,
-        0 0 20px #00ccff;
-      text-align: center;
-      animation: getReadyPulse 2s ease-in-out;
-    `;
-
-    overlay.textContent = 'GET READY!';
-
-    // Add CSS animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes getReadyPulse {
-        0% { 
-          opacity: 0; 
-          transform: scale(0.5); 
-        }
-        50% { 
-          opacity: 1; 
-          transform: scale(1.1); 
-        }
-        100% { 
-          opacity: 0; 
-          transform: scale(1); 
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    document.body.appendChild(overlay);
-
-    // Remove the overlay after animation
-    setTimeout(() => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-      if (style.parentNode) {
-        style.parentNode.removeChild(style);
-      }
-    }, 2000);
   }
 
   private async initializeAudio(): Promise<void> {
@@ -480,16 +406,18 @@ export class AudioManager {
     this.playSound('enemy-death', position);
   }
 
-  // Play background theme
-  public playTheme(): void {
+  private playAfterInitialized(sound: string): void {
     if (!this.isInitialized) {
-      setTimeout(() => this.playTheme(), 500);
+      const timeoutId = window.setTimeout(() => this.playAfterInitialized(sound), 500);
+      this.activeTimeouts.add(timeoutId);
       return;
     }
 
-    if (!this.hasUserInteracted) return;
-
-    this.playSound('theme-music');
+    this.playSound(sound);
+  }
+  // Play background theme
+  public playTheme(): void {
+    this.playAfterInitialized('theme-music');
   }
 
   // Stop background theme
@@ -502,20 +430,21 @@ export class AudioManager {
 
   // Play welcome sound
   public playWelcome(): void {
-    if (!this.isInitialized) return;
-    this.playSound('welcome');
+    this.playAfterInitialized('welcome');
   }
 
-  // Force start theme music (useful for manual triggers)
-  public forceStartTheme(): void {
-    this.hasUserInteracted = true;
-    this.playTheme();
-  }
+  public playGameover(): void {
+    this.playAfterInitialized('gameover');
 
-  // Manually trigger the welcome sequence
-  public triggerWelcomeSequence(): void {
-    this.hasUserInteracted = true;
-    this.startWelcomeSequence();
+    // Auto-fade after 2.8 seconds (before 3s animation ends)
+    const timeoutId = window.setTimeout(() => {
+      const sound = this.sounds.get('gameover');
+      if (sound && sound.playing()) {
+        sound.fade(sound.volume(), 0, 200);
+      }
+      this.activeTimeouts.delete(timeoutId);
+    }, 2800);
+    this.activeTimeouts.add(timeoutId);
   }
 
   // Add sound to queue for processing
@@ -787,8 +716,41 @@ export class AudioManager {
     });
   }
 
+  /**
+   * Reset audio manager state for game restart
+   * Clears timeouts, stops sounds, and resets audio queues
+   */
+  public reset(): void {
+    // Clear all active timeouts
+    for (const timeoutId of this.activeTimeouts) {
+      clearTimeout(timeoutId);
+    }
+    this.activeTimeouts.clear();
+
+    // Stop all currently playing sounds
+    for (const sound of this.sounds.values()) {
+      if (sound.playing()) {
+        sound.stop();
+      }
+    }
+
+    // Clear audio queues and tracking
+    this.soundQueue.length = 0;
+    this.currentlyPlaying.clear();
+    this.activeInstances.clear();
+
+    // Reset processing timer
+    this.lastProcessTime = 0;
+
+    // Note: Don't reset volume settings or initialization state
+    // as these should persist across game resets
+  }
+
   // Cleanup
   public destroy(): void {
+    // Clear timeouts before destroying
+    this.reset();
+
     this.sounds.forEach(sound => {
       sound.unload();
     });

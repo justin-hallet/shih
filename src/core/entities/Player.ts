@@ -9,10 +9,10 @@ import { EntityType, AnimationType, EntityState } from '../types';
 
 export class Player extends BaseEntity {
   // Player-specific properties
-  public ammo: number;
-  public maxAmmo: number;
-  public weaponLevel: number;
-  public invulnerableTime: number;
+  public ammo!: number;
+  public maxAmmo!: number;
+  public weaponLevel!: number;
+  public invulnerableTime!: number;
 
   // Audio manager reference
   private audioManager?: any;
@@ -21,9 +21,9 @@ export class Player extends BaseEntity {
   private hasOutlineEffect: boolean = false;
 
   // Movement constraints
-  public maxSpeed: number;
-  public acceleration: number;
-  public deceleration: number;
+  public maxSpeed!: number;
+  public acceleration!: number;
+  public deceleration!: number;
 
   // Animation properties
   private mixer?: THREE.AnimationMixer;
@@ -58,12 +58,27 @@ export class Player extends BaseEntity {
   constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
+    // Initialize with default values
+    this.reset();
+    this.createMesh();
+  }
+
+  /**
+   * Reset player to initial state
+   * Used both in constructor and when restarting the game
+   */
+  public reset(initialValues?: {
+    health?: number;
+    weaponLevel?: number;
+    ammo?: number;
+    position?: { x: number; y: number; z: number };
+  }): void {
     // Player stats - health is now 0-8 scale (displayed as shield segments)
     this.maxHealth = 8;
-    this.health = this.maxHealth;
+    this.health = initialValues?.health ?? this.maxHealth;
     this.maxAmmo = 250; // Reduced from 999 to match HUD max
-    this.ammo = 0; // Will be set by main.ts initialization
-    this.weaponLevel = 1;
+    this.ammo = initialValues?.ammo ?? 0;
+    this.weaponLevel = initialValues?.weaponLevel ?? 1;
     this.invulnerableTime = 0;
 
     // Movement properties - increased to accommodate speed levels 1-5 (50-250 units/sec)
@@ -74,9 +89,51 @@ export class Player extends BaseEntity {
     // Collision
     this.collisionBounds = { radius: 0.8 };
 
-    // Start active
+    // Reset BaseEntity properties
+    this.direction.x = 0;
+    this.direction.y = 0;
+    this.direction.z = -1; // Default forward direction
+    this.velocity.x = 0;
+    this.velocity.y = 0;
+    this.velocity.z = 0; // Stop all movement
+    this.animationType = AnimationType.IDLE;
+    this.animationFrame = 0;
+    this.animationSpeed = 1.0;
     this.state = EntityState.ACTIVE;
-    this.createMesh();
+
+    // Reset Player-specific animation state
+    this.currentRotationY = 0;
+    this.isNearGround = true;
+    this.isStrafing = false;
+    this.strafeDirection = null;
+    this.lastGroundState = true;
+    this.transitionTimer = 0;
+    this.isAscending = false;
+    this.isDescending = false;
+    this.isTurning = false;
+    this.turnDirection = null;
+
+    // Reset banking/flight dynamics
+    this.targetBankAngle = 0;
+    this.currentBankAngle = 0;
+    this.targetPitchAngle = 0;
+    this.currentPitchAngle = 0;
+
+    // Reset visual effects
+    this.hasOutlineEffect = false;
+
+    // Reset current animation to default
+    this.currentAnimation = 'running';
+
+    // Set position if provided
+    if (initialValues?.position) {
+      this.position.x = initialValues.position.x;
+      this.position.y = initialValues.position.y;
+      this.position.z = initialValues.position.z;
+    }
+
+    // Note: Model switching state (currentModelIndex) is intentionally NOT reset
+    // to preserve player's model choice across game sessions
   }
 
   private createMesh(): void {
@@ -681,7 +738,9 @@ export class Player extends BaseEntity {
 
   protected override onDie(): void {
     this.animationType = AnimationType.DYING;
-    this.velocity.set(0, 0, 0);
+    this.velocity.x = 0;
+    this.velocity.y = 0;
+    this.velocity.z = 0;
 
     // Handle player respawn logic
     this.handlePlayerDeath();
@@ -719,7 +778,9 @@ export class Player extends BaseEntity {
     sceneUser.gameOver = true;
 
     // Stop player movement
-    this.velocity.set(0, 0, 0);
+    this.velocity.x = 0;
+    this.velocity.y = 0;
+    this.velocity.z = 0;
 
     // Keep player in DEAD state (don't respawn)
     // The game loop should handle game over UI/restart logic

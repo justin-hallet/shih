@@ -1241,4 +1241,31 @@ export class WorldGenerator {
   private generateBasicHeightAt(x: number, z: number): number {
     return this.getContinuousHeightAt(x, z);
   }
+
+  /**
+   * Reset world generator by repopulating existing chunks with fresh entities
+   * Keeps terrain but regenerates all entities in loaded chunks
+   */
+  public reset(): void {
+    // Get all currently loaded chunks
+    const loadedChunks = Array.from(this.streamingState.loadedChunks.values());
+
+    // For each loaded chunk, repopulate with entities
+    for (const chunk of loadedChunks) {
+      if (chunk.loaded && chunk.generated) {
+        // Get biome configuration for this chunk
+        const biomeConfig = this.biomeManager.getBiome(chunk.biome);
+
+        // Repopulate the chunk with fresh entities (only if biome config exists)
+        if (biomeConfig) {
+          this.populateChunk(chunk, biomeConfig);
+        }
+      }
+    }
+
+    // Reset generation stats
+    this.generationStats.chunksGenerated = loadedChunks.length;
+    this.generationStats.totalGenerationTime = 0;
+    this.generationStats.averageGenerationTime = 0;
+  }
 }
