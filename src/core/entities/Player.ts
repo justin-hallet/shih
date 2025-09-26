@@ -18,6 +18,8 @@ export class Player extends BaseEntity {
   private audioManager?: any;
   private static audioManager?: any;
   private static gameOverCallback?: () => void;
+  private static onDeathCallback?: () => void;
+  private static onRespawnCallback?: () => void;
 
   // Visual effects
   private hasOutlineEffect: boolean = false;
@@ -57,6 +59,9 @@ export class Player extends BaseEntity {
   private availableModels: string[] = ['bot', 'female', 'racer', 'mouse', 'machine'];
   private currentModelIndex: number = 0;
 
+  // Death sequence control
+  private isInDeathSequence: boolean = false;
+
   constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
@@ -73,6 +78,16 @@ export class Player extends BaseEntity {
   // Static method to set game over callback
   public static setGameOverCallback(callback: () => void): void {
     Player.gameOverCallback = callback;
+  }
+
+  // Static method to set death callback
+  public static setOnDeathCallback(callback: () => void): void {
+    Player.onDeathCallback = callback;
+  }
+
+  // Static method to set respawn callback
+  public static setOnRespawnCallback(callback: () => void): void {
+    Player.onRespawnCallback = callback;
   }
 
   /**
@@ -169,6 +184,7 @@ export class Player extends BaseEntity {
       { name: 'flying', file: '/src/assets/models/flying.fbx' },
       { name: 'strafe_left', file: '/src/assets/models/strafe-left.fbx' },
       { name: 'strafe_right', file: '/src/assets/models/strafe-right.fbx' },
+      { name: 'death', file: '/src/assets/models/death.fbx' },
     ];
 
     try {
@@ -517,6 +533,9 @@ export class Player extends BaseEntity {
   private updateAnimationState(deltaTime: number): void {
     if (!this.isModelLoaded) return;
 
+    // Don't override animations during death sequence
+    if (this.isInDeathSequence) return;
+
     // Update transition timer
     if (this.transitionTimer > 0) {
       this.transitionTimer -= deltaTime;
@@ -791,21 +810,84 @@ export class Player extends BaseEntity {
   }
 
   private handlePlayerDeath(): void {
+    // Prevent double death sequence
+    if (this.isInDeathSequence) {
+      console.log('⚠️ Death sequence already in progress, skipping...');
+      return;
+    }
+
     // Use centralized powerUp system to handle life loss
     this.powerUp('life', -1);
 
-    // If player still has lives, respawn after delay
+    // If player still has lives, play death animation sequence
     const sceneUser = (this.scene as any)?.userData || {};
     const hud = sceneUser.hud as any;
     const remainingLives = hud?.getGameState?.().lives ?? 0;
 
     if (remainingLives > 0) {
-      // Player has lives left - respawn after a short delay
-      setTimeout(() => {
-        this.respawnPlayer();
-      }, 2000); // 2 second delay
+      // Player has lives left - play death animation and fall to floor
+      this.playDeathSequence();
     }
     // Game over logic is now handled in powerUp('life', -1)
+  }
+
+  private playDeathSequence(): void {
+    // Set flag to prevent animation overrides
+    this.isInDeathSequence = true;
+
+    // Trigger death event (stops rails movement, etc.)
+    if (Player.onDeathCallback) {
+      Player.onDeathCallback();
+    }
+
+    // Play death animation
+    this.playAnimation('death');
+
+    // Stop horizontal movement but allow falling
+    this.velocity.x = 0;
+    this.velocity.z = 0;
+
+    // Wait for death animation to complete before falling
+    const deathAnimationDuration = 1.5; // 2 seconds for death animation
+
+    setTimeout(() => {
+      this.startFallingToFloor();
+    }, deathAnimationDuration);
+  }
+
+  private startFallingToFloor(): void {
+    // Get terrain height and fall to floor
+    const terrainY =
+      this.scene?.userData?.worldGenerator?.getTerrainHeightAt?.(
+        this.position.x,
+        this.position.z,
+      ) || 0;
+    const targetY = terrainY + 0.1; // Just above ground
+
+    // Animate falling to floor over 1 second
+    const fallDuration = 1000;
+    const startY = this.position.y;
+    const startTime = Date.now();
+
+    const fallAnimation = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / fallDuration, 1);
+
+      // Ease-in falling motion
+      const easedProgress = progress * progress;
+      this.position.y = startY + (targetY - startY) * easedProgress;
+
+      if (progress < 1) {
+        requestAnimationFrame(fallAnimation);
+      } else {
+        // After falling, wait a moment then respawn
+        setTimeout(() => {
+          this.respawnPlayer();
+        }, 500); // Brief pause on ground
+      }
+    };
+
+    fallAnimation();
   }
 
   private triggerGameOver(): void {
@@ -829,18 +911,29 @@ export class Player extends BaseEntity {
   }
 
   private respawnPlayer(): void {
+    // Clear death sequence flag
+    this.isInDeathSequence = false;
+
+    // Trigger respawn event (resumes rails movement, etc.)
+    if (Player.onRespawnCallback) {
+      Player.onRespawnCallback();
+    }
+
     // Reset player state
     this.state = EntityState.ACTIVE;
     this.animationType = AnimationType.IDLE;
     this.health = this.maxHealth; // Reset to full health (8 segments)
     this.invulnerableTime = 3.0; // 3 seconds of invulnerability after respawn
 
+    // Start with running animation
+    this.playAnimation('running');
+
     // Update HUD to show full health as shield segments
     const sceneUser = (this.scene as any)?.userData || {};
     const hud = sceneUser.hud as any;
     hud?.updateShieldSegments?.(this.health);
 
-    console.log('🔄 Player respawned!');
+    console.log('🔄 Player respawned with running animation!');
   }
 
   protected override onDestroy(): void {

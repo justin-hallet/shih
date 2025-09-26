@@ -308,6 +308,7 @@ function resetGame() {
 function resetMainGameState(initialPosition: { x: number; y: number; z: number }) {
   // Reset game flags
   scene.userData['gameOver'] = false;
+  scene.userData['playerInDeathSequence'] = false;
   scene.userData['speedLevel'] = startingSpeedLevel;
   scene.userData['railsSpeed'] = getSpeedFromLevel(startingSpeedLevel);
 
@@ -360,6 +361,19 @@ Player.setAudioManager(audioManager);
 
 // Set game over callback for Player class
 Player.setGameOverCallback(handleGameOver);
+
+// Set death/respawn callbacks for Player class
+Player.setOnDeathCallback(() => {
+  console.log('🛑 Player death event - stopping rails movement');
+  scene.userData['railsSpeed'] = 0; // Stop forward movement during death sequence
+  scene.userData['playerInDeathSequence'] = true; // Prevent rails speed reset
+});
+
+Player.setOnRespawnCallback(() => {
+  console.log('🚀 Player respawn event - resuming rails movement');
+  scene.userData['playerInDeathSequence'] = false; // Allow rails speed reset
+  scene.userData['railsSpeed'] = getSpeedFromLevel(scene.userData['speedLevel'] || 1); // Resume movement
+});
 
 // Initialize Game Overlay
 const gameOverlay = new GameOverlay({
@@ -830,10 +844,12 @@ function handleAction(action: Action, isDown: boolean) {
         player.takeDamage(randomDamage);
       }
     } else if (action === 'debug_kill') {
-      // Remove a life from player (simulate death without going through damage)
-      if (player) {
-        console.log('💀 Debug: Removing a life from player');
-        player.powerUp('life', -1);
+      // Trigger proper death sequence (with animation)
+      if (player && !scene.userData['playerInDeathSequence']) {
+        console.log('💀 Debug: Triggering player death sequence');
+        player.die();
+      } else if (scene.userData['playerInDeathSequence']) {
+        console.log('⚠️ Debug: Death sequence already in progress, ignoring K press');
       }
     }
   }
@@ -1049,8 +1065,12 @@ function animate() {
     // Rails shooter constant forward motion parallel to the floor (yaw only)
     const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
 
-    // Don't reset rails speed if game is over
-    if (!scene.userData['gameOver'] && !(scene.userData['railsSpeed'] > 0)) {
+    // Don't reset rails speed if game is over or player is in death sequence
+    if (
+      !scene.userData['gameOver'] &&
+      !scene.userData['playerInDeathSequence'] &&
+      !(scene.userData['railsSpeed'] > 0)
+    ) {
       scene.userData['railsSpeed'] = 50;
     }
     const currentSpeed = scene.userData['railsSpeed'] || 0;
