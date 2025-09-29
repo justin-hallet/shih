@@ -208,6 +208,27 @@ if (appDiv) {
 
 // Game start function
 function startGame() {
+  // Reset player position and stats
+  const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
+  player.position.set(tileCenter, initialTerrainY + HOVER_HEIGHT, tileCenter);
+  player.reset({
+    health: startingHealth,
+    weaponLevel: startingWeapon,
+    ammo: startingAmmo,
+    position: {
+      x: tileCenter,
+      y: initialTerrainY + HOVER_HEIGHT,
+      z: tileCenter,
+    },
+  });
+
+  // Reset HUD
+  hud?.updateLives(startingLives);
+  hud?.updateShieldSegments(startingHealth);
+  hud?.updateWeaponLevel(startingWeapon);
+  hud?.updateAmmo(startingAmmo);
+  hud?.updateSpeed(startingSpeedLevel);
+
   // Transition to "start" state (shows "GET READY!" animation)
   gameOverlay.setState('start');
 
@@ -553,18 +574,7 @@ const MAX_FLIGHT_HEIGHT = 150; // maximum height player can fly (absolute world 
 
 // Player's desired distance above terrain
 let playerDistanceAbove = HOVER_HEIGHT;
-const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
-const player = entityManager.spawnPlayer({
-  x: tileCenter,
-  y: initialTerrainY + HOVER_HEIGHT,
-  z: tileCenter,
-});
-
-// Set player in camera controller
-cameraController.setPlayer(player);
-
-// Set player reference in debug panel now that it's created
-settingsPanel.setPlayer(player);
+let player: any; // Will be initialized in startGame()
 
 // Connect mobile settings button to settings panel
 if (hud) {
@@ -671,8 +681,6 @@ settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) 
 
 // Set up audio manager
 audioManager.setCamera(camera);
-audioManager.setPlayerPosition(player.position);
-(player as any).setAudioManager(audioManager);
 PowerUp.setAudioManager(audioManager);
 Enemy.setAudioManager(audioManager);
 
@@ -1027,11 +1035,32 @@ function getSpeedFromLevel(level: number): number {
 const startingSpeed = getSpeedFromLevel(startingSpeedLevel);
 (scene as any).userData['railsSpeed'] = startingSpeed;
 
+// Initialize demo player
+const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
+player = entityManager.spawnPlayer({
+  x: tileCenter,
+  y: initialTerrainY + HOVER_HEIGHT,
+  z: tileCenter,
+});
+
+// Set player in camera controller
+cameraController.setPlayer(player);
+
+// Set player reference in debug panel
+settingsPanel.setPlayer(player);
+
+// Set up player audio
+audioManager.setPlayerPosition(player.position);
+(player as any).setAudioManager(audioManager);
+
+// Initialize demo player stats
 player.health = startingHealth;
 player.weaponLevel = startingWeapon;
 player.ammo = startingAmmo;
+
+// Initialize HUD for demo mode
 hud?.updateLives(startingLives);
-hud?.updateShieldSegments(startingHealth); // Health displayed as shield segments
+hud?.updateShieldSegments(startingHealth);
 hud?.updateWeaponLevel(startingWeapon);
 hud?.updateAmmo(startingAmmo);
 hud?.updateSpeed(startingSpeedLevel);

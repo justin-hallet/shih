@@ -117,15 +117,9 @@ export class Player extends BaseEntity {
     this.collisionBounds = { radius: 0.8 };
 
     // Reset BaseEntity properties
-    this.direction.x = 0;
-    this.direction.y = 0;
-    this.direction.z = -1; // Default forward direction
-    this.velocity.x = 0;
-    this.velocity.y = 0;
-    this.velocity.z = 0; // Stop all movement
+    this.velocity.set(0, 0, 0); // Stop all movement
     this.animationType = AnimationType.IDLE;
     this.animationFrame = 0;
-    this.animationSpeed = 1.0;
     this.state = EntityState.ACTIVE;
 
     // Reset Player-specific animation state
@@ -866,7 +860,7 @@ export class Player extends BaseEntity {
   private startFallingToFloor(): void {
     // Get terrain height and fall to floor
     const terrainY =
-      this.scene?.userData?.worldGenerator?.getTerrainHeightAt?.(
+      this.scene?.userData?.['worldGenerator']?.getTerrainHeightAt?.(
         this.position.x,
         this.position.z,
       ) || 0;
@@ -944,8 +938,14 @@ export class Player extends BaseEntity {
     console.log('🔄 Player respawned with running animation!');
   }
 
-  protected override onDestroy(): void {
-    // Player cleanup
+  public override destroy(): void {
+    // Call parent destroy first
+    super.destroy();
+
+    // Player-specific cleanup
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+    }
   }
 
   // Collisions

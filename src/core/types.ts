@@ -94,13 +94,7 @@ export enum AudioType {
   AMBIENT = 'ambient',
 }
 
-// Utility types
-export interface GameVector3 {
-  x: number;
-  y: number;
-  z: number;
-}
-
+// Collision bounds
 export interface CollisionBounds {
   radius?: number;
   width?: number;
