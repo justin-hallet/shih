@@ -262,36 +262,41 @@ export class Player extends BaseEntity {
   }
 
   private updateCollisionBoundsFromModel(): void {
-    if (!this.mesh) return;
+    if (!this.mesh || !this.mixer) return;
 
-    // Temporarily reset scale to get original model dimensions
-    const originalScale = this.mesh.scale.clone();
-    this.mesh.scale.setScalar(1.0);
+    // Get the current animation state
+    const currentAction = this.animations.get(this.currentAnimation);
+    if (!currentAction) return;
 
-    // Calculate the bounding box of the unscaled model
-    const box = new THREE.Box3().setFromObject(this.mesh);
+    // Calculate bounding box of the mesh in its current animated state
+    const box = new THREE.Box3();
+    this.mesh.traverse(child => {
+      if (child instanceof THREE.Mesh) {
+        // Update the mesh's world matrix to get current animated state
+        child.updateWorldMatrix(true, false);
+        // Expand box to include this mesh's bounds
+        box.expandByObject(child);
+      }
+    });
+
+    // Get size and center in world space
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
-    // Restore the original scale
-    this.mesh.scale.copy(originalScale);
+    // Calculate radius from actual mesh bounds
+    const flying = this.currentAnimation === 'flying';
 
-    // Use a reasonable collision radius based on the unscaled model
-    // For a humanoid character, use about 40% of the height or largest dimension
-    const unscaledRadius = Math.max(size.x, size.z) * 0.4; // Use width/depth, not height
+    // Use the largest horizontal dimension for radius
+    const radius = Math.max(Math.max(size.x, size.y), size.z) * (flying ? 0.2 : 0.5);
 
-    // Apply the same scale factor to the collision radius
-    const scaledRadius = unscaledRadius * originalScale.x;
-
-    // Ensure minimum collision radius for gameplay
-    const finalRadius = Math.max(scaledRadius, 0.8);
+    // Add a small padding for gameplay
+    const finalRadius = radius + 0.5;
 
     // Update collision bounds
     this.collisionBounds = { radius: finalRadius };
 
-    // Scale the center offset by the model scale
-    const scaledCenter = center.clone().multiplyScalar(originalScale.x);
-    (this as any).modelCenterOffset = scaledCenter;
+    // Update center offset in world space
+    this.modelCenterOffset = center.clone().sub(this.mesh.position);
   }
 
   private fixAnimationBoneNames(
@@ -375,6 +380,9 @@ export class Player extends BaseEntity {
 
     // Update animation state based on current conditions
     this.updateAnimationState(deltaTime);
+
+    // Calculate proper collision bounds from the FBX model
+    this.updateCollisionBoundsFromModel();
 
     // Update banking/leaning for flight dynamics
     this.updateFlightDynamics(deltaTime);
