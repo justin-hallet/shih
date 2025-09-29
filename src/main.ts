@@ -18,6 +18,7 @@ import { EntityManager } from './core/EntityManager';
 import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { Player } from './core/entities/Player';
+import { BaseEntity } from './core/Entity';
 import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
 import { EntityType, PowerUpSubType, ProjectileSubType } from './core/types';
 import { CameraController } from './core/CameraController';
@@ -1051,7 +1052,7 @@ settingsPanel.setPlayer(player);
 
 // Set up player audio
 audioManager.setPlayerPosition(player.position);
-(player as any).setAudioManager(audioManager);
+BaseEntity.setAudioManager(audioManager);
 
 // Initialize demo player stats
 player.health = startingHealth;

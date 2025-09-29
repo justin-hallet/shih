@@ -14,9 +14,6 @@ export class Player extends BaseEntity {
   public weaponLevel!: number;
   public invulnerableTime!: number;
 
-  // Audio manager reference
-  private audioManager?: any;
-  private static audioManager?: any;
   private static gameOverCallback?: () => void;
   private static onDeathCallback?: () => void;
   private static onRespawnCallback?: () => void;
@@ -68,11 +65,6 @@ export class Player extends BaseEntity {
     // Initialize with default values
     this.reset();
     this.createMesh();
-  }
-
-  // Static method to set audio manager for all Player instances
-  public static setAudioManager(audioManager: any): void {
-    Player.audioManager = audioManager;
   }
 
   // Static method to set game over callback
@@ -634,11 +626,6 @@ export class Player extends BaseEntity {
     return this.availableModels[this.currentModelIndex];
   }
 
-  // Set audio manager reference
-  public setAudioManager(audioManager: any): void {
-    this.audioManager = audioManager;
-  }
-
   // Combat methods
   public shoot(): boolean {
     if (this.ammo <= 0 || this.state !== EntityState.ACTIVE) return false;
@@ -708,8 +695,9 @@ export class Player extends BaseEntity {
         // If losing a life (negative amount), play death sound and check for game over
         if (amount < 0) {
           // Play player death sound
-          if (Player.audioManager) {
-            Player.audioManager.playPlayerDeathSound(this.position);
+          const audioManager = this.getAudioManager();
+          if (audioManager) {
+            audioManager.playPlayerDeathSound(this.position);
           }
 
           console.log(`💀 Lost a life! Lives remaining: ${newLives}`);
@@ -782,7 +770,7 @@ export class Player extends BaseEntity {
     if (this.invulnerableTime > 0) return;
 
     // Play enemy/projectile damage sound
-    this.audioManager?.playDamageSound('enemy', this.position);
+    this.getAudioManager()?.playDamageSound('enemy', this.position);
 
     // Damage directly reduces health (clamped to 0-8 range)
     this.health = Math.max(0, this.health - damage);

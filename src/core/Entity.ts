@@ -52,6 +52,7 @@ export abstract class BaseEntity implements IEntity {
   public modelCenterOffset?: THREE.Vector3;
 
   protected scene: THREE.Scene | undefined;
+  protected static audioManager?: any;
 
   constructor(
     type: EntityType,
@@ -172,4 +173,12 @@ export abstract class BaseEntity implements IEntity {
   public onCollision(_other: IEntity): void {}
   protected onTakeDamage(_damage: number): void {}
   protected onDie(): void {}
+
+  public static setAudioManager(audioManager: any): void {
+    BaseEntity.audioManager = audioManager;
+  }
+
+  protected getAudioManager(): any {
+    return BaseEntity.audioManager;
+  }
 }

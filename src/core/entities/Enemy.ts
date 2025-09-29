@@ -15,15 +15,8 @@ export class Enemy extends BaseEntity {
   private healthBarBackground?: THREE.Mesh;
   private healthBarForeground?: THREE.Mesh;
 
-  // Audio manager reference
-  private static audioManager?: any;
-
   // Score manager reference
   private static scoreManager?: any;
-
-  public static setAudioManager(audioManager: any): void {
-    Enemy.audioManager = audioManager;
-  }
 
   public static setScoreManager(scoreManager: any): void {
     Enemy.scoreManager = scoreManager;
@@ -304,7 +297,7 @@ export class Enemy extends BaseEntity {
     this.createDamageOutline();
 
     // Play enemy hit sound
-    Enemy.audioManager?.playEnemyHitSound(this.position);
+    this.getAudioManager()?.playEnemyHitSound(this.position);
 
     // Update health bar immediately when damage is taken
     this.updateHealthBarDisplay();
@@ -336,7 +329,7 @@ export class Enemy extends BaseEntity {
     this.velocity.set(0, 0, 0);
 
     // Play enemy death sound
-    Enemy.audioManager?.playEnemyDeathSound(this.position);
+    this.getAudioManager()?.playEnemyDeathSound(this.position);
 
     // Add score for enemy kill
     Enemy.scoreManager?.addEnemyKillScore(this.enemyType);

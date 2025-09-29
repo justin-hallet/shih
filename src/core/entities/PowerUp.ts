@@ -22,9 +22,6 @@ export class PowerUp extends BaseEntity {
   private static modelCache: Map<PowerUpSubType, THREE.Group> = new Map();
   private originalMaterial?: THREE.Material; // Store original material for bloom effects
 
-  // Audio manager reference
-  private static audioManager?: any;
-
   constructor(
     powerUpType: PowerUpSubType,
     position: THREE.Vector3 | { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
@@ -488,7 +485,7 @@ export class PowerUp extends BaseEntity {
       const owner = (other as any).owner;
       if (owner === 'player') {
         // Play collection sound immediately when shot
-        PowerUp.audioManager?.playPowerUpSound(this.powerUpType, this.position);
+        this.getAudioManager()?.playPowerUpSound(this.powerUpType, this.position);
 
         this.attracted = true;
         // Strong magnet effect and wide range so it quickly reaches the player
@@ -502,9 +499,5 @@ export class PowerUp extends BaseEntity {
     this.velocity.set(0, 0, 0);
     this.animationType = AnimationType.EXPLODING;
     this.state = EntityState.DEAD;
-  }
-
-  public static setAudioManager(audioManager: any): void {
-    PowerUp.audioManager = audioManager;
   }
 }
