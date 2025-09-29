@@ -8,8 +8,6 @@ import { EntityType, ObstacleSubType, AnimationType, EntityState } from '../type
 
 export class Obstacle extends BaseEntity {
   public readonly obstacleType: ObstacleSubType;
-  public destructible: boolean;
-  public rotationSpeed: number;
 
   constructor(
     obstacleType: ObstacleSubType,
@@ -23,8 +21,6 @@ export class Obstacle extends BaseEntity {
     super(EntityType.OBSTACLE, obstacleType, pos, scene);
 
     this.obstacleType = obstacleType;
-    this.destructible = this.getDestructibleByType(obstacleType);
-    this.rotationSpeed = 0;
 
     // Set properties based on obstacle type
     this.initializeByType();
@@ -32,22 +28,6 @@ export class Obstacle extends BaseEntity {
 
     // Obstacles are immediately active
     this.state = EntityState.ACTIVE;
-  }
-
-  private getDestructibleByType(type: ObstacleSubType): boolean {
-    switch (type) {
-      case ObstacleSubType.TREE:
-      case ObstacleSubType.VEHICLE:
-        return true;
-      case ObstacleSubType.ROCK:
-      case ObstacleSubType.PILLAR:
-      case ObstacleSubType.BUILDING:
-        return false;
-      case ObstacleSubType.CRYSTAL:
-        return true;
-      default:
-        return false;
-    }
   }
 
   private initializeByType(): void {
@@ -59,12 +39,8 @@ export class Obstacle extends BaseEntity {
         break;
 
       case ObstacleSubType.ROCK:
-        this.health = 1000; // Indestructible
-        this.maxHealth = 1000;
-        this.animationType = AnimationType.IDLE;
-        break;
-
       case ObstacleSubType.PILLAR:
+      case ObstacleSubType.BUILDING:
         this.health = 1000; // Indestructible
         this.maxHealth = 1000;
         this.animationType = AnimationType.IDLE;
@@ -77,17 +53,10 @@ export class Obstacle extends BaseEntity {
         this.velocity.z = -2.0; // Moving toward player
         break;
 
-      case ObstacleSubType.BUILDING:
-        this.health = 1000; // Indestructible
-        this.maxHealth = 1000;
-        this.animationType = AnimationType.IDLE;
-        break;
-
       case ObstacleSubType.CRYSTAL:
         this.health = 25;
         this.maxHealth = 25;
         this.animationType = AnimationType.SPINNING;
-        this.rotationSpeed = 2.0;
         break;
     }
   }
@@ -184,7 +153,7 @@ export class Obstacle extends BaseEntity {
   protected onUpdate(deltaTime: number): void {
     // Handle spinning animation
     if (this.animationType === AnimationType.SPINNING && this.mesh) {
-      this.mesh.rotation.y += this.rotationSpeed * deltaTime;
+      this.mesh.rotation.y += 2.0 * deltaTime; // Fixed rotation speed for crystals
     }
 
     // Handle floating animation (for trees, crystals)
@@ -194,40 +163,11 @@ export class Obstacle extends BaseEntity {
     }
   }
 
-  protected override onTakeDamage(damage: number): void {
-    void damage;
-    if (!this.destructible) return;
-
-    // Visual feedback for damage
-    if (
-      this.mesh &&
-      this.mesh instanceof THREE.Mesh &&
-      this.mesh.material instanceof THREE.MeshBasicMaterial
-    ) {
-      const originalColor = this.mesh.material.color.clone();
-      this.mesh.material.color.setHex(0xff0000);
-
-      setTimeout(() => {
-        if (
-          this.mesh &&
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
-        ) {
-          this.mesh.material.color.copy(originalColor);
-        }
-      }, 100);
-    }
-  }
-
   protected override onDie(): void {
     this.animationType = AnimationType.EXPLODING;
     this.velocity.set(0, 0, 0);
 
     // Immediately mark as DEAD so EntityManager removes the obstacle
     this.state = EntityState.DEAD;
-  }
-
-  protected override onDestroy(): void {
-    // Obstacle cleanup - could spawn particles, sound effects, etc.
   }
 }
