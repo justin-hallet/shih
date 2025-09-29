@@ -289,10 +289,9 @@ export class Projectile extends BaseEntity {
         this.mesh.rotation.x += 0.1 * deltaTime; // Slight wobble
         break;
     }
-
   }
 
-  public override onCollision(other: IEntity): void {
+  protected override onCollisionResponse(other: IEntity): void {
     if (this.state !== EntityState.ACTIVE) return;
 
     // Don't collide with same owner

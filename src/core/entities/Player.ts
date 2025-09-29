@@ -936,7 +936,7 @@ export class Player extends BaseEntity {
   }
 
   // Collisions
-  public override onCollision(other: BaseEntity): void {
+  protected override onCollisionResponse(other: BaseEntity): void {
     if (this.state !== EntityState.ACTIVE) return;
 
     // Colliding with obstacles reduces health directly

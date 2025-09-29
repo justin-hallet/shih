@@ -12,12 +12,12 @@ These tasks are low-risk, high-impact improvements that can be done incrementall
   - Added protected getAudioManager accessor
   - Ready to remove from Player, Enemy, and PowerUp
 
-- [ ] Consolidate Visual Effects Code
+- [x] Consolidate Visual Effects Code
   - Added protected hasOutlineEffect property
   - Added createOutlineEffect and removeOutlineEffect methods
   - Ready to remove duplicate code from Player/Enemy
 
-- [ ] Unify Collision Handling
+- [x] Unify Collision Handling
   - Added updateCollisionBoundsFromMesh to BaseEntity
   - Added handleCollision and abstract onCollisionResponse
   - Ready to update derived classes to use new methods

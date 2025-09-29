@@ -170,4 +170,8 @@ export class Obstacle extends BaseEntity {
     // Immediately mark as DEAD so EntityManager removes the obstacle
     this.state = EntityState.DEAD;
   }
+
+  protected override onCollisionResponse(_other: IEntity): void {
+    // Obstacles don't need to respond to collisions - they just exist as barriers
+  }
 }

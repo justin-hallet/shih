@@ -135,8 +135,8 @@ export class EntityManager {
             // Highlight collision in debug renderer
             this.highlightCollision(entityA, entityB);
 
-            entityA.onCollision(entityB);
-            entityB.onCollision(entityA);
+            entityA.handleCollision(entityB);
+            entityB.handleCollision(entityA);
           }
         }
       }

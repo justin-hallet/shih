@@ -430,7 +430,7 @@ export class PowerUp extends BaseEntity {
     }
   }
 
-  public override onCollision(other: IEntity): void {
+  protected override onCollisionResponse(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
       // Apply power-up effect
       this.applyToPlayer(other);

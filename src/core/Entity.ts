@@ -29,7 +29,7 @@ export interface IEntity {
   destroy(): void;
   takeDamage(damage: number): void;
   checkCollision(other: IEntity): boolean;
-  onCollision(other: IEntity): void;
+  handleCollision(other: IEntity): void;
 }
 
 export abstract class BaseEntity implements IEntity {
@@ -170,7 +170,13 @@ export abstract class BaseEntity implements IEntity {
   }
 
   protected abstract onUpdate(deltaTime: number): void;
-  public onCollision(_other: IEntity): void {}
+  public handleCollision(other: IEntity): void {
+    if (this.checkCollision(other)) {
+      this.onCollisionResponse(other);
+    }
+  }
+
+  protected abstract onCollisionResponse(other: IEntity): void;
   protected onTakeDamage(_damage: number): void {}
   protected onDie(): void {}
 
