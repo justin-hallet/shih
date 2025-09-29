@@ -40,15 +40,6 @@ export enum AnimationType {
   DYING = 'dying',
 }
 
-// Weapon types
-export enum WeaponType {
-  BULLET = 1,
-  MISSILE = 2,
-  LASER = 3,
-  PLASMA = 4,
-  FIREBALL = 5,
-}
-
 // Projectile sub-types
 export enum ProjectileSubType {
   BULLET = 'bullet',
@@ -58,16 +49,7 @@ export enum ProjectileSubType {
   FIREBALL = 'fireball',
 }
 
-// PowerUp types
-export enum PowerUpType {
-  AMMO = 'ammo',
-  SHIELD = 'shield',
-  WEAPON_UPGRADE = 'weapon_upgrade',
-  SPEED = 'speed',
-  LIFE = 'life',
-}
-
-// PowerUp sub-types (enum for compatibility)
+// PowerUp sub-types
 export const PowerUpSubType = {
   AMMO: 'ammo' as const,
   SHIELD: 'shield' as const,
@@ -76,17 +58,7 @@ export const PowerUpSubType = {
   LIFE: 'life' as const,
 } as const;
 
-// Enemy types
-export enum EnemyType {
-  GRUNT = 'grunt',
-  SOLDIER = 'soldier',
-  TANK = 'tank',
-  FLYER = 'flyer',
-  DRAGON = 'dragon',
-  BOSS = 'boss',
-}
-
-// Enemy sub-types (enum for compatibility)
+// Enemy sub-types
 export enum EnemySubType {
   GRUNT = 'grunt',
   SOLDIER = 'soldier',
@@ -96,17 +68,7 @@ export enum EnemySubType {
   BOSS = 'boss',
 }
 
-// Obstacle types
-export enum ObstacleType {
-  ROCK = 'rock',
-  TREE = 'tree',
-  CRYSTAL = 'crystal',
-  PILLAR = 'pillar',
-  BUILDING = 'building',
-  VEHICLE = 'vehicle',
-}
-
-// Obstacle sub-types (enum for compatibility)
+// Obstacle sub-types
 export enum ObstacleSubType {
   ROCK = 'rock',
   TREE = 'tree',
@@ -114,14 +76,6 @@ export enum ObstacleSubType {
   PILLAR = 'pillar',
   BUILDING = 'building',
   VEHICLE = 'vehicle',
-}
-
-// Difficulty levels
-export enum DifficultyLevel {
-  EASY = 'easy',
-  NORMAL = 'normal',
-  HARD = 'hard',
-  NIGHTMARE = 'nightmare',
 }
 
 // Game states
@@ -138,27 +92,6 @@ export enum AudioType {
   SFX = 'sfx',
   MUSIC = 'music',
   AMBIENT = 'ambient',
-}
-
-// Input types
-export enum InputType {
-  KEYBOARD = 'keyboard',
-  MOUSE = 'mouse',
-  GAMEPAD = 'gamepad',
-  TOUCH = 'touch',
-}
-
-// Movement types
-export enum MovementType {
-  STRAFE = 'strafe',
-  TURN = 'turn',
-}
-
-// Layout types
-export enum LayoutType {
-  AUTO = 'auto',
-  MOBILE = 'mobile',
-  DESKTOP = 'desktop',
 }
 
 // Utility types
