@@ -9,12 +9,6 @@ import { EntityType, EnemySubType, AnimationType, EntityState } from '../types';
 export class Enemy extends BaseEntity {
   public readonly enemyType: EnemySubType;
   public attackDamage: number;
-  public attackRange: number;
-  public attackCooldown: number;
-  public lastAttackTime: number;
-  public movementPattern: 'straight' | 'zigzag' | 'circular' | 'aggressive' | 'boss';
-  public targetPlayer: IEntity | null;
-  public aiUpdateTimer: number;
 
   // Health bar display
   private healthBarGroup?: THREE.Group;
@@ -23,14 +17,14 @@ export class Enemy extends BaseEntity {
 
   // Audio manager reference
   private static audioManager?: any;
-  
+
   // Score manager reference
   private static scoreManager?: any;
 
   public static setAudioManager(audioManager: any): void {
     Enemy.audioManager = audioManager;
   }
-  
+
   public static setScoreManager(scoreManager: any): void {
     Enemy.scoreManager = scoreManager;
   }
@@ -44,12 +38,6 @@ export class Enemy extends BaseEntity {
 
     this.enemyType = enemyType;
     this.attackDamage = 10;
-    this.attackRange = 3.0;
-    this.attackCooldown = 1.0; // seconds
-    this.lastAttackTime = 0;
-    this.movementPattern = 'straight';
-    this.targetPlayer = null;
-    this.aiUpdateTimer = 0;
 
     // Set properties based on enemy type
     this.initializeByType();
@@ -65,10 +53,6 @@ export class Enemy extends BaseEntity {
         this.health = 60;
         this.maxHealth = 60;
         this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
-        this.attackRange = 2.5;
-        this.attackCooldown = 1.5;
-        this.animationType = AnimationType.MOVING;
-        this.movementPattern = 'straight';
         this.velocity.z = -3.0; // Moving toward player
         break;
 
@@ -76,10 +60,6 @@ export class Enemy extends BaseEntity {
         this.health = 100;
         this.maxHealth = 100;
         this.attackDamage = 0.2 + Math.random() * 0.3; // 0.2-0.5 random damage
-        this.attackRange = 4.0;
-        this.attackCooldown = 1.0;
-        this.animationType = AnimationType.MOVING;
-        this.movementPattern = 'zigzag';
         this.velocity.z = -2.5;
         break;
 
@@ -87,10 +67,6 @@ export class Enemy extends BaseEntity {
         this.health = 80;
         this.maxHealth = 80;
         this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
-        this.attackRange = 5.0;
-        this.attackCooldown = 0.8;
-        this.animationType = AnimationType.FLOATING;
-        this.movementPattern = 'circular';
         this.velocity.z = -4.0;
         this.position.y += 2.0; // Start higher
         break;
@@ -99,10 +75,6 @@ export class Enemy extends BaseEntity {
         this.health = 300;
         this.maxHealth = 300;
         this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss-level)
-        this.attackRange = 6.0;
-        this.attackCooldown = 2.0;
-        this.animationType = AnimationType.MOVING;
-        this.movementPattern = 'straight';
         this.velocity.z = -1.5;
         break;
 
@@ -110,10 +82,6 @@ export class Enemy extends BaseEntity {
         this.health = 1000;
         this.maxHealth = 1000;
         this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
-        this.attackRange = 8.0;
-        this.attackCooldown = 3.0;
-        this.animationType = AnimationType.ATTACKING;
-        this.movementPattern = 'boss';
         this.velocity.z = -1.0;
         break;
 
@@ -121,10 +89,6 @@ export class Enemy extends BaseEntity {
         this.health = 500;
         this.maxHealth = 500;
         this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
-        this.attackRange = 7.0;
-        this.attackCooldown = 1.5;
-        this.animationType = AnimationType.FLOATING;
-        this.movementPattern = 'aggressive';
         this.velocity.z = -2.0;
         this.position.y += 3.0; // Start high like a dragon
         break;
@@ -293,82 +257,13 @@ export class Enemy extends BaseEntity {
   }
 
   protected onUpdate(deltaTime: number): void {
-    this.aiUpdateTimer += deltaTime;
-
     // Update health bar position and display
     this.updateHealthBarPosition();
     this.updateHealthBarDisplay();
     this.updateHealthBarBillboard();
 
-    // Update AI every 0.1 seconds (10 FPS for AI)
-    if (this.aiUpdateTimer >= 0.1) {
-      this.updateAI(deltaTime);
-      this.aiUpdateTimer = 0;
-    }
-
-    // Handle movement patterns
-    this.updateMovementPattern(deltaTime);
-
-    // Handle attacking
-    this.updateCombat(deltaTime);
-
-    // Special animations based on type
+    // Update special effects
     this.updateSpecialEffects(deltaTime);
-  }
-
-  private updateAI(_deltaTime: number): void {
-    // Find player if we don't have a target
-    // This would typically get the player from the EntityManager
-    // For now, we'll implement basic movement patterns
-
-    // Basic AI: adjust movement based on pattern
-    switch (this.movementPattern) {
-      case 'aggressive':
-        // Try to move toward player position (simplified)
-        if (this.position.x > 0) {
-          this.velocity.x = -2.0;
-        } else {
-          this.velocity.x = 2.0;
-        }
-        break;
-
-      case 'boss':
-        // Boss movement: side to side
-        const time = Date.now() * 0.001;
-        this.velocity.x = Math.sin(time * 0.5) * 1.0;
-        break;
-    }
-  }
-
-  private updateMovementPattern(deltaTime: number): void {
-    const time = Date.now() * 0.001;
-
-    switch (this.movementPattern) {
-      case 'zigzag':
-        this.velocity.x = Math.sin(time * 3.0) * 2.0;
-        break;
-
-      case 'circular':
-        const radius = 2.0;
-        const speed = 2.0;
-        this.velocity.x = Math.cos(time * speed) * radius * deltaTime;
-        this.velocity.y = Math.sin(time * speed) * radius * deltaTime;
-        break;
-
-      case 'straight':
-        // Already set in initialization
-        break;
-    }
-  }
-
-  private updateCombat(deltaTime: number): void {
-    this.lastAttackTime += deltaTime;
-
-    // Check if we can attack (simplified - would check for player in range)
-    if (this.lastAttackTime >= this.attackCooldown && this.canAttack()) {
-      this.attack();
-      this.lastAttackTime = 0;
-    }
   }
 
   private updateSpecialEffects(deltaTime: number): void {
@@ -393,40 +288,6 @@ export class Enemy extends BaseEntity {
     }
   }
 
-  private canAttack(): boolean {
-    // Simplified attack check
-    // In a real game, this would check distance to player
-    return this.state === EntityState.ACTIVE && this.position.z > -5.0;
-  }
-
-  private attack(): void {
-    if (this.state !== EntityState.ACTIVE) return;
-
-    this.animationType = AnimationType.ATTACKING;
-    this.animationFrame = 0;
-
-    // This would create projectiles or damage the player
-    // For now, just visual feedback
-    if (
-      this.mesh &&
-      this.mesh instanceof THREE.Mesh &&
-      this.mesh.material instanceof THREE.MeshBasicMaterial
-    ) {
-      const originalColor = this.mesh.material.color.clone();
-      this.mesh.material.color.setHex(0xffffff); // Flash white
-
-      setTimeout(() => {
-        if (
-          this.mesh &&
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
-        ) {
-          this.mesh.material.color.copy(originalColor);
-        }
-      }, 100);
-    }
-  }
-
   // Override collision to handle player damage
   public override onCollision(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
@@ -436,8 +297,6 @@ export class Enemy extends BaseEntity {
       // Take collision damage ourselves
       this.takeDamage(10);
     }
-    // Note: Projectile damage is handled automatically by the projectile's onCollision method
-    // which calls other.takeDamage(this.damage), so we don't need to handle it here
   }
 
   protected override onTakeDamage(_damage: number): void {
@@ -511,32 +370,5 @@ export class Enemy extends BaseEntity {
         (this.healthBarForeground.material as THREE.Material).dispose();
       }
     }
-
-    // Enemy cleanup - could drop power-ups, award points, etc.
-  }
-
-  // Get enemy difficulty rating (for spawning logic)
-  public getDifficultyRating(): number {
-    switch (this.enemyType) {
-      case EnemySubType.GRUNT:
-        return 1;
-      case EnemySubType.SOLDIER:
-        return 2;
-      case EnemySubType.FLYER:
-        return 2;
-      case EnemySubType.TANK:
-        return 4;
-      case EnemySubType.DRAGON:
-        return 6;
-      case EnemySubType.BOSS:
-        return 10;
-      default:
-        return 1;
-    }
-  }
-
-  // Get point value (for scoring)
-  public getPointValue(): number {
-    return this.getDifficultyRating() * 100;
   }
 }
