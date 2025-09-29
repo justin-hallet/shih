@@ -17,6 +17,7 @@ export class Projectile extends BaseEntity {
   public explosionRadius: number;
   public growthExponent: number; // 1.0 = linear, >1 grows late, <1 early
   public growthMaxScale: number; // final scale multiplier at death
+  public blastRadiusScale: number;
 
   constructor(
     projectileType: ProjectileSubType,
@@ -40,7 +41,8 @@ export class Projectile extends BaseEntity {
     this.piercing = false;
     this.explosionRadius = 0;
     this.growthExponent = 2.0; // slow-start so max reached near end
-    this.growthMaxScale = 8.0;
+    this.growthMaxScale = 2.0; // Reduced from 8.0 to prevent massive projectiles
+    this.blastRadiusScale = 1.0; // Reduced from 2.0 to prevent massive projectiles
 
     // Set initial velocity based on direction
     const dir =
@@ -64,7 +66,7 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 15 : 0.5 + Math.random() * 0.5; // Enemy: 0.5-1.0 random
         this.speed = 20.0;
         this.lifetime = 3.0;
-        this.collisionBounds = { radius: 0.1 };
+        this.blastRadiusScale = 1.2;
         this.animationType = AnimationType.MOVING;
         break;
 
@@ -73,7 +75,7 @@ export class Projectile extends BaseEntity {
         this.speed = 12.0;
         this.lifetime = 8.0;
         this.explosionRadius = 2.0;
-        this.collisionBounds = { radius: 0.3 };
+        this.blastRadiusScale = 1.3;
         this.animationType = AnimationType.MOVING;
         break;
 
@@ -82,7 +84,7 @@ export class Projectile extends BaseEntity {
         this.speed = 30.0;
         this.lifetime = 2.0;
         this.piercing = true; // Goes through targets
-        this.collisionBounds = { radius: 0.05 };
+        this.blastRadiusScale = 1.4;
         this.animationType = AnimationType.MOVING;
         break;
 
@@ -91,8 +93,8 @@ export class Projectile extends BaseEntity {
         this.speed = 8.0;
         this.lifetime = 4.0;
         this.explosionRadius = 1.5;
-        this.collisionBounds = { radius: 0.4 };
-        this.animationType = AnimationType.SPINNING;
+        this.blastRadiusScale = 1.5;
+        this.animationType = AnimationType.MOVING;
         break;
 
       case ProjectileSubType.FIREBALL:
@@ -100,7 +102,7 @@ export class Projectile extends BaseEntity {
         this.speed = 6.0;
         this.lifetime = 6.0;
         this.explosionRadius = 3.0;
-        this.collisionBounds = { radius: 0.6 };
+        this.blastRadiusScale = 1.6;
         this.animationType = AnimationType.FLOATING;
         break;
     }
@@ -180,7 +182,7 @@ export class Projectile extends BaseEntity {
     this.scene.add(this.mesh);
 
     // Calculate collision bounds from the actual mesh
-    this.updateCollisionBoundsFromMesh();
+    this.updateCollisionBoundsFromMesh(this.blastRadiusScale);
 
     // Apply outline effect for glow
     this.applyOutlineEffect();
@@ -190,9 +192,6 @@ export class Projectile extends BaseEntity {
     if (!this.mesh || !this.scene) return;
 
     // Get the outline pass from scene userData
-    const outlinePass = (this.scene as any)?.userData?.outlinePass;
-    if (!outlinePass) return;
-
     // Define outline colors based on projectile type and owner
     const getOutlineColor = (): THREE.Color => {
       switch (this.projectileType) {
@@ -212,17 +211,12 @@ export class Projectile extends BaseEntity {
     };
 
     // Add projectile to outline system
-    outlinePass.addOutlineObject(this.mesh, getOutlineColor());
+    this.createOutlineEffect(getOutlineColor());
   }
 
   public override destroy(): void {
     // Remove from outline system before destroying
-    if (this.mesh && this.scene) {
-      const outlinePass = (this.scene as any)?.userData?.outlinePass;
-      if (outlinePass) {
-        outlinePass.removeOutlineObject(this.mesh);
-      }
-    }
+    this.removeOutlineEffect();
 
     // Call parent destroy
     super.destroy();
@@ -247,8 +241,7 @@ export class Projectile extends BaseEntity {
       const growth = 1 + (this.growthMaxScale - 1) * Math.pow(t, this.growthExponent);
       this.mesh.scale.setScalar(growth);
 
-      // Scale collision radius to match visual growth
-      this.collisionBounds.radius = (this.collisionBounds.radius || 1.0) * growth;
+      this.updateCollisionBoundsFromMesh(this.blastRadiusScale);
     }
 
     // If projectile stopped moving significantly, remove it
@@ -296,6 +289,7 @@ export class Projectile extends BaseEntity {
         this.mesh.rotation.x += 0.1 * deltaTime; // Slight wobble
         break;
     }
+
   }
 
   public override onCollision(other: IEntity): void {

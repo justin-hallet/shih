@@ -19,7 +19,6 @@ export class Player extends BaseEntity {
   private static onRespawnCallback?: () => void;
 
   // Visual effects
-  private hasOutlineEffect: boolean = false;
 
   // Movement constraints
   public maxSpeed!: number;
@@ -950,26 +949,10 @@ export class Player extends BaseEntity {
   }
 
   private createInvulnerabilityOutline(): void {
-    if (!this.mesh || !this.scene) return;
-
-    // Get the outline pass from scene userData
-    const outlinePass = (this.scene as any)?.userData?.outlinePass;
-    if (outlinePass) {
-      // Add player mesh to outline pass with red color
-      outlinePass.addOutlineObject(this.mesh, new THREE.Color(0xff3333));
-      this.hasOutlineEffect = true;
-    }
+    this.createOutlineEffect(new THREE.Color(0xff3333));
   }
 
   private removeInvulnerabilityOutline(): void {
-    if (!this.mesh || !this.scene) return;
-
-    // Get the outline pass from scene userData
-    const outlinePass = (this.scene as any)?.userData?.outlinePass;
-    if (outlinePass) {
-      // Remove player mesh from outline pass
-      outlinePass.removeOutlineObject(this.mesh);
-      this.hasOutlineEffect = false;
-    }
+    this.removeOutlineEffect();
   }
 }

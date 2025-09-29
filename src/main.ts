@@ -1360,9 +1360,9 @@ function animate() {
                 : ProjectileSubType.FIREBALL;
 
       const proj = entityManager.spawnProjectile(projType, 'player', spawnPos, {
-        x: forward.x,
+        x: forward.x, // Same direction as player movement
         y: 0, // constant height
-        z: forward.z,
+        z: forward.z, // Same direction as player movement
       });
       // Set projectile to 2x player's current rails speed and 2s lifetime
       const railsSpeed = (scene.userData['lastRailsSpeed'] ||
@@ -1370,9 +1370,9 @@ function animate() {
         50) as number;
       proj.speed = railsSpeed * 2.2; // ensure clearly faster than player
       proj.lifetime = 2.0;
-      proj.velocity.x = forward.x * proj.speed;
+      proj.velocity.x = forward.x * proj.speed; // Same direction as player movement but faster
       proj.velocity.y = 0; // constant height
-      proj.velocity.z = forward.z * proj.speed;
+      proj.velocity.z = forward.z * proj.speed; // Same direction as player movement but faster
       lastShotTime = currentTime;
 
       // Play shooting sound

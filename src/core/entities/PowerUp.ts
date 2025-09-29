@@ -175,38 +175,8 @@ export class PowerUp extends BaseEntity {
 
     const emissiveColor = new THREE.Color(bloomColors[this.powerUpType]);
 
-    // Brighten the original materials while preserving textures
-    this.mesh.traverse(child => {
-      if (child instanceof THREE.Mesh) {
-        // Store original material if needed
-        if (!this.originalMaterial && child.material) {
-          this.originalMaterial = child.material;
-        }
-
-        // Brighten the original material while preserving textures
-        const originalMaterial = child.material;
-        const brightenedMaterial = originalMaterial.clone();
-
-        // Increase the overall brightness without washing out textures
-        if (brightenedMaterial.color) {
-          brightenedMaterial.color.multiplyScalar(1.5); // Make colors 50% brighter
-        }
-
-        // Add a subtle emissive tint that matches the outline color
-        brightenedMaterial.emissive = emissiveColor.clone().multiplyScalar(0.1);
-        brightenedMaterial.emissiveIntensity = 0.3;
-
-        child.material = brightenedMaterial;
-        child.castShadow = true;
-        child.receiveShadow = false;
-      }
-    });
-
-    // Use the new outline pass for the glowing outline effect
-    const outlinePass = (this.scene as any)?.userData?.outlinePass;
-    if (outlinePass) {
-      outlinePass.addOutlineObject(this.mesh, emissiveColor);
-    }
+    this.applyEmissiveMaterial(emissiveColor);
+    this.createOutlineEffect(emissiveColor);
   }
 
   private createFallbackMesh(): void {

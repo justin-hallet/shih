@@ -310,18 +310,12 @@ export class Enemy extends BaseEntity {
     if (!this.mesh || !this.scene) return;
 
     // Get the outline pass from scene userData
-    const outlinePass = (this.scene as any)?.userData?.outlinePass;
-    if (outlinePass) {
-      // Add enemy mesh to outline pass with red color (same as player damage)
-      outlinePass.addOutlineObject(this.mesh, new THREE.Color(0xff3333));
+    this.createOutlineEffect(new THREE.Color(0xff3333));
 
-      // Remove the outline after a short duration
-      setTimeout(() => {
-        if (this.mesh && outlinePass) {
-          outlinePass.removeOutlineObject(this.mesh);
-        }
-      }, 200); // Slightly longer than the original color flash (150ms)
-    }
+    // Remove outline after a short delay
+    setTimeout(() => {
+      this.removeOutlineEffect();
+    }, 200);
   }
 
   protected override onDie(): void {

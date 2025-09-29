@@ -155,7 +155,7 @@ export abstract class BaseEntity implements IEntity {
     }
   }
 
-  protected updateCollisionBoundsFromMesh(): void {
+  protected updateCollisionBoundsFromMesh(scale: number = 1.0): void {
     if (!this.mesh) return;
 
     const box = new THREE.Box3().setFromObject(this.mesh);
@@ -165,7 +165,7 @@ export abstract class BaseEntity implements IEntity {
     const radius = Math.max(size.x, Math.max(size.y, size.z)) * 0.5;
     const finalRadius = Math.max(radius, 0.3) * 1.1;
 
-    this.collisionBounds = { radius: finalRadius };
+    this.collisionBounds = { radius: finalRadius * scale };
     this.modelCenterOffset = center.clone().sub(this.mesh.position);
   }
 
@@ -180,5 +180,56 @@ export abstract class BaseEntity implements IEntity {
 
   protected getAudioManager(): any {
     return BaseEntity.audioManager;
+  }
+
+  protected hasOutlineEffect: boolean = false;
+
+  protected applyEmissiveMaterial(emissiveColor: THREE.Color): void {
+    // Brighten the original materials while preserving textures
+    this.mesh?.traverse(child => {
+      if (child instanceof THREE.Mesh) {
+        // Store original material if needed
+        if (!this.originalMaterial && child.material) {
+          this.originalMaterial = child.material;
+        }
+
+        // Brighten the original material while preserving textures
+        const originalMaterial = child.material;
+        const brightenedMaterial = originalMaterial.clone();
+
+        // Increase the overall brightness without washing out textures
+        if (brightenedMaterial.color) {
+          brightenedMaterial.color.multiplyScalar(1.5); // Make colors 50% brighter
+        }
+
+        // Add a subtle emissive tint that matches the outline color
+        brightenedMaterial.emissive = emissiveColor.clone().multiplyScalar(0.1);
+        brightenedMaterial.emissiveIntensity = 0.3;
+
+        child.material = brightenedMaterial;
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+  }
+
+  protected createOutlineEffect(color: THREE.Color): void {
+    if (!this.hasOutlineEffect && this.scene && this.mesh) {
+      const outlinePass = this.scene.userData?.outlinePass;
+      if (outlinePass) {
+        outlinePass.addOutlineObject(this.mesh, color);
+        this.hasOutlineEffect = true;
+      }
+    }
+  }
+
+  protected removeOutlineEffect(): void {
+    if (this.hasOutlineEffect && this.scene && this.mesh) {
+      const outlinePass = this.scene.userData?.outlinePass;
+      if (outlinePass) {
+        outlinePass.removeOutlineObject(this.mesh);
+        this.hasOutlineEffect = false;
+      }
+    }
   }
 }
