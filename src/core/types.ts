@@ -87,13 +87,10 @@ export enum GameState {
 export enum AudioType {
   SFX = 'sfx',
   MUSIC = 'music',
-  AMBIENT = 'ambient',
 }
 
 // Collision bounds
 export interface CollisionBounds {
   radius?: number;
   width?: number;
-  height?: number;
-  depth?: number;
 }
