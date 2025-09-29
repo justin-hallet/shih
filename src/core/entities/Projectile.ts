@@ -14,16 +14,9 @@ export class Projectile extends BaseEntity {
   public age: number;
   public owner: 'player' | 'enemy';
   public piercing: boolean; // Can go through multiple targets
-  public explosive: boolean; // Causes explosion on impact
   public explosionRadius: number;
-  public homingTarget: IEntity | null;
-  public homingStrength: number;
-  // Visual growth over lifetime
   public growthExponent: number; // 1.0 = linear, >1 grows late, <1 early
   public growthMaxScale: number; // final scale multiplier at death
-  private baseScale: number; // initial mesh scale baseline
-  private effectScale: number; // transient effect scale from specials
-  private baseCollisionRadius: number; // base collision radius before growth scaling
 
   constructor(
     projectileType: ProjectileSubType,
@@ -45,30 +38,20 @@ export class Projectile extends BaseEntity {
     this.lifetime = 5.0; // seconds
     this.age = 0;
     this.piercing = false;
-    this.explosive = false;
     this.explosionRadius = 0;
-    this.homingTarget = null;
-    this.homingStrength = 0;
     this.growthExponent = 2.0; // slow-start so max reached near end
     this.growthMaxScale = 8.0;
-    this.baseScale = 1.0;
-    this.effectScale = 1.0;
 
-    // Set direction
-    if (direction instanceof THREE.Vector3) {
-      this.direction = direction.clone();
-    } else {
-      this.direction = new THREE.Vector3(direction.x, direction.y, direction.z);
-    }
+    // Set initial velocity based on direction
+    const dir =
+      direction instanceof THREE.Vector3
+        ? direction.clone().normalize()
+        : new THREE.Vector3(direction.x, direction.y, direction.z).normalize();
+    this.velocity.copy(dir).multiplyScalar(this.speed);
 
     // Set properties based on projectile type
     this.initializeByType();
     this.createMesh();
-
-    // Set initial velocity based on direction and speed
-    this.velocity.x = this.direction.x * this.speed;
-    this.velocity.y = this.direction.y * this.speed;
-    this.velocity.z = this.direction.z * this.speed;
 
     // Projectiles are immediately active
     this.state = EntityState.ACTIVE;
@@ -89,9 +72,7 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 40 : 0.6 + Math.random() * 0.4; // Enemy: 0.6-1.0 random
         this.speed = 12.0;
         this.lifetime = 8.0;
-        this.explosive = true;
         this.explosionRadius = 2.0;
-        this.homingStrength = 2.0; // Can home in on targets
         this.collisionBounds = { radius: 0.3 };
         this.animationType = AnimationType.MOVING;
         break;
@@ -109,7 +90,6 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 35 : 0.7 + Math.random() * 0.3; // Enemy: 0.7-1.0 random
         this.speed = 8.0;
         this.lifetime = 4.0;
-        this.explosive = true;
         this.explosionRadius = 1.5;
         this.collisionBounds = { radius: 0.4 };
         this.animationType = AnimationType.SPINNING;
@@ -119,12 +99,14 @@ export class Projectile extends BaseEntity {
         this.damage = this.owner === 'player' ? 50 : 0.8 + Math.random() * 0.2; // Enemy: 0.8-1.0 random
         this.speed = 6.0;
         this.lifetime = 6.0;
-        this.explosive = true;
         this.explosionRadius = 3.0;
         this.collisionBounds = { radius: 0.6 };
         this.animationType = AnimationType.FLOATING;
         break;
     }
+
+    // Update velocity with new speed
+    this.velocity.normalize().multiplyScalar(this.speed);
   }
 
   private createMesh(): void {
@@ -140,7 +122,6 @@ export class Projectile extends BaseEntity {
         material = new THREE.MeshLambertMaterial({
           color: this.owner === 'player' ? 0xffff00 : 0xff4444,
         });
-        // Use default exponent (set in ctor) for late growth
         break;
 
       case ProjectileSubType.MISSILE:
@@ -191,23 +172,15 @@ export class Projectile extends BaseEntity {
     // Align pill/laser along XZ plane
     if (this.projectileType === ProjectileSubType.LASER) {
       this.mesh.rotation.x = Math.PI / 2; // rotate so capsule length lies in XZ
-    }
-    this.baseScale = this.mesh.scale.x; // assume uniform scale
-
-    // Orient missile and laser correctly
-    if (this.projectileType === ProjectileSubType.MISSILE) {
-      this.mesh.rotation.x = Math.PI / 2; // Point forward
-    } else if (this.projectileType === ProjectileSubType.LASER) {
       this.mesh.rotation.z = Math.PI / 2; // Align along movement
+    } else if (this.projectileType === ProjectileSubType.MISSILE) {
+      this.mesh.rotation.x = Math.PI / 2; // Point forward
     }
 
     this.scene.add(this.mesh);
 
     // Calculate collision bounds from the actual mesh
     this.updateCollisionBoundsFromMesh();
-
-    // Store the base collision radius for growth scaling
-    this.baseCollisionRadius = this.collisionBounds.radius * 2.0;
 
     // Apply outline effect for glow
     this.applyOutlineEffect();
@@ -265,11 +238,6 @@ export class Projectile extends BaseEntity {
       return;
     }
 
-    // Handle homing behavior
-    if (this.homingTarget && this.homingStrength > 0) {
-      this.updateHoming(deltaTime);
-    }
-
     // Handle special effects
     this.updateSpecialEffects(deltaTime);
 
@@ -277,118 +245,59 @@ export class Projectile extends BaseEntity {
     if (this.mesh) {
       const t = Math.max(0, Math.min(1, this.lifetime > 0 ? this.age / this.lifetime : 1));
       const growth = 1 + (this.growthMaxScale - 1) * Math.pow(t, this.growthExponent);
-      this.mesh.scale.setScalar(this.baseScale * this.effectScale * growth);
+      this.mesh.scale.setScalar(growth);
 
       // Scale collision radius to match visual growth
-      this.collisionBounds.radius = this.baseCollisionRadius * growth;
+      this.collisionBounds.radius = (this.collisionBounds.radius || 1.0) * growth;
     }
 
     // If projectile stopped moving significantly, remove it
-    const speedSq =
-      this.velocity.x * this.velocity.x +
-      this.velocity.y * this.velocity.y +
-      this.velocity.z * this.velocity.z;
-    if (speedSq < 0.0001) {
+    if (this.velocity.lengthSq() < 0.0001) {
       this.die();
       return;
-    }
-
-    // Note: Previously we removed projectiles when position.z > 10.
-    // That caused immediate despawn in large positive-Z areas.
-    // We now rely on lifetime (and collisions) to remove projectiles.
-  }
-
-  private updateHoming(deltaTime: number): void {
-    if (!this.homingTarget) return;
-
-    // Calculate direction to target
-    const targetDir = {
-      x: this.homingTarget.position.x - this.position.x,
-      y: this.homingTarget.position.y - this.position.y,
-      z: this.homingTarget.position.z - this.position.z,
-    };
-
-    // Normalize target direction
-    const targetLength = Math.sqrt(targetDir.x ** 2 + targetDir.y ** 2 + targetDir.z ** 2);
-    if (targetLength > 0) {
-      targetDir.x /= targetLength;
-      targetDir.y /= targetLength;
-      targetDir.z /= targetLength;
-
-      // Interpolate current direction toward target
-      const homingFactor = this.homingStrength * deltaTime;
-      this.direction.x += (targetDir.x - this.direction.x) * homingFactor;
-      this.direction.y += (targetDir.y - this.direction.y) * homingFactor;
-      this.direction.z += (targetDir.z - this.direction.z) * homingFactor;
-
-      // Normalize direction
-      const dirLength = Math.sqrt(
-        this.direction.x ** 2 + this.direction.y ** 2 + this.direction.z ** 2,
-      );
-      if (dirLength > 0) {
-        this.direction.x /= dirLength;
-        this.direction.y /= dirLength;
-        this.direction.z /= dirLength;
-      }
-
-      // Update velocity
-      this.velocity.x = this.direction.x * this.speed;
-      this.velocity.y = this.direction.y * this.speed;
-      this.velocity.z = this.direction.z * this.speed;
     }
   }
 
   private updateSpecialEffects(deltaTime: number): void {
     const time = Date.now() * 0.001;
-    this.effectScale = 1.0; // reset each frame
+
+    if (!this.mesh) return;
 
     switch (this.projectileType) {
       case ProjectileSubType.PLASMA:
         // Spinning plasma effect
-        if (this.mesh) {
-          this.mesh.rotation.x += 5.0 * deltaTime;
-          this.mesh.rotation.y += 3.0 * deltaTime;
+        this.mesh.rotation.x += 5.0 * deltaTime;
+        this.mesh.rotation.y += 3.0 * deltaTime;
 
-          // Pulsing effect
-          this.effectScale = 1.0 + Math.sin(time * 8.0) * 0.2;
-        }
+        // Pulsing effect
+        const pulseScale = 1.0 + Math.sin(time * 8.0) * 0.2;
+        this.mesh.scale.multiplyScalar(pulseScale);
         break;
 
       case ProjectileSubType.FIREBALL:
         // Floating/flickering fireball
-        if (this.mesh) {
-          this.mesh.position.y += Math.sin(time * 6.0) * 0.1 * deltaTime;
+        this.mesh.position.y += Math.sin(time * 6.0) * 0.1 * deltaTime;
 
-          // Flickering opacity
-          if (
-            this.mesh instanceof THREE.Mesh &&
-            this.mesh.material instanceof THREE.MeshBasicMaterial
-          ) {
-            this.mesh.material.opacity = 0.8 + Math.sin(time * 15.0) * 0.2;
-          }
+        // Flickering opacity
+        if (this.mesh.material instanceof THREE.MeshBasicMaterial) {
+          this.mesh.material.opacity = 0.8 + Math.sin(time * 15.0) * 0.2;
         }
         break;
 
       case ProjectileSubType.LASER:
         // Laser glow effect
-        if (
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshBasicMaterial
-        ) {
+        if (this.mesh.material instanceof THREE.MeshBasicMaterial) {
           this.mesh.material.opacity = 0.9 + Math.sin(time * 20.0) * 0.1;
         }
         break;
 
       case ProjectileSubType.MISSILE:
         // Missile trail effect (simplified - could add particle system later)
-        if (this.mesh) {
-          this.mesh.rotation.x += 0.1 * deltaTime; // Slight wobble
-        }
+        this.mesh.rotation.x += 0.1 * deltaTime; // Slight wobble
         break;
     }
   }
 
-  // Override collision to handle damage and special effects
   public override onCollision(other: IEntity): void {
     if (this.state !== EntityState.ACTIVE) return;
 
@@ -396,17 +305,23 @@ export class Projectile extends BaseEntity {
     if (this.owner === 'player' && other.type === EntityType.PLAYER) return;
     if (this.owner === 'enemy' && other.type === EntityType.ENEMY) return;
 
-    // Deal damage to target
-    other.takeDamage(this.damage);
+    // Deal damage to target if we can damage it
+    if (
+      (this.owner === 'player' &&
+        (other.type === EntityType.ENEMY || other.type === EntityType.OBSTACLE)) ||
+      (this.owner === 'enemy' && other.type === EntityType.PLAYER)
+    ) {
+      other.takeDamage(this.damage);
 
-    // Handle explosion
-    if (this.explosive) {
-      this.explode();
-    }
+      // Handle explosion
+      if (this.explosionRadius > 0) {
+        this.explode();
+      }
 
-    // Destroy projectile unless it's piercing
-    if (!this.piercing) {
-      this.die();
+      // Destroy projectile unless it's piercing
+      if (!this.piercing) {
+        this.die();
+      }
     }
   }
 
@@ -414,49 +329,18 @@ export class Projectile extends BaseEntity {
     // Visual explosion effect
     if (this.mesh instanceof THREE.Mesh && this.mesh.material instanceof THREE.MeshBasicMaterial) {
       this.mesh.material.color.setHex(0xffffff);
-
-      // Scale up for explosion
       this.mesh.scale.setScalar(this.explosionRadius);
 
       setTimeout(() => {
         this.die();
       }, 100);
     }
-
-    // TODO: In a full game, this would:
-    // - Create particle effects
-    // - Damage all entities within explosionRadius
-    // - Play explosion sound
   }
 
-  public setHomingTarget(target: IEntity): void {
-    this.homingTarget = target;
-  }
-
-  protected override onDie(): void {
-    // Immediately mark as dead; EntityManager will remove and cleanup
-    this.state = EntityState.DEAD;
-  }
-
-  // Override die() to skip the DYING state entirely for projectiles
   public override die(): void {
     if (this.state === EntityState.DEAD) return;
 
     // Skip DYING state - go directly to DEAD for immediate cleanup
     this.state = EntityState.DEAD;
-    this.onDie();
-  }
-
-  protected override onDestroy(): void {
-    // Projectile cleanup
-  }
-
-  // Check if projectile should damage specific entity type
-  public canDamage(entityType: EntityType): boolean {
-    if (this.owner === 'player') {
-      return entityType === EntityType.ENEMY || entityType === EntityType.OBSTACLE;
-    } else {
-      return entityType === EntityType.PLAYER;
-    }
   }
 }
