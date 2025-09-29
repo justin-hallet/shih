@@ -13,22 +13,14 @@ export class PowerUp extends BaseEntity {
   public magnetRange: number; // Range at which player attracts this power-up
   public attracted: boolean;
   public attractionSpeed: number;
-  public magnetBaseSpeed?: number;
-  public magnetMaxSpeed?: number;
   public bobHeight: number;
   public bobSpeed: number;
-  private bobTimer: number;
-  // Visual emphasis
   public visualScale: number;
-  public jiggleAmplitude: number;
-  public jiggleFrequency: number;
 
   // GLTF model loading
   private static gltfLoader: GLTFLoader = new GLTFLoader();
   private static modelCache: Map<PowerUpSubType, THREE.Group> = new Map();
   private originalMaterial?: THREE.Material; // Store original material for bloom effects
-  private isLoadingModel: boolean = false; // Prevent multiple simultaneous loads
-  private currentRotation: number = 0; // Track rotation independently of mesh
 
   // Audio manager reference
   private static audioManager?: any;
@@ -49,17 +41,9 @@ export class PowerUp extends BaseEntity {
     this.magnetRange = 20.0;
     this.attracted = false;
     this.attractionSpeed = 18.0;
-    this.magnetBaseSpeed = 30.0;
-    this.magnetMaxSpeed = 140.0;
     this.bobHeight = 0.5;
     this.bobSpeed = 2.0;
-    this.bobTimer = Math.random() * Math.PI * 2; // Random start phase
     this.visualScale = 5.6; // make power-ups larger by default
-    this.jiggleAmplitude = 0.5; // horizontal wiggle amplitude (units)
-    this.jiggleFrequency = 12.0; // wiggle speed (Hz)
-
-    // Start with random rotation for visual variety
-    this.currentRotation = Math.random() * Math.PI * 2;
 
     // Set properties based on power-up type
     this.initializeByType();
@@ -115,11 +99,7 @@ export class PowerUp extends BaseEntity {
   }
 
   private async createMesh(): Promise<void> {
-    if (!this.scene) return;
-
-    // Prevent multiple simultaneous loads
-    if (this.isLoadingModel || this.mesh) return;
-    this.isLoadingModel = true;
+    if (!this.scene || this.mesh) return;
 
     try {
       // Load GLTF model
@@ -143,15 +123,10 @@ export class PowerUp extends BaseEntity {
       // Set position (make sure it's at the right location)
       this.mesh.position.copy(this.position);
 
-      // Apply current rotation to the new mesh
-      this.mesh.rotation.y = this.currentRotation;
-
       this.mesh.layers.enable(1); // Bloom layer
       this.scene.add(this.mesh);
     } catch (error) {
       this.createFallbackMesh();
-    } finally {
-      this.isLoadingModel = false;
     }
   }
 
@@ -221,7 +196,7 @@ export class PowerUp extends BaseEntity {
         }
 
         // Add a subtle emissive tint that matches the outline color
-        brightenedMaterial.emissive = emissiveColor.clone().multiplyScalar(0.1); // Very subtle emissive
+        brightenedMaterial.emissive = emissiveColor.clone().multiplyScalar(0.1);
         brightenedMaterial.emissiveIntensity = 0.3;
 
         child.material = brightenedMaterial;
@@ -332,25 +307,52 @@ export class PowerUp extends BaseEntity {
 
     // Handle player attraction (if player is nearby)
     this.updatePlayerAttraction(deltaTime);
-
-    // Handle special effects
-    this.updateSpecialEffects(deltaTime);
   }
 
   private updateBouncing(deltaTime: number): void {
     // Stop bouncing once magnetism is active
     if (this.attracted) return;
 
-    this.bobTimer += this.bobSpeed * deltaTime;
+    const time = Date.now() * 0.001;
+    const bouncePhase = time * this.bobSpeed;
 
     if (this.mesh) {
       // Dramatic bouncing motion (up and down only) - much more visible
-      const bounceOffset = Math.sin(this.bobTimer) * this.bobHeight * 4.0; // 4x the bounce height
+      const bounceOffset = Math.sin(bouncePhase) * this.bobHeight * 4.0; // 4x the bounce height
       this.mesh.position.y = this.position.y + bounceOffset;
 
-      // Keep X and Z position fixed (no jiggle)
+      // Keep X and Z position fixed
       this.mesh.position.x = this.position.x;
       this.mesh.position.z = this.position.z;
+
+      // Add special effects based on type
+      switch (this.powerUpType) {
+        case PowerUpSubType.SHIELD:
+          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+            this.mesh.material.opacity = 0.6 + Math.sin(time * 4.0) * 0.2;
+            this.mesh.material.transparent = true;
+          }
+          break;
+
+        case PowerUpSubType.LIFE:
+          const heartbeat = Math.sin(time * 8.0) * 0.1 + Math.sin(time * 2.0) * 0.1;
+          this.mesh.scale.setScalar(this.visualScale * (1.0 + heartbeat));
+          break;
+
+        case PowerUpSubType.SPEED:
+          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+            this.mesh.material.opacity = 0.8 + Math.sin(time * 20.0) * 0.2;
+            this.mesh.material.transparent = true;
+          }
+          break;
+
+        case PowerUpSubType.WEAPON_UPGRADE:
+          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+            this.mesh.material.opacity = 0.7 + Math.sin(time * 3.0) * 0.3;
+            this.mesh.material.transparent = true;
+          }
+          break;
+      }
     }
   }
 
@@ -358,38 +360,16 @@ export class PowerUp extends BaseEntity {
     if (!this.mesh) return;
 
     // All power-ups spin around Y-axis at different speeds based on type
-    let spinSpeed: number;
+    const spinSpeeds: Record<PowerUpSubType, number> = {
+      [PowerUpSubType.AMMO]: 2.0, // Moderate spin for ammo
+      [PowerUpSubType.SHIELD]: 1.5, // Slower, steady spin for shield
+      [PowerUpSubType.LIFE]: 2.5, // Slightly faster for life (important)
+      [PowerUpSubType.SPEED]: 3.0, // Fastest spin for speed boost
+      [PowerUpSubType.WEAPON_UPGRADE]: 2.2, // Medium-fast for weapon upgrades
+    };
 
-    switch (this.powerUpType) {
-      case PowerUpSubType.AMMO:
-        spinSpeed = 2.0; // Moderate spin for ammo
-        break;
-      case PowerUpSubType.SHIELD:
-        spinSpeed = 1.5; // Slower, steady spin for shield
-        break;
-      case PowerUpSubType.LIFE:
-        spinSpeed = 2.5; // Slightly faster for life (important)
-        break;
-      case PowerUpSubType.SPEED:
-        spinSpeed = 3.0; // Fastest spin for speed boost
-        break;
-      case PowerUpSubType.WEAPON_UPGRADE:
-        spinSpeed = 2.2; // Medium-fast for weapon upgrades
-        break;
-      default:
-        spinSpeed = 2.0;
-    }
-
-    // Update persistent rotation
-    this.currentRotation += spinSpeed * deltaTime;
-
-    // Apply rotation to mesh
-    this.mesh.rotation.y = this.currentRotation;
-
-    // Wrap rotation to prevent overflow
-    if (this.currentRotation > Math.PI * 2) {
-      this.currentRotation -= Math.PI * 2;
-    }
+    const spinSpeed = spinSpeeds[this.powerUpType] || 2.0;
+    this.mesh.rotation.y = (Date.now() * 0.001 * spinSpeed) % (Math.PI * 2);
   }
 
   private updatePlayerAttraction(deltaTime: number): void {
@@ -437,96 +417,27 @@ export class PowerUp extends BaseEntity {
         this.velocity.set(0, 0, 0);
         return;
       }
-      // Much snappier: override velocity toward player with speed that scales by distance.
+
+      // Calculate attraction speed based on distance
       const dir = new THREE.Vector3(dx, dy, dz);
       const dist = Math.max(0.0001, distance);
       dir.multiplyScalar(1 / dist);
-      // Speed grows with remaining range and proximity, clamped by magnetMaxSpeed
-      const range = this.magnetRange;
-      const base = this.magnetBaseSpeed || 30.0;
-      const maxS = this.magnetMaxSpeed || 140.0;
-      const proximity = Math.max(0, Math.min(1, 1 - dist / range));
-      const boost = (range - dist) * 10.0 + 80.0 * Math.pow(proximity, 1.2);
-      const speed = Math.min(maxS, base + boost);
-      const step = speed; // units/sec
-      this.velocity.x = dir.x * step;
-      this.velocity.y = dir.y * step;
-      this.velocity.z = dir.z * step;
+
+      // Speed grows with remaining range and proximity
+      const proximity = Math.max(0, Math.min(1, 1 - dist / this.magnetRange));
+      const boost = (this.magnetRange - dist) * 10.0 + 80.0 * Math.pow(proximity, 1.2);
+      const speed = Math.min(140.0, 30.0 + boost);
+
+      // Apply velocity
+      this.velocity.copy(dir).multiplyScalar(speed);
 
       // If very close, ensure immediate pickup next frame
       if (dist < 0.2) {
-        this.velocity.x *= 2;
-        this.velocity.y *= 2;
-        this.velocity.z *= 2;
+        this.velocity.multiplyScalar(2);
       }
     }
   }
 
-  private updateSpecialEffects(_deltaTime: number): void {
-    const time = Date.now() * 0.001;
-
-    if (!this.mesh) return;
-
-    switch (this.powerUpType) {
-      case PowerUpSubType.SHIELD:
-        // Pulsing shield effect
-        if (
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshLambertMaterial
-        ) {
-          this.mesh.material.opacity = 0.6 + Math.sin(time * 4.0) * 0.2;
-          this.mesh.material.transparent = true;
-        }
-        break;
-
-      case PowerUpSubType.LIFE:
-        // Heartbeat pulsing - use visualScale as base instead of 1.0
-        const heartbeat = Math.sin(time * 8.0) * 0.1 + Math.sin(time * 2.0) * 0.1;
-        this.mesh.scale.setScalar(this.visualScale * (1.0 + heartbeat));
-        break;
-
-      case PowerUpSubType.SPEED:
-        // Rapid flickering for speed
-        if (
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshLambertMaterial
-        ) {
-          this.mesh.material.opacity = 0.8 + Math.sin(time * 20.0) * 0.2;
-          this.mesh.material.transparent = true;
-        }
-        break;
-
-      case PowerUpSubType.WEAPON_UPGRADE:
-        // Glowing effect
-        const glow = 0.7 + Math.sin(time * 3.0) * 0.3;
-        if (
-          this.mesh instanceof THREE.Mesh &&
-          this.mesh.material instanceof THREE.MeshLambertMaterial
-        ) {
-          this.mesh.material.opacity = glow;
-          this.mesh.material.transparent = true;
-        }
-        break;
-    }
-  }
-
-  // Check if player is in magnet range
-  public checkPlayerInRange(playerPosition: { x: number; y: number; z: number }): boolean {
-    const dx = this.position.x - playerPosition.x;
-    const dy = this.position.y - playerPosition.y;
-    const dz = this.position.z - playerPosition.z;
-
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    if (distance <= this.magnetRange) {
-      this.attracted = true;
-      return true;
-    }
-
-    return false;
-  }
-
-  // Apply power-up effect to player - now uses centralized player.powerUp() method
   public applyToPlayer(player: IEntity): void {
     const playerEntity = player as any;
 
@@ -552,7 +463,6 @@ export class PowerUp extends BaseEntity {
     }
   }
 
-  // Override collision to apply power-up to player
   public override onCollision(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
       // Apply power-up effect
@@ -589,17 +499,11 @@ export class PowerUp extends BaseEntity {
   }
 
   protected override onDie(): void {
-    // Immediately mark as DEAD so EntityManager removes the power-up
     this.velocity.set(0, 0, 0);
     this.animationType = AnimationType.EXPLODING;
     this.state = EntityState.DEAD;
   }
 
-  protected override onDestroy(): void {
-    // Power-up cleanup - could spawn sparkle effects, etc.
-  }
-
-  // Static method to set audio manager for all power-ups
   public static setAudioManager(audioManager: any): void {
     PowerUp.audioManager = audioManager;
   }
