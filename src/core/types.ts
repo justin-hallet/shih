@@ -22,9 +22,7 @@ export enum CameraMode {
 export enum EntityState {
   IDLE = 'idle',
   ACTIVE = 'active',
-  MOVING = 'moving',
   ATTACKING = 'attacking',
-  DAMAGED = 'damaged',
   DYING = 'dying',
   DEAD = 'dead',
 }
@@ -34,8 +32,6 @@ export enum AnimationType {
   IDLE = 'idle',
   MOVING = 'moving',
   ATTACKING = 'attacking',
-  FLOATING = 'floating',
-  SPINNING = 'spinning',
   EXPLODING = 'exploding',
   DYING = 'dying',
 }
