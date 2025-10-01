@@ -875,7 +875,7 @@ function handleAction(action: Action, isDown: boolean) {
       if (player) {
         const randomDamage = 0.5 + Math.random() * 1.5;
         console.log(`🩸 Debug: Applying ${randomDamage.toFixed(2)} damage to player`);
-        player.takeDamage(randomDamage);
+        player.onDamage(randomDamage);
       }
     } else if (action === 'debug_kill') {
       // Trigger proper death sequence (with animation)

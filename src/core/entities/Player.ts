@@ -765,7 +765,7 @@ export class Player extends BaseEntity {
   }
 
   // Override damage to work directly with health (0-8 scale)
-  public override takeDamage(damage: number): void {
+  public override onDamage(damage: number): void {
     if (this.invulnerableTime > 0) return;
 
     // Play enemy/projectile damage sound
@@ -784,8 +784,12 @@ export class Player extends BaseEntity {
 
     // Check if health reached 0
     if (this.health <= 0) {
-      this.die();
+      this.onDeath();
     }
+  }
+
+  protected override handleDamage(_damage: number): void {
+    // Player specific damage handling is done in onDamage
   }
 
   protected override onDie(): void {
@@ -944,7 +948,7 @@ export class Player extends BaseEntity {
       if (this.invulnerableTime > 0) return; // brief i-frames
 
       // Take 1 damage from obstacle collision
-      this.takeDamage(1);
+      this.onDamage(1);
     }
   }
 

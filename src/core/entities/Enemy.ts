@@ -285,14 +285,14 @@ export class Enemy extends BaseEntity {
   protected override onCollisionResponse(other: IEntity): void {
     if (other.type === EntityType.PLAYER && this.state === EntityState.ACTIVE) {
       // Damage the player
-      other.takeDamage(this.attackDamage);
+      other.onDamage(this.attackDamage);
 
       // Take collision damage ourselves
-      this.takeDamage(10);
+      this.onDamage(10);
     }
   }
 
-  protected override onTakeDamage(_damage: number): void {
+  protected override handleDamage(_damage: number): void {
     // Visual feedback for damage - red silhouette outline
     this.createDamageOutline();
 

@@ -27,9 +27,9 @@ export interface IEntity {
 
   update(deltaTime: number): void;
   destroy(): void;
-  takeDamage(damage: number): void;
-  checkCollision(other: IEntity): boolean;
-  handleCollision(other: IEntity): void;
+  onDamage(damage: number): void;
+  onCollisionCheck(other: IEntity): boolean;
+  onCollision(other: IEntity): void;
 }
 
 export abstract class BaseEntity implements IEntity {
@@ -109,7 +109,7 @@ export abstract class BaseEntity implements IEntity {
     this.onUpdate(deltaTime);
   }
 
-  public checkCollision(other: IEntity): boolean {
+  public onCollisionCheck(other: IEntity): boolean {
     const thisRadius = this.collisionBounds?.radius || 1.0;
     const otherRadius = other.collisionBounds?.radius || 1.0;
     const combinedRadius = thisRadius + otherRadius;
@@ -117,20 +117,26 @@ export abstract class BaseEntity implements IEntity {
     return this.position.distanceTo(other.position) < combinedRadius;
   }
 
-  public takeDamage(damage: number): void {
+  public onCollision(other: IEntity): void {
+    if (this.onCollisionCheck(other)) {
+      this.onCollisionResponse(other);
+    }
+  }
+
+  public onDamage(damage: number): void {
     if (this.state === EntityState.DYING || this.state === EntityState.DEAD) return;
 
     this.health -= damage;
 
     if (this.health <= 0) {
       this.health = 0;
-      this.die();
+      this.onDeath();
     }
 
-    this.onTakeDamage(damage);
+    this.handleDamage(damage);
   }
 
-  public die(): void {
+  public onDeath(): void {
     if (this.state === EntityState.DEAD) return;
 
     this.state = EntityState.DYING;
@@ -170,14 +176,8 @@ export abstract class BaseEntity implements IEntity {
   }
 
   protected abstract onUpdate(deltaTime: number): void;
-  public handleCollision(other: IEntity): void {
-    if (this.checkCollision(other)) {
-      this.onCollisionResponse(other);
-    }
-  }
-
   protected abstract onCollisionResponse(other: IEntity): void;
-  protected onTakeDamage(_damage: number): void {}
+  protected handleDamage(_damage: number): void {}
   protected onDie(): void {}
 
   public static setAudioManager(audioManager: any): void {

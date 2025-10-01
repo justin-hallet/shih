@@ -371,7 +371,7 @@ export class PowerUp extends BaseEntity {
       // If within snap radius, immediately apply and remove
       if (distance < 1.2) {
         this.applyToPlayer(player as IEntity);
-        this.die();
+        this.onDeath();
         return;
       }
 
@@ -445,7 +445,7 @@ export class PowerUp extends BaseEntity {
       }
 
       // Destroy power-up immediately
-      this.die();
+      this.onDeath();
       return;
     }
 

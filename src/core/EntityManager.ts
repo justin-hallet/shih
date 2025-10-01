@@ -118,11 +118,11 @@ export class EntityManager {
     this.clearCollisionHighlights();
 
     // Check collisions
-    this.checkCollisions();
+    this.handleCollisions();
   }
 
   // Collision detection between all entities
-  private checkCollisions(): void {
+  private handleCollisions(): void {
     const allEntities = Array.from(this.entities.values());
 
     for (let i = 0; i < allEntities.length; i++) {
@@ -130,13 +130,13 @@ export class EntityManager {
         const entityA = allEntities[i];
         const entityB = allEntities[j];
 
-        if (this.shouldCheckCollision(entityA, entityB)) {
-          if (entityA.checkCollision(entityB)) {
+        if (this.shouldHandleCollision(entityA, entityB)) {
+          if (entityA.onCollisionCheck(entityB)) {
             // Highlight collision in debug renderer
             this.highlightCollision(entityA, entityB);
 
-            entityA.handleCollision(entityB);
-            entityB.handleCollision(entityA);
+            entityA.onCollision(entityB);
+            entityB.onCollision(entityA);
           }
         }
       }
@@ -144,7 +144,7 @@ export class EntityManager {
   }
 
   // Determine if two entities should check for collision
-  private shouldCheckCollision(entityA: IEntity, entityB: IEntity): boolean {
+  private shouldHandleCollision(entityA: IEntity, entityB: IEntity): boolean {
     // Skip if either entity is inactive or dead
     if (
       entityA.state === EntityState.INACTIVE ||

@@ -304,7 +304,7 @@ export class Projectile extends BaseEntity {
         (other.type === EntityType.ENEMY || other.type === EntityType.OBSTACLE)) ||
       (this.owner === 'enemy' && other.type === EntityType.PLAYER)
     ) {
-      other.takeDamage(this.damage);
+      other.onDamage(this.damage);
 
       // Handle explosion
       if (this.explosionRadius > 0) {
