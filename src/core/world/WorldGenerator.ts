@@ -592,7 +592,7 @@ export class WorldGenerator {
     surfaceMesh.userData['isTerrain'] = true;
     surfaceMesh.userData['isTerrainSurface'] = true;
 
-    // Create wireframe overlay as a separate child for independent visibility
+    // Create wireframe overlay as a separate sibling (not child) for true independent visibility
     const wireGeom = new THREE.WireframeGeometry(geometry);
     const wireMat = new THREE.LineBasicMaterial({
       color: 0x000000,
@@ -603,7 +603,14 @@ export class WorldGenerator {
     const wireframe = new THREE.LineSegments(wireGeom, wireMat);
     wireframe.renderOrder = 1; // draw after surface
     wireframe.userData['isTerrainWireframe'] = true;
-    surfaceMesh.add(wireframe);
+
+    // Position wireframe at same position as surface mesh
+    wireframe.position.copy(surfaceMesh.position);
+    wireframe.rotation.copy(surfaceMesh.rotation);
+    wireframe.scale.copy(surfaceMesh.scale);
+
+    // Add both meshes to scene
+    this.scene.add(wireframe);
 
     // Respect current visualization flags stored on the scene (if present)
     const parentScene = this.scene as any;

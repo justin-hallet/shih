@@ -1083,17 +1083,14 @@ function toggleTerrainVisualization() {
   scene.userData['showWireframe'] = showWireframe;
   scene.userData['showSurface'] = showSurface;
   scene.traverse(child => {
+    // Handle surface mesh visibility
     if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
-      // Control base surface visibility
-      child.visible = !!showSurface;
-
-      // Control wireframe overlay visibility
-      for (const sub of child.children) {
-        if (sub instanceof THREE.LineSegments && sub.userData['isTerrainWireframe']) {
-          sub.visible = !!showWireframe;
-          sub.renderOrder = 1;
-        }
-      }
+      child.visible = showSurface;
+    }
+    // Handle wireframe visibility (now a sibling, not a child)
+    if (child instanceof THREE.LineSegments && child.userData['isTerrainWireframe']) {
+      child.visible = showWireframe;
+      child.renderOrder = 1;
     }
   });
 }
