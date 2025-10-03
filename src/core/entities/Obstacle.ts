@@ -161,6 +161,14 @@ export class Obstacle extends BaseEntity {
       const time = Date.now() * 0.001;
       this.mesh.position.y += Math.sin(time * 2) * 0.1 * deltaTime;
     }
+
+    const terrainY = this.scene?.userData?.['worldGenerator']?.getTerrainHeightAt?.(
+      this.position.x,
+      this.position.z,
+    ) || 0;
+    if (terrainY > 0) {
+      this.position.y = terrainY - this.collisionBounds.radius;
+    }
   }
 
   protected override onDie(): void {

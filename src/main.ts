@@ -1316,6 +1316,10 @@ function animate() {
     const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
     player.position.y = terrainY + playerDistanceAbove;
 
+    // Update player's ground distance for animation state
+    const distanceFromGround = player.position.y - terrainY;
+    player.setGroundDistance(distanceFromGround);
+
     // Kill projectiles that hit the floor
     const projectiles = entityManager.getEntitiesByType(EntityType.PROJECTILE) as any[];
     for (const p of projectiles) {
