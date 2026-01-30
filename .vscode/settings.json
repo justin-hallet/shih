@@ -1,0 +1,87 @@
+{
+  // TypeScript settings
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  // ESLint configuration
+  "eslint.enable": true,
+  "eslint.format.enable": true,
+  "eslint.workingDirectories": ["."],
+
+  // Prettier configuration
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // GLSL shader file associations
+  "files.associations": {
+    "*.vert": "glsl",
+    "*.frag": "glsl",
+    "*.vs": "glsl",
+    "*.fs": "glsl",
+    "*.glsl": "glsl"
+  },
+
+  // File explorer settings
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true,
+    "**/package-lock.json": true
+  },
+
+  // Search settings
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/package-lock.json": true
+  },
+
+  // Editor settings for game development
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+
+  // Terminal settings
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.fontSize": 14,
+
+  // Vite specific settings
+  "emmet.includeLanguages": {
+    "typescript": "html"
+  },
+
+  // Three.js development helpers
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+
+  // Performance settings for large 3D projects
+  "typescript.disableAutomaticTypeAcquisition": false,
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+
+  // Git settings
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.autofetch": true
+}

@@ -1,0 +1,38 @@
+{
+  "recommendations": [
+    // Core TypeScript/JavaScript development
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    
+    // Code quality and formatting
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    
+    // Three.js and WebGL development
+    "slevesque.shader",
+    "raczzalan.webgl-glsl-editor",
+    "codezombiech.gitignore",
+    
+    // Build tools and dev experience
+    "antfu.vite",
+    "ms-vscode.vscode-json",
+    
+    // Git and version control
+    "mhutchie.git-graph",
+    "eamodio.gitlens",
+    
+    // General development productivity
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-json",
+    
+    // Game development specific
+    "ms-vscode.hexeditor",
+    "redhat.vscode-yaml"
+  ],
+  "unwantedRecommendations": [
+    "ms-vscode.vscode-typescript"
+  ]
+}

@@ -1,0 +1,37 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Space Harrier themed icon -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3c72;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a5298;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="192" height="192" fill="url(#bg)" rx="32"/>
+  
+  <!-- Harrier figure (simplified) -->
+  <g transform="translate(96,96)">
+    <!-- Body -->
+    <circle cx="0" cy="10" r="8" fill="#00ff00" stroke="#ffffff" stroke-width="2"/>
+    
+    <!-- Jetpack -->
+    <rect x="-12" y="5" width="24" height="15" fill="#ff6b00" stroke="#ffffff" stroke-width="2" rx="3"/>
+    
+    <!-- Jetpack flames -->
+    <ellipse cx="-8" cy="22" rx="3" ry="8" fill="#ff0000" opacity="0.8"/>
+    <ellipse cx="0" cy="25" rx="3" ry="10" fill="#ffff00" opacity="0.8"/>
+    <ellipse cx="8" cy="22" rx="3" ry="8" fill="#ff0000" opacity="0.8"/>
+    
+    <!-- Arms -->
+    <ellipse cx="-15" cy="8" rx="3" ry="8" fill="#00ff00" stroke="#ffffff" stroke-width="1"/>
+    <ellipse cx="15" cy="8" rx="3" ry="8" fill="#00ff00" stroke="#ffffff" stroke-width="1"/>
+    
+    <!-- Head -->
+    <circle cx="0" cy="-5" r="6" fill="#ffcccb" stroke="#ffffff" stroke-width="2"/>
+  </g>
+  
+  <!-- Game title -->
+  <text x="96" y="40" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">SPACE</text>
+  <text x="96" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">HARRIER</text>
+</svg>
