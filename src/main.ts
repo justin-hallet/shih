@@ -27,6 +27,7 @@ import { PowerUp } from './core/entities/PowerUp';
 import { Enemy } from './core/entities/Enemy';
 import { GameOverlay } from './components/GameOverlay';
 import { ScoreManager } from './core/ScoreManager';
+import { InputManager, InputAction } from './core/InputManager';
 import './styles/hud.css';
 import './styles/overlay.css';
 
@@ -383,6 +384,9 @@ const audioManager = new AudioManager();
 // Initialize Score Manager
 const scoreManager = new ScoreManager();
 
+// Initialize Input Manager
+const inputManager = new InputManager();
+
 // Connect score manager to HUD
 if (hud) {
   // Set initial top score
@@ -585,50 +589,23 @@ if (hud) {
 }
 
 // Initialize Virtual Controller for mobile touch input
+let virtualControllerFiring = false; // Track firing state for InputManager
+
 const virtualController = new VirtualController({
   onMove: direction => {
-    // Map joystick input to movement actions
-    const threshold = 0.3; // Dead zone threshold
-
-    // Handle horizontal movement (strafe or turn based on setting)
-    if (Math.abs(direction.x) > threshold) {
-      if (direction.x > 0) {
-        handleAction('right_movement', true);
-        handleAction('left_movement', false);
-      } else {
-        handleAction('left_movement', true);
-        handleAction('right_movement', false);
-      }
-    } else {
-      handleAction('left_movement', false);
-      handleAction('right_movement', false);
-    }
-
-    // Handle vertical movement (ascend/descend with invert Y support)
-    if (Math.abs(direction.y) > threshold) {
-      const yUp = invertY ? direction.y > 0 : direction.y < 0;
-      if (yUp) {
-        handleAction('ascend', true);
-        handleAction('descend', false);
-      } else {
-        handleAction('descend', true);
-        handleAction('ascend', false);
-      }
-    } else {
-      handleAction('ascend', false);
-      handleAction('descend', false);
-    }
+    // Use InputManager's built-in virtual controller handler
+    // It handles dead zone, horizontal/vertical movement, and invert Y
+    const dirVector = new THREE.Vector2(direction.x, direction.y);
+    inputManager.handleVirtualControllerInput(dirVector, virtualControllerFiring);
   },
   onMoveEnd: () => {
     // Stop all movement when joystick is released
-    handleAction('left_movement', false);
-    handleAction('right_movement', false);
-    handleAction('ascend', false);
-    handleAction('descend', false);
+    inputManager.handleVirtualControllerInput(new THREE.Vector2(0, 0), virtualControllerFiring);
   },
   onFire: pressed => {
-    // Handle fire button
-    handleAction('fire', pressed);
+    // Update firing state and notify InputManager
+    virtualControllerFiring = pressed;
+    inputManager.setActionState('fire', pressed);
   },
 });
 
@@ -671,8 +648,14 @@ settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) 
     virtualController.setLeftHanded(value as boolean);
   } else if (type === 'movementStrafe') {
     movementStrafe = value as boolean;
+    // Propagate movement mode to player
+    if (player) {
+      player.setMovementMode(value as boolean);
+    }
   } else if (type === 'invertY') {
     invertY = value as boolean;
+    // Propagate invert Y setting to input manager
+    inputManager.setInvertY(value as boolean);
   } else if (type === 'layoutStyle') {
     layoutStyle = value as 'auto' | 'mobile' | 'desktop';
     // Trigger layout update
@@ -777,8 +760,6 @@ const KeyBindings: Record<string, Action> = {
   KeyK: 'debug_kill', // K key - remove a life
 };
 
-const actionDown: Partial<Record<Action, boolean>> = {};
-
 // Terrain visualization state
 let showWireframe = false;
 let showSurface = true;
@@ -806,8 +787,9 @@ let mouseX = 0;
 const mouseY = 0;
 
 // Keyboard event listeners using bindings
+// Note: Movement actions (left_movement, right_movement, ascend, descend, fire, switch_model)
+// are routed through InputManager. This function only handles debug/config actions.
 function handleAction(action: Action, isDown: boolean) {
-  actionDown[action] = isDown;
   // One-shot on keyup for toggles
   if (!isDown) {
     if (action === 'toggle_wireframe') {
@@ -953,7 +935,15 @@ window.addEventListener('keydown', event => {
 
   const action = KeyBindings[event.code];
   if (action) {
-    handleAction(action, true);
+    // Route movement/fire actions to InputManager
+    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model', 'toggle_movement'];
+    if (inputActions.includes(action)) {
+      inputManager.setActionState(action as InputAction, true);
+    } else {
+      // Keep debug/config actions in handleAction
+      handleAction(action, true);
+    }
+
     if (
       action === 'fire' ||
       action === 'ascend' ||
@@ -969,7 +959,15 @@ window.addEventListener('keydown', event => {
 window.addEventListener('keyup', event => {
   const action = KeyBindings[event.code];
   if (action) {
-    handleAction(action, false);
+    // Route movement/fire actions to InputManager
+    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model', 'toggle_movement'];
+    if (inputActions.includes(action)) {
+      inputManager.setActionState(action as InputAction, false);
+    } else {
+      // Keep debug/config actions in handleAction
+      handleAction(action, false);
+    }
+
     if (action === 'speed_up') {
       // Cancel any active speed boost when manually adjusting speed
       if (scene.userData['speedBoostTimeout']) {
@@ -1049,6 +1047,13 @@ cameraController.setPlayer(player);
 
 // Set player reference in debug panel
 settingsPanel.setPlayer(player);
+
+// Register player with input manager
+inputManager.registerHandler(player);
+
+// Configure initial input settings
+player.setMovementMode(movementStrafe);
+inputManager.setInvertY(invertY);
 
 // Set up player audio
 audioManager.setPlayerPosition(player.position);
@@ -1200,7 +1205,7 @@ function animate() {
     let isTurning = false;
     let turnDirection: 'left' | 'right' | null = null;
 
-    if (actionDown['left_movement']) {
+    if (player.getInputState('left_movement')) {
       if (movementStrafe) {
         // Strafe mode - move sideways
         const left = new THREE.Vector3(-1, 0, 0);
@@ -1217,7 +1222,7 @@ function animate() {
       }
     }
 
-    if (actionDown['right_movement']) {
+    if (player.getInputState('right_movement')) {
       if (movementStrafe) {
         // Strafe mode - move sideways
         const right = new THREE.Vector3(1, 0, 0);
@@ -1234,34 +1239,6 @@ function animate() {
       }
     }
 
-    // Legacy turn/strafe actions (for compatibility)
-    if (actionDown['turn_left'] && cameraController.getMouseControlEnabled()) {
-      mouseX += turnRate * deltaTime;
-      isTurning = true;
-      turnDirection = 'left';
-    }
-    if (actionDown['turn_right'] && cameraController.getMouseControlEnabled()) {
-      mouseX -= turnRate * deltaTime;
-      isTurning = true;
-      turnDirection = 'right';
-    }
-    if (actionDown['strafe_left']) {
-      const left = new THREE.Vector3(-1, 0, 0);
-      left.applyQuaternion(camera.quaternion);
-      left.multiplyScalar(moveSpeed * deltaTime);
-      player.position.add(left);
-      isStrafing = true;
-      strafeDirection = 'left';
-    }
-    if (actionDown['strafe_right']) {
-      const right = new THREE.Vector3(1, 0, 0);
-      right.applyQuaternion(camera.quaternion);
-      right.multiplyScalar(moveSpeed * deltaTime);
-      player.position.add(right);
-      isStrafing = true;
-      strafeDirection = 'right';
-    }
-
     // Also consider turning as strafing when near ground (for animation)
     if (!isStrafing && groundDistance < 2.0) {
       if (isTurning && turnDirection) {
@@ -1271,8 +1248,8 @@ function animate() {
     }
 
     // Track vertical movement for jump animation
-    const isAscending = actionDown['ascend'] || false;
-    const isDescending = actionDown['descend'] || false;
+    const isAscending = player.getInputState('ascend');
+    const isDescending = player.getInputState('descend');
 
     // Use the isTurning and turnDirection from movement handling above
 
@@ -1283,14 +1260,14 @@ function animate() {
     (player as any).setTurning(isTurning, turnDirection);
 
     // Up/down (W/Up and S/Down) - adjust desired distance above terrain
-    if (actionDown['ascend']) {
+    if (player.getInputState('ascend')) {
       playerDistanceAbove += flySpeed * deltaTime;
       // Cap at max flight height
       const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
       const maxDistanceAbove = MAX_FLIGHT_HEIGHT - terrainY;
       playerDistanceAbove = Math.min(playerDistanceAbove, maxDistanceAbove);
     }
-    if (actionDown['descend']) {
+    if (player.getInputState('descend')) {
       playerDistanceAbove -= flySpeed * deltaTime;
       // Don't go below minimum clearance
       playerDistanceAbove = Math.max(playerDistanceAbove, MIN_FLOOR_CLEARANCE);
@@ -1333,7 +1310,7 @@ function animate() {
   // Demo: Player automatically shoots
   const currentTime = Date.now() * 0.001;
   if (player && currentTime - lastShotTime >= shotCooldown) {
-    if (actionDown['fire'] && player.shoot()) {
+    if (player.getInputState('fire') && player.shoot()) {
       // Spawn projectile from player position
       // Use the player's horizontal travel direction (constant Y)
       const lastDirObj = scene.userData['lastForwardDir'] || { x: 0, y: 0, z: -1 };

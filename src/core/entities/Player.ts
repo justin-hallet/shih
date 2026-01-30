@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { BaseEntity } from '../Entity';
 import { EntityType, AnimationType, EntityState } from '../types';
+import { InputHandler, InputAction } from '../InputManager';
 
-export class Player extends BaseEntity {
+export class Player extends BaseEntity implements InputHandler {
   // Player-specific properties
   public ammo!: number;
   public maxAmmo!: number;
@@ -58,6 +59,10 @@ export class Player extends BaseEntity {
   // Death sequence control
   private isInDeathSequence: boolean = false;
 
+  // Input handling (InputHandler interface implementation)
+  private inputStates: Map<InputAction, boolean> = new Map();
+  private movementStrafe: boolean = false; // Track movement mode (strafe vs turn)
+  
   constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
@@ -130,6 +135,16 @@ export class Player extends BaseEntity {
     this.currentBankAngle = 0;
     this.targetPitchAngle = 0;
     this.currentPitchAngle = 0;
+
+    // Reset input states
+    this.inputStates.clear();
+    this.inputStates.set('left_movement', false);
+    this.inputStates.set('right_movement', false);
+    this.inputStates.set('ascend', false);
+    this.inputStates.set('descend', false);
+    this.inputStates.set('fire', false);
+    this.inputStates.set('switch_model', false);
+    this.inputStates.set('toggle_movement', false);
 
     // Reset visual effects
     this.hasOutlineEffect = false;
@@ -599,6 +614,37 @@ export class Player extends BaseEntity {
   public setTurning(isTurning: boolean, direction: 'left' | 'right' | null = null): void {
     this.isTurning = isTurning;
     this.turnDirection = direction;
+  }
+
+  /**
+   * InputHandler interface implementation
+   * Called by InputManager when action states change
+   */
+  public handleInput(action: InputAction, state: boolean): void {
+    this.inputStates.set(action, state);
+
+    // Handle one-shot actions on button release
+    if (!state) {
+      if (action === 'switch_model') {
+        this.switchToNextModel();
+      } else if (action === 'toggle_movement') {
+        this.movementStrafe = !this.movementStrafe;
+      }
+    }
+  }
+
+  /**
+   * Configure movement mode (strafe vs turn)
+   */
+  public setMovementMode(strafe: boolean): void {
+    this.movementStrafe = strafe;
+  }
+
+  /**
+   * Get current state of an input action
+   */
+  public getInputState(action: InputAction): boolean {
+    return this.inputStates.get(action) || false;
   }
 
   // Public method to switch to next model (called from main.ts)
