@@ -149,7 +149,9 @@ export class PowerUp extends BaseEntity {
     }
 
     try {
-      const gltf = await PowerUp.gltfLoader.loadAsync(`/src/assets/models/${modelFile}`);
+      const gltf = await PowerUp.gltfLoader.loadAsync(
+        new URL(`../../assets/models/${modelFile}`, import.meta.url).href,
+      );
       const model = gltf.scene;
 
       // Cache the model

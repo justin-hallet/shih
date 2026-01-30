@@ -7,8 +7,10 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   // Base URL for the app (adjust for deployment)
-  base: '/',
+  base: '/shih/',
 
+  assetsInclude: ['**/*.mp3', '**/*.fbx', '**/*.glb', '**/*.png'],
+  
   // Development server configuration
   server: {
     port: 3000,
@@ -31,7 +33,6 @@ export default defineConfig({
         // Code splitting for better caching
         manualChunks: {
           three: ['three'],
-          vendor: ['@reduxjs/toolkit'],
         },
       },
     },
@@ -67,6 +68,7 @@ export default defineConfig({
 
     // PWA support with service worker
     VitePWA({
+      base: '/shih/',
       registerType: 'autoUpdate',
       workbox: {
         clientsClaim: true,
@@ -80,7 +82,7 @@ export default defineConfig({
         theme_color: '#1e3c72',
         background_color: '#2a5298',
         display: 'fullscreen',
-        start_url: '/',
+        start_url: '/shih/',
         icons: [
           {
             src: 'icon-192.png',
@@ -136,6 +138,6 @@ export default defineConfig({
 
   // Optimization settings
   optimizeDeps: {
-    include: ['three', '@reduxjs/toolkit'],
+    include: ['three'],
   },
 });

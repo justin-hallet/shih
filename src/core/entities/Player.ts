@@ -160,16 +160,22 @@ export class Player extends BaseEntity {
 
     // Base model with skin (T-pose) - use current selected model
     const currentModel = this.availableModels[this.currentModelIndex];
-    const baseModelFile = `/src/assets/models/${currentModel}.fbx`;
+    const baseModelFile = new URL(`../../assets/models/${currentModel}.fbx`, import.meta.url).href;
 
     // Animation files (no skin, animations only)
     const animationFiles = [
-      { name: 'running', file: '/src/assets/models/running.fbx' },
-      { name: 'jump', file: '/src/assets/models/jump.fbx' },
-      { name: 'flying', file: '/src/assets/models/flying.fbx' },
-      { name: 'strafe_left', file: '/src/assets/models/strafe-left.fbx' },
-      { name: 'strafe_right', file: '/src/assets/models/strafe-right.fbx' },
-      { name: 'death', file: '/src/assets/models/death.fbx' },
+      { name: 'running', file: new URL('../../assets/models/running.fbx', import.meta.url).href },
+      { name: 'jump', file: new URL('../../assets/models/jump.fbx', import.meta.url).href },
+      { name: 'flying', file: new URL('../../assets/models/flying.fbx', import.meta.url).href },
+      {
+        name: 'strafe_left',
+        file: new URL('../../assets/models/strafe-left.fbx', import.meta.url).href,
+      },
+      {
+        name: 'strafe_right',
+        file: new URL('../../assets/models/strafe-right.fbx', import.meta.url).href,
+      },
+      { name: 'death', file: new URL('../../assets/models/death.fbx', import.meta.url).href },
     ];
 
     try {

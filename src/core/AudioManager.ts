@@ -57,9 +57,8 @@ export class AudioManager {
 
   // Sound action mappings with volumes and settings
   private readonly soundActions: Record<string, SoundAction> = {
-    // Shooting sounds - low priority, queued processing
     'shoot-bullet': {
-      file: '/src/assets/audio/shoot-1.mp3',
+      file: new URL('../assets/audio/shoot-1.mp3', import.meta.url).href,
       volume: 0.3,
       spatial: true,
       loop: false,
@@ -68,7 +67,7 @@ export class AudioManager {
       maxInstances: 8,
     },
     'shoot-missile': {
-      file: '/src/assets/audio/shoot-2.mp3',
+      file: new URL('../assets/audio/shoot-2.mp3', import.meta.url).href,
       volume: 0.35,
       spatial: true,
       loop: false,
@@ -77,7 +76,7 @@ export class AudioManager {
       maxInstances: 8,
     },
     'shoot-laser': {
-      file: '/src/assets/audio/shoot-3.mp3',
+      file: new URL('../assets/audio/shoot-3.mp3', import.meta.url).href,
       volume: 0.32,
       spatial: true,
       loop: false,
@@ -86,7 +85,7 @@ export class AudioManager {
       maxInstances: 8,
     },
     'shoot-plasma': {
-      file: '/src/assets/audio/shoot-4.mp3',
+      file: new URL('../assets/audio/shoot-4.mp3', import.meta.url).href,
       volume: 0.38,
       spatial: true,
       loop: false,
@@ -95,7 +94,7 @@ export class AudioManager {
       maxInstances: 8,
     },
     'shoot-fireball': {
-      file: '/src/assets/audio/shoot-5.mp3',
+      file: new URL('../assets/audio/shoot-5.mp3', import.meta.url).href,
       volume: 0.4,
       spatial: true,
       loop: false,
@@ -106,7 +105,7 @@ export class AudioManager {
 
     // Damage sounds - high priority, always audible
     'damage-obstacle': {
-      file: '/src/assets/audio/damage-1.mp3',
+      file: new URL('../assets/audio/damage-1.mp3', import.meta.url).href,
       volume: 5.0,
       spatial: true,
       loop: false,
@@ -115,7 +114,7 @@ export class AudioManager {
       maxInstances: 2,
     },
     'damage-enemy': {
-      file: '/src/assets/audio/damage-2.mp3',
+      file: new URL('../assets/audio/damage-2.mp3', import.meta.url).href,
       volume: 5.0,
       spatial: true,
       loop: false,
@@ -126,7 +125,7 @@ export class AudioManager {
 
     // Enemy hit sounds - medium priority, spatial
     'enemy-hit-1': {
-      file: '/src/assets/audio/hit-1.mp3',
+      file: new URL('../assets/audio/hit-1.mp3', import.meta.url).href,
       volume: 1.2,
       spatial: true,
       loop: false,
@@ -135,7 +134,7 @@ export class AudioManager {
       maxInstances: 3,
     },
     'enemy-hit-2': {
-      file: '/src/assets/audio/hit-2.mp3',
+      file: new URL('../assets/audio/hit-2.mp3', import.meta.url).href,
       volume: 1.2,
       spatial: true,
       loop: false,
@@ -144,7 +143,7 @@ export class AudioManager {
       maxInstances: 3,
     },
     'enemy-hit-3': {
-      file: '/src/assets/audio/hit-3.mp3',
+      file: new URL('../assets/audio/hit-3.mp3', import.meta.url).href,
       volume: 1.2,
       spatial: true,
       loop: false,
@@ -153,7 +152,7 @@ export class AudioManager {
       maxInstances: 3,
     },
     'enemy-hit-4': {
-      file: '/src/assets/audio/hit-4.mp3',
+      file: new URL('../assets/audio/hit-4.mp3', import.meta.url).href,
       volume: 1.2,
       spatial: true,
       loop: false,
@@ -164,7 +163,7 @@ export class AudioManager {
 
     // Enemy death sound - high priority, always heard
     'enemy-death': {
-      file: '/src/assets/audio/enemy-death.mp3',
+      file: new URL('../assets/audio/enemy-death.mp3', import.meta.url).href,
       volume: 1.8,
       spatial: true,
       loop: false,
@@ -174,7 +173,7 @@ export class AudioManager {
     },
 
     'player-death': {
-      file: '/src/assets/audio/player-death.mp3',
+      file: new URL('../assets/audio/player-death.mp3', import.meta.url).href,
       volume: 1.8,
       spatial: true,
       loop: false,
@@ -185,7 +184,7 @@ export class AudioManager {
 
     // Power-up collection sounds - medium priority, always heard
     'collect-ammo': {
-      file: '/src/assets/audio/power-up-1.mp3',
+      file: new URL('../assets/audio/power-up-1.mp3', import.meta.url).href,
       volume: 1.5,
       spatial: true,
       loop: false,
@@ -194,7 +193,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     'collect-shield': {
-      file: '/src/assets/audio/power-up-3.mp3',
+      file: new URL('../assets/audio/power-up-3.mp3', import.meta.url).href,
       volume: 1.5,
       spatial: true,
       loop: false,
@@ -203,7 +202,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     'collect-weapon': {
-      file: '/src/assets/audio/power-up-4.mp3',
+      file: new URL('../assets/audio/power-up-4.mp3', import.meta.url).href,
       volume: 1.4,
       spatial: true,
       loop: false,
@@ -212,7 +211,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     'collect-speed': {
-      file: '/src/assets/audio/power-up-5.mp3',
+      file: new URL('../assets/audio/power-up-5.mp3', import.meta.url).href,
       volume: 1.7,
       spatial: true,
       loop: false,
@@ -221,7 +220,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     'collect-life': {
-      file: '/src/assets/audio/credit.mp3',
+      file: new URL('../assets/audio/credit.mp3', import.meta.url).href,
       volume: 3.0,
       spatial: true,
       loop: false,
@@ -232,7 +231,7 @@ export class AudioManager {
 
     // Background and UI sounds
     'theme-music': {
-      file: '/src/assets/audio/theme.mp3',
+      file: new URL('../assets/audio/theme.mp3', import.meta.url).href,
       volume: 0.6,
       spatial: false,
       loop: true,
@@ -241,7 +240,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     welcome: {
-      file: '/src/assets/audio/welcome.mp3',
+      file: new URL('../assets/audio/welcome.mp3', import.meta.url).href,
       volume: 0.8,
       spatial: false,
       loop: false,
@@ -250,7 +249,7 @@ export class AudioManager {
       maxInstances: 1,
     },
     gameover: {
-      file: '/src/assets/audio/game-over.mp3',
+      file: new URL('../assets/audio/game-over.mp3', import.meta.url).href,
       volume: 0.8,
       spatial: false,
       loop: false,
