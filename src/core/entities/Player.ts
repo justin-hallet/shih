@@ -688,7 +688,7 @@ export class Player extends BaseEntity {
 
         // If health reaches 0, trigger death
         if (this.health <= 0) {
-          this.die();
+          this.onDeath();
         }
         break;
 

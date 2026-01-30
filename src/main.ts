@@ -931,11 +931,11 @@ function applyDebugBloomOverride(
 function getPowerUpOutlineColor(powerUpType: keyof typeof PowerUpSubType): THREE.Color | null {
   // These colors should match the ones in PowerUp.ts applyBloomMaterial method
   const bloomColors: Record<keyof typeof PowerUpSubType, number> = {
-    ammo: 0xffee66, // bright yellow
-    shield: 0x66ccff, // blue
-    life: 0xff3333, // red
-    speed: 0x33ff33, // green
-    weapon_upgrade: 0xffaa44, // orange
+    AMMO: 0xffee66, // bright yellow
+    SHIELD: 0x66ccff, // blue
+    LIFE: 0xff3333, // red
+    SPEED: 0x33ff33, // green
+    WEAPON_UPGRADE: 0xffaa44, // orange
   };
 
   const colorHex = bloomColors[powerUpType];
@@ -1307,7 +1307,7 @@ function animate() {
         y: player.position.y,
         z: player.position.z + fwd.z * 4,
       };
-      entityManager.spawnPowerUp('ammo', spawn);
+      entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
       // Give the player enough ammo for several shots so they can continue fighting
       (player as any).ammo = 5.0; // 10 shots worth (0.5 per shot)
     }

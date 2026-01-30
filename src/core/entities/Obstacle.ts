@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { BaseEntity } from '../Entity';
+import { BaseEntity, IEntity } from '../Entity';
 import { EntityType, ObstacleSubType, AnimationType, EntityState } from '../types';
 
 export class Obstacle extends BaseEntity {
@@ -166,7 +166,7 @@ export class Obstacle extends BaseEntity {
       this.position.x,
       this.position.z,
     ) || 0;
-    if (terrainY > 0) {
+    if (terrainY > 0 && this.collisionBounds?.radius) {
       this.position.y = terrainY - this.collisionBounds.radius;
     }
   }

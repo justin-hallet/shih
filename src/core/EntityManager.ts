@@ -147,9 +147,9 @@ export class EntityManager {
   private shouldHandleCollision(entityA: IEntity, entityB: IEntity): boolean {
     // Skip if either entity is inactive or dead
     if (
-      entityA.state === EntityState.INACTIVE ||
+      entityA.state === EntityState.IDLE ||
       entityA.state === EntityState.DEAD ||
-      entityB.state === EntityState.INACTIVE ||
+      entityB.state === EntityState.IDLE ||
       entityB.state === EntityState.DEAD
     ) {
       return false;
@@ -272,7 +272,8 @@ export class EntityManager {
 
   // Spawn convenience methods
   public spawnPlayer(position?: { x: number; y: number; z: number }): Player {
-    const player = new Player(position, this.scene);
+    const pos = position ? new THREE.Vector3(position.x, position.y, position.z) : undefined;
+    const player = new Player(pos, this.scene);
     this.spawn(player);
     return player;
   }

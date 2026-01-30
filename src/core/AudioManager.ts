@@ -40,7 +40,6 @@ export class AudioManager {
   private sfxVolume: number = 0.9;
   private musicVolume: number = 0.2;
   private isInitialized: boolean = false;
-  private hasUserInteracted: boolean = false;
 
   // Sound instance tracking for limiting concurrent sounds
   private activeInstances: Map<string, number[]> = new Map();
@@ -266,8 +265,6 @@ export class AudioManager {
 
   private setupUserInteractionListener(): void {
     const handleFirstInteraction = () => {
-      this.hasUserInteracted = true;
-
       // Remove the listeners since we only need this once
       document.removeEventListener('click', handleFirstInteraction);
       document.removeEventListener('keydown', handleFirstInteraction);

@@ -52,6 +52,7 @@ export abstract class BaseEntity implements IEntity {
   public modelCenterOffset?: THREE.Vector3;
 
   protected scene: THREE.Scene | undefined;
+  protected originalMaterial?: THREE.Material;
   protected static audioManager?: any;
 
   constructor(
@@ -221,7 +222,7 @@ export abstract class BaseEntity implements IEntity {
 
   protected createOutlineEffect(color: THREE.Color): void {
     if (!this.hasOutlineEffect && this.scene && this.mesh) {
-      const outlinePass = this.scene.userData?.outlinePass;
+      const outlinePass = this.scene.userData?.['outlinePass'];
       if (outlinePass) {
         outlinePass.addOutlineObject(this.mesh, color);
         this.hasOutlineEffect = true;
@@ -231,7 +232,7 @@ export abstract class BaseEntity implements IEntity {
 
   protected removeOutlineEffect(): void {
     if (this.hasOutlineEffect && this.scene && this.mesh) {
-      const outlinePass = this.scene.userData?.outlinePass;
+      const outlinePass = this.scene.userData?.['outlinePass'];
       if (outlinePass) {
         outlinePass.removeOutlineObject(this.mesh);
         this.hasOutlineEffect = false;

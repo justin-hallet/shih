@@ -272,14 +272,14 @@ export class Projectile extends BaseEntity {
         this.mesh.position.y += Math.sin(time * 6.0) * 0.1 * deltaTime;
 
         // Flickering opacity
-        if (this.mesh.material instanceof THREE.MeshBasicMaterial) {
+        if (this.mesh instanceof THREE.Mesh && this.mesh.material instanceof THREE.MeshBasicMaterial) {
           this.mesh.material.opacity = 0.8 + Math.sin(time * 15.0) * 0.2;
         }
         break;
 
       case ProjectileSubType.LASER:
         // Laser glow effect
-        if (this.mesh.material instanceof THREE.MeshBasicMaterial) {
+        if (this.mesh instanceof THREE.Mesh && this.mesh.material instanceof THREE.MeshBasicMaterial) {
           this.mesh.material.opacity = 0.9 + Math.sin(time * 20.0) * 0.1;
         }
         break;
@@ -330,7 +330,7 @@ export class Projectile extends BaseEntity {
     }
   }
 
-  public override die(): void {
+  public die(): void {
     if (this.state === EntityState.DEAD) return;
 
     // Skip DYING state - go directly to DEAD for immediate cleanup

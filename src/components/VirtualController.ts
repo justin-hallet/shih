@@ -81,8 +81,8 @@ export class VirtualController {
 
     const config = {
       zone: this.isDesktopMode ? this.container : this.joystickZone,
-      mode: this.isDesktopMode ? 'dynamic' : 'static',
-      position: this.isDesktopMode ? undefined : { left: '50%', top: '50%' },
+      mode: (this.isDesktopMode ? 'dynamic' : 'static') as 'dynamic' | 'static',
+      ...(!this.isDesktopMode && { position: { left: '50%', top: '50%' } }),
       color: '#ff6600',
       size: 80,
       threshold: 0.1,

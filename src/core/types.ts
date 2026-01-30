@@ -34,6 +34,8 @@ export enum AnimationType {
   ATTACKING = 'attacking',
   EXPLODING = 'exploding',
   DYING = 'dying',
+  FLOATING = 'floating',
+  SPINNING = 'spinning',
 }
 
 // Projectile sub-types
@@ -46,13 +48,13 @@ export enum ProjectileSubType {
 }
 
 // PowerUp sub-types
-export const PowerUpSubType = {
-  AMMO: 'ammo' as const,
-  SHIELD: 'shield' as const,
-  WEAPON_UPGRADE: 'weapon_upgrade' as const,
-  SPEED: 'speed' as const,
-  LIFE: 'life' as const,
-} as const;
+export enum PowerUpSubType {
+  AMMO = 'ammo',
+  SHIELD = 'shield',
+  WEAPON_UPGRADE = 'weapon_upgrade',
+  SPEED = 'speed',
+  LIFE = 'life',
+} 
 
 // Enemy sub-types
 export enum EnemySubType {

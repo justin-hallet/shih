@@ -19,8 +19,10 @@ export class PowerUp extends BaseEntity {
 
   // GLTF model loading
   private static gltfLoader: GLTFLoader = new GLTFLoader();
-  private static modelCache: Map<PowerUpSubType, THREE.Group> = new Map();
-  private originalMaterial?: THREE.Material; // Store original material for bloom effects
+  private static modelCache: Map<
+    (typeof PowerUpSubType)[keyof typeof PowerUpSubType],
+    THREE.Group
+  > = new Map();
 
   constructor(
     powerUpType: PowerUpSubType,
@@ -134,7 +136,7 @@ export class PowerUp extends BaseEntity {
     }
 
     // Map power-up types to model files
-    const modelFiles: Record<PowerUpSubType, string> = {
+    const modelFiles: Record<(typeof PowerUpSubType)[keyof typeof PowerUpSubType], string> = {
       [PowerUpSubType.AMMO]: 'ammo.glb',
       [PowerUpSubType.SHIELD]: 'shield.glb',
       [PowerUpSubType.LIFE]: 'life.glb',
@@ -167,7 +169,7 @@ export class PowerUp extends BaseEntity {
     if (!this.mesh || !this.scene) return;
 
     // Get bloom color based on power-up type
-    const bloomColors: Record<PowerUpSubType, number> = {
+    const bloomColors: Record<(typeof PowerUpSubType)[keyof typeof PowerUpSubType], number> = {
       [PowerUpSubType.AMMO]: 0xffee66, // bright yellow
       [PowerUpSubType.SHIELD]: 0x66ccff, // blue
       [PowerUpSubType.LIFE]: 0xff3333, // red
@@ -278,7 +280,7 @@ export class PowerUp extends BaseEntity {
     this.updatePlayerAttraction(deltaTime);
   }
 
-  private updateBouncing(deltaTime: number): void {
+  private updateBouncing(_deltaTime: number): void {
     // Stop bouncing once magnetism is active
     if (this.attracted) return;
 
@@ -297,7 +299,10 @@ export class PowerUp extends BaseEntity {
       // Add special effects based on type
       switch (this.powerUpType) {
         case PowerUpSubType.SHIELD:
-          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+          if (
+            this.mesh instanceof THREE.Mesh &&
+            this.mesh.material instanceof THREE.MeshLambertMaterial
+          ) {
             this.mesh.material.opacity = 0.6 + Math.sin(time * 4.0) * 0.2;
             this.mesh.material.transparent = true;
           }
@@ -309,14 +314,20 @@ export class PowerUp extends BaseEntity {
           break;
 
         case PowerUpSubType.SPEED:
-          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+          if (
+            this.mesh instanceof THREE.Mesh &&
+            this.mesh.material instanceof THREE.MeshLambertMaterial
+          ) {
             this.mesh.material.opacity = 0.8 + Math.sin(time * 20.0) * 0.2;
             this.mesh.material.transparent = true;
           }
           break;
 
         case PowerUpSubType.WEAPON_UPGRADE:
-          if (this.mesh.material instanceof THREE.MeshLambertMaterial) {
+          if (
+            this.mesh instanceof THREE.Mesh &&
+            this.mesh.material instanceof THREE.MeshLambertMaterial
+          ) {
             this.mesh.material.opacity = 0.7 + Math.sin(time * 3.0) * 0.3;
             this.mesh.material.transparent = true;
           }
@@ -325,11 +336,11 @@ export class PowerUp extends BaseEntity {
     }
   }
 
-  private updateSpinning(deltaTime: number): void {
+  private updateSpinning(_deltaTime: number): void {
     if (!this.mesh) return;
 
     // All power-ups spin around Y-axis at different speeds based on type
-    const spinSpeeds: Record<PowerUpSubType, number> = {
+    const spinSpeeds: Record<(typeof PowerUpSubType)[keyof typeof PowerUpSubType], number> = {
       [PowerUpSubType.AMMO]: 2.0, // Moderate spin for ammo
       [PowerUpSubType.SHIELD]: 1.5, // Slower, steady spin for shield
       [PowerUpSubType.LIFE]: 2.5, // Slightly faster for life (important)

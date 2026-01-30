@@ -332,7 +332,7 @@ export class Enemy extends BaseEntity {
     this.state = EntityState.DEAD;
   }
 
-  protected override onDestroy(): void {
+  public override destroy(): void {
     // Clean up health bar
     if (this.healthBarGroup && this.scene) {
       this.scene.remove(this.healthBarGroup);
@@ -347,5 +347,7 @@ export class Enemy extends BaseEntity {
         (this.healthBarForeground.material as THREE.Material).dispose();
       }
     }
+
+    super.destroy();
   }
 }

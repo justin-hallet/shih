@@ -693,7 +693,7 @@ export class WorldGenerator {
 
           if (position.y >= rule.heightRange.min && position.y <= rule.heightRange.max) {
             const clampedY = this.clampAboveTerrain(position.x, position.z, position.y, 0.0);
-            const obstacle = this.entityManager.spawnObstacle(rule.type, {
+            this.entityManager.spawnObstacle(rule.type, {
               x: position.x,
               y: clampedY,
               z: position.z,
@@ -835,7 +835,7 @@ export class WorldGenerator {
     template: ContentTemplate,
     basePosition: THREE.Vector3,
     height: number,
-    chunk: WorldChunk,
+    _chunk: WorldChunk,
   ): void {
     // Spawn obstacles from template
     for (const obstacleData of template.obstacles) {
@@ -986,188 +986,6 @@ export class WorldGenerator {
 
     const heightValue = heightMap.data[x + z * heightMap.width];
     return heightValue * heightMap.scale + heightMap.offset;
-  }
-
-  // Get edge height constraints from adjacent tiles
-  private _getEdgeConstraintsFromAdjacentTiles(coordinate: TileCoordinate) {
-    const constraints = {
-      north: null as number[] | null, // Heights along north edge (z = -100)
-      south: null as number[] | null, // Heights along south edge (z = +100)
-      east: null as number[] | null, // Heights along east edge (x = +100)
-      west: null as number[] | null, // Heights along west edge (x = -100)
-    };
-
-    // Check north neighbor (z - 1)
-    const northTileId = this.tileCoordinateToId({
-      x: coordinate.x,
-      z: coordinate.z - 1,
-      size: coordinate.size,
-    });
-    const northTile = this.streamingState.loadedChunks.get(northTileId);
-    if (northTile) {
-      constraints.north = this.extractSouthEdgeHeights(northTile);
-    } else {
-    }
-
-    // Check south neighbor (z + 1)
-    const southTileId = this.tileCoordinateToId({
-      x: coordinate.x,
-      z: coordinate.z + 1,
-      size: coordinate.size,
-    });
-    const southTile = this.streamingState.loadedChunks.get(southTileId);
-    if (southTile) {
-      constraints.south = this.extractNorthEdgeHeights(southTile);
-    } else {
-    }
-
-    // Check east neighbor (x + 1)
-    const eastTileId = this.tileCoordinateToId({
-      x: coordinate.x + 1,
-      z: coordinate.z,
-      size: coordinate.size,
-    });
-    const eastTile = this.streamingState.loadedChunks.get(eastTileId);
-    if (eastTile) {
-      constraints.east = this.extractWestEdgeHeights(eastTile);
-    } else {
-    }
-
-    // Check west neighbor (x - 1)
-    const westTileId = this.tileCoordinateToId({
-      x: coordinate.x - 1,
-      z: coordinate.z,
-      size: coordinate.size,
-    });
-    const westTile = this.streamingState.loadedChunks.get(westTileId);
-    if (westTile) {
-      constraints.west = this.extractEastEdgeHeights(westTile);
-    } else {
-    }
-
-    const _constraintCount = [
-      constraints.north?.length || 0,
-      constraints.south?.length || 0,
-      constraints.east?.length || 0,
-      constraints.west?.length || 0,
-    ];
-
-    return constraints;
-  }
-
-  // Extract edge heights using stored height grid
-  private extractNorthEdgeHeights(chunk: WorldChunk): number[] {
-    if (!chunk.heightGrid) return [];
-
-    const heights: number[] = [];
-    const gridSize = chunk.heightGrid.length;
-
-    // North edge is at gridZ = 0 (z = -100)
-    for (let gridX = 0; gridX < gridSize; gridX++) {
-      heights.push(chunk.heightGrid[gridX][0]);
-    }
-
-    return heights;
-  }
-
-  private extractSouthEdgeHeights(chunk: WorldChunk): number[] {
-    if (!chunk.heightGrid) return [];
-
-    const heights: number[] = [];
-    const gridSize = chunk.heightGrid.length;
-
-    // South edge is at gridZ = gridSize-1 (z = +100)
-    for (let gridX = 0; gridX < gridSize; gridX++) {
-      heights.push(chunk.heightGrid[gridX][gridSize - 1]);
-    }
-
-    return heights;
-  }
-
-  private extractEastEdgeHeights(chunk: WorldChunk): number[] {
-    if (!chunk.heightGrid) return [];
-
-    const heights: number[] = [];
-    const gridSize = chunk.heightGrid.length;
-
-    // East edge is at gridX = gridSize-1 (x = +100)
-    for (let gridZ = 0; gridZ < gridSize; gridZ++) {
-      heights.push(chunk.heightGrid[gridSize - 1][gridZ]);
-    }
-
-    return heights;
-  }
-
-  private extractWestEdgeHeights(chunk: WorldChunk): number[] {
-    if (!chunk.heightGrid) return [];
-
-    const heights: number[] = [];
-    const gridSize = chunk.heightGrid.length;
-
-    // West edge is at gridX = 0 (x = -100)
-    for (let gridZ = 0; gridZ < gridSize; gridZ++) {
-      heights.push(chunk.heightGrid[0][gridZ]);
-    }
-
-    return heights;
-  }
-
-  // Check if vertex has a constraint height from adjacent tiles
-  private _getConstraintHeight(localX: number, localY: number, constraints: any): number | null {
-    const tolerance = 1.0; // Increased tolerance - vertices might not be exactly at -100/+100
-
-    // Check if on north edge (Y = +100 before rotation, becomes Z = +100 after rotation) and we have north constraint
-    if (Math.abs(localY - 100) < tolerance && constraints.north) {
-      const index = Math.round((localX + 100) / (200 / (constraints.north.length - 1)));
-      const height = constraints.north[Math.min(index, constraints.north.length - 1)];
-      return height;
-    }
-
-    // Check if on south edge (Y = -100 before rotation, becomes Z = -100 after rotation) and we have south constraint
-    if (Math.abs(localY + 100) < tolerance && constraints.south) {
-      const index = Math.round((localX + 100) / (200 / (constraints.south.length - 1)));
-      const height = constraints.south[Math.min(index, constraints.south.length - 1)];
-      return height;
-    }
-
-    // Check if on east edge (x = +100) and we have east constraint
-    if (Math.abs(localX - 100) < tolerance && constraints.east) {
-      const index = Math.round((localY + 100) / (200 / (constraints.east.length - 1)));
-      const height = constraints.east[Math.min(index, constraints.east.length - 1)];
-      return height;
-    }
-
-    // Check if on west edge (x = -100) and we have west constraint
-    if (Math.abs(localX + 100) < tolerance && constraints.west) {
-      const index = Math.round((localY + 100) / (200 / (constraints.west.length - 1)));
-      const height = constraints.west[Math.min(index, constraints.west.length - 1)];
-      return height;
-    }
-
-    return null; // No constraint
-  }
-
-  // Global height function for interior vertices
-  private getGlobalHeightAt(worldX: number, worldZ: number): number {
-    // This single function ensures ALL tile edges match perfectly
-    let height = 0;
-    let amplitude = 3; // Base amplitude
-    let frequency = 0.005; // Base frequency
-
-    // Generate smooth terrain with 2 octaves
-    for (let octave = 0; octave < 2; octave++) {
-      height += amplitude * Math.sin(worldX * frequency) * Math.cos(worldZ * frequency);
-      amplitude *= 0.6; // Gentler amplitude reduction
-      frequency *= 1.8; // Gentler frequency increase
-    }
-
-    // Add deterministic variation - same world position always gives same result
-    const seedX = Math.sin(worldX * 0.01) * 10000;
-    const seedZ = Math.sin(worldZ * 0.01) * 10000;
-    const pseudoRandom = (seedX - Math.floor(seedX) + seedZ - Math.floor(seedZ)) * 0.5 - 0.5;
-    height += pseudoRandom * 0.5;
-
-    return height;
   }
 
   // Public API
