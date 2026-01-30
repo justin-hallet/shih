@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { CellShadingPass } from './shaders/CellShadingPass.js';
 import { OutlinePass } from './shaders/OutlinePass.js';
+import { VisualEffectPresetPass } from './shaders/VisualEffectPresetPass.js';
 import { CollisionDebugRenderer } from './utils/CollisionDebugRenderer';
 import { HUD } from './components/HUD';
 import { SettingsPanel } from './components/SettingsPanel.js';
@@ -130,6 +131,10 @@ composer.addPass(cellShadingPass);
 // Outline pass for silhouette effects
 const outlinePass = new OutlinePass(scene, camera, window.innerWidth, window.innerHeight);
 composer.addPass(outlinePass);
+
+// Visual Effect Preset pass for special effects
+const visualEffectPresetPass = new VisualEffectPresetPass(window.innerWidth, window.innerHeight);
+composer.addPass(visualEffectPresetPass);
 
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -499,6 +504,36 @@ settingsPanel.setCameraModeChangeCallback((mode: string) => {
     `🎥 Camera mode changed to: ${CameraController.getCameraModeDisplayName(cameraMode)}`,
   );
 });
+
+settingsPanel.setVisualEffectPresetChangeCallback((preset: string) => {
+  // Convert dropdown value to preset type
+  const presetLower = preset.toLowerCase().replace(/\s+/g, '_');
+
+  if (presetLower === 'none') {
+    visualEffectPresetPass.setPreset('none');
+  } else if (presetLower === '90s') {
+    visualEffectPresetPass.setPreset('90s');
+  } else if (presetLower === 'pixelate') {
+    visualEffectPresetPass.setPreset('pixelate');
+  } else if (presetLower === 'black_&_white') {
+    visualEffectPresetPass.setPreset('bw');
+  } else if (presetLower === 'black_&_white_&_red') {
+    visualEffectPresetPass.setPreset('bw_red');
+  } else if (presetLower === 'vhs') {
+    visualEffectPresetPass.setPreset('vhs');
+  } else if (presetLower === 'crt') {
+    visualEffectPresetPass.setPreset('crt');
+  } else if (presetLower === 'snow') {
+    // Snow shader effect
+    visualEffectPresetPass.setPreset('snow');
+  } else if (presetLower === 'rain') {
+    // Rain shader effect
+    visualEffectPresetPass.setPreset('rain');
+  }
+
+  console.log(`🎨 Visual effect preset changed to: ${preset}`);
+});
+
 // Ensure userData exists
 (scene as any).userData = (scene as any).userData || {};
 (scene as any).userData['hud'] = hud;
@@ -1094,6 +1129,9 @@ function animate() {
   fpsAccumulator += deltaTime;
   fpsFrames++;
 
+  // Update visual effect preset pass (for animated effects like VHS, CRT, Snow, Rain)
+  visualEffectPresetPass.update(deltaTime);
+
   // Update all entities
   entityManager.update(deltaTime);
 
@@ -1434,6 +1472,8 @@ function handleResize() {
   cellShadingPass.setSize(width, height);
   // Update outline pass resolution
   outlinePass.setSize(width, height);
+  // Update visual effect preset pass resolution
+  visualEffectPresetPass.setSize(width, height);
 
   // Update HUD for mobile rotation
   if (hud) {

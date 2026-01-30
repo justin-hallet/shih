@@ -18,6 +18,7 @@ export class SettingsPanel {
   private virtualController?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private onControlsChange?: (type: string, value: boolean | string) => void;
   private onCameraModeChange?: (mode: string) => void;
+  private onVisualEffectPresetChange?: (preset: string) => void;
 
   constructor() {
     this.createPanel();
@@ -156,6 +157,7 @@ export class SettingsPanel {
 
     // Add sections
     content.appendChild(this.createCellShadingSection());
+    content.appendChild(this.createVisualEffectPresetsSection());
     content.appendChild(this.createWeaponSection());
     content.appendChild(this.createCameraSection());
     content.appendChild(this.createAudioSection());
@@ -328,6 +330,50 @@ export class SettingsPanel {
     section.appendChild(title);
     section.appendChild(cellShadingGroup);
     section.appendChild(ssaoGroup);
+
+    return section;
+  }
+
+  private createVisualEffectPresetsSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(255, 102, 0, 0.1);
+      border: 1px solid #ff6600;
+      border-radius: 8px;
+    `;
+
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      margin: 0 0 15px 0;
+      color: #ff6600;
+      font-size: 13px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+    title.textContent = '🌈 VISUAL EFFECT PRESETS';
+
+    const presetGroup = this.createDropdownGroup('Effect Preset', [
+      {
+        label: 'Effect Preset',
+        key: 'visualEffectPreset',
+        options: [
+          'None',
+          '90s',
+          'Pixelate',
+          'Black & White',
+          'Black & White & Red',
+          'VHS',
+          'CRT',
+          'Snow',
+          'Rain',
+        ],
+        defaultValue: 'None',
+      },
+    ]);
+
+    section.appendChild(title);
+    section.appendChild(presetGroup);
 
     return section;
   }
@@ -1091,6 +1137,10 @@ export class SettingsPanel {
         // Handle layout style changes
         this.onControlsChange?.('layoutStyle', value);
         break;
+      case 'visualEffectPreset':
+        // Handle visual effect preset changes
+        this.onVisualEffectPresetChange?.(value);
+        break;
     }
   }
 
@@ -1263,6 +1313,10 @@ export class SettingsPanel {
 
   public setCameraModeChangeCallback(callback: (mode: string) => void): void {
     this.onCameraModeChange = callback;
+  }
+
+  public setVisualEffectPresetChangeCallback(callback: (preset: string) => void): void {
+    this.onVisualEffectPresetChange = callback;
   }
 
   public toggle(): void {
