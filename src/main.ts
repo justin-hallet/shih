@@ -36,7 +36,6 @@ console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
 
 // Movement settings
 let movementStrafe = true; // true = strafe mode, false = turn mode
-let invertY = false;
 
 // Layout settings
 let layoutStyle: 'auto' | 'mobile' | 'desktop' = 'auto'; // User override for layout
@@ -648,12 +647,7 @@ settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) 
     virtualController.setLeftHanded(value as boolean);
   } else if (type === 'movementStrafe') {
     movementStrafe = value as boolean;
-    // Propagate movement mode to player
-    if (player) {
-      player.setMovementMode(value as boolean);
-    }
   } else if (type === 'invertY') {
-    invertY = value as boolean;
     // Propagate invert Y setting to input manager
     inputManager.setInvertY(value as boolean);
   } else if (type === 'layoutStyle') {
@@ -679,10 +673,6 @@ type Action =
   | 'descend'
   | 'left_movement'
   | 'right_movement'
-  | 'turn_left'
-  | 'turn_right'
-  | 'strafe_left'
-  | 'strafe_right'
   | 'fire'
   | 'speed_up'
   | 'speed_down'
@@ -936,7 +926,7 @@ window.addEventListener('keydown', event => {
   const action = KeyBindings[event.code];
   if (action) {
     // Route movement/fire actions to InputManager
-    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model', 'toggle_movement'];
+    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model'];
     if (inputActions.includes(action)) {
       inputManager.setActionState(action as InputAction, true);
     } else {
@@ -960,7 +950,7 @@ window.addEventListener('keyup', event => {
   const action = KeyBindings[event.code];
   if (action) {
     // Route movement/fire actions to InputManager
-    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model', 'toggle_movement'];
+    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model'];
     if (inputActions.includes(action)) {
       inputManager.setActionState(action as InputAction, false);
     } else {
@@ -1050,10 +1040,6 @@ settingsPanel.setPlayer(player);
 
 // Register player with input manager
 inputManager.registerHandler(player);
-
-// Configure initial input settings
-player.setMovementMode(movementStrafe);
-inputManager.setInvertY(invertY);
 
 // Set up player audio
 audioManager.setPlayerPosition(player.position);

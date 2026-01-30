@@ -11,8 +11,7 @@ export type InputAction =
   | 'ascend'
   | 'descend'
   | 'fire'
-  | 'switch_model'
-  | 'toggle_movement';
+  | 'switch_model';
 
 export interface InputHandler {
   handleInput(action: InputAction, state: boolean): void;
@@ -35,7 +34,6 @@ export class InputManager {
     this.actionStates.set('descend', false);
     this.actionStates.set('fire', false);
     this.actionStates.set('switch_model', false);
-    this.actionStates.set('toggle_movement', false);
   }
 
   public registerHandler(handler: InputHandler): void {

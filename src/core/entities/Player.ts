@@ -61,8 +61,7 @@ export class Player extends BaseEntity implements InputHandler {
 
   // Input handling (InputHandler interface implementation)
   private inputStates: Map<InputAction, boolean> = new Map();
-  private movementStrafe: boolean = false; // Track movement mode (strafe vs turn)
-  
+
   constructor(position = new THREE.Vector3(0, 0, 0), scene?: THREE.Scene) {
     super(EntityType.PLAYER, 'harrier', position, scene);
 
@@ -144,7 +143,6 @@ export class Player extends BaseEntity implements InputHandler {
     this.inputStates.set('descend', false);
     this.inputStates.set('fire', false);
     this.inputStates.set('switch_model', false);
-    this.inputStates.set('toggle_movement', false);
 
     // Reset visual effects
     this.hasOutlineEffect = false;
@@ -627,17 +625,8 @@ export class Player extends BaseEntity implements InputHandler {
     if (!state) {
       if (action === 'switch_model') {
         this.switchToNextModel();
-      } else if (action === 'toggle_movement') {
-        this.movementStrafe = !this.movementStrafe;
       }
     }
-  }
-
-  /**
-   * Configure movement mode (strafe vs turn)
-   */
-  public setMovementMode(strafe: boolean): void {
-    this.movementStrafe = strafe;
   }
 
   /**
