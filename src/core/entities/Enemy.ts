@@ -156,57 +156,165 @@ export class Enemy extends BaseEntity {
   private createMesh(): void {
     if (!this.scene) return;
 
-    let geometry: THREE.BufferGeometry;
-    let material: THREE.Material;
-
     switch (this.enemyType) {
-      case EnemySubType.SWOOPER:
-        // Aerial formation flyer (octahedron, magenta)
-        geometry = new THREE.OctahedronGeometry(0.6);
-        material = new THREE.MeshLambertMaterial({ color: 0xff00ff });
-        break;
+      case EnemySubType.SWOOPER: {
+        const group = new THREE.Group();
 
-      case EnemySubType.MECH:
-        // Ground walker/leaper (box, gray)
-        geometry = new THREE.BoxGeometry(1.2, 1.5, 0.8);
-        material = new THREE.MeshLambertMaterial({ color: 0x888888 });
-        break;
+        // Body: flattened ellipsoid
+        const bodyGeo = new THREE.SphereGeometry(0.5, 12, 8);
+        bodyGeo.scale(1.5, 0.6, 2.0);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0xcc44cc });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        group.add(body);
 
-      case EnemySubType.ORB:
-        // Splits apart, opens to fire (sphere, cyan)
-        geometry = new THREE.SphereGeometry(0.6);
-        material = new THREE.MeshLambertMaterial({ color: 0x00ffff });
-        break;
+        // Left wing
+        const wingGeo = new THREE.BoxGeometry(2.0, 0.08, 0.8);
+        const wingMat = new THREE.MeshLambertMaterial({ color: 0x993399 });
+        const leftWing = new THREE.Mesh(wingGeo, wingMat);
+        leftWing.position.set(-1.2, 0, 0.2);
+        leftWing.rotation.z = 0.15;
+        leftWing.rotation.y = -0.3;
+        group.add(leftWing);
 
-      case EnemySubType.STRIKER:
+        // Right wing
+        const rightWing = new THREE.Mesh(wingGeo.clone(), wingMat.clone());
+        rightWing.position.set(1.2, 0, 0.2);
+        rightWing.rotation.z = -0.15;
+        rightWing.rotation.y = 0.3;
+        group.add(rightWing);
+
+        // Wing tip accents (emissive)
+        const tipGeo = new THREE.SphereGeometry(0.12, 6, 6);
+        const tipMat = new THREE.MeshLambertMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 0.8 });
+        const leftTip = new THREE.Mesh(tipGeo, tipMat);
+        leftTip.position.set(-2.2, 0, 0.2);
+        group.add(leftTip);
+        const rightTip = new THREE.Mesh(tipGeo.clone(), tipMat.clone());
+        rightTip.position.set(2.2, 0, 0.2);
+        group.add(rightTip);
+
+        this.mesh = group;
+        break;
+      }
+
+      case EnemySubType.MECH: {
+        const group = new THREE.Group();
+
+        // Torso
+        const torsoGeo = new THREE.BoxGeometry(1.2, 1.0, 0.8);
+        const torsoMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+        const torso = new THREE.Mesh(torsoGeo, torsoMat);
+        torso.position.y = 1.2;
+        torso.name = 'torso';
+        group.add(torso);
+
+        // Head (dome)
+        const headGeo = new THREE.SphereGeometry(0.35, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const headMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.9;
+        group.add(head);
+
+        // Visor (red stripe)
+        const visorGeo = new THREE.BoxGeometry(0.5, 0.1, 0.4);
+        const visorMat = new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 });
+        const visor = new THREE.Mesh(visorGeo, visorMat);
+        visor.position.set(0, 1.75, 0.25);
+        group.add(visor);
+
+        // Shoulder cannon
+        const cannonGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8);
+        const cannonMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const cannon = new THREE.Mesh(cannonGeo, cannonMat);
+        cannon.rotation.x = Math.PI / 2;
+        cannon.position.set(0.5, 1.6, -0.2);
+        group.add(cannon);
+
+        // Left leg
+        const legGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 6);
+        const legMat = new THREE.MeshLambertMaterial({ color: 0x666666 });
+        const leftLeg = new THREE.Mesh(legGeo, legMat);
+        leftLeg.position.set(-0.35, 0.5, 0);
+        leftLeg.name = 'leftLeg';
+        group.add(leftLeg);
+
+        // Right leg
+        const rightLeg = new THREE.Mesh(legGeo.clone(), legMat.clone());
+        rightLeg.position.set(0.35, 0.5, 0);
+        rightLeg.name = 'rightLeg';
+        group.add(rightLeg);
+
+        this.mesh = group;
+        break;
+      }
+
+      case EnemySubType.ORB: {
+        const group = new THREE.Group();
+
+        // Top hemisphere
+        const hemiGeo = new THREE.SphereGeometry(0.6, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const hemiMat = new THREE.MeshLambertMaterial({ color: 0x334444 });
+        const topHalf = new THREE.Mesh(hemiGeo, hemiMat);
+        topHalf.name = 'topHalf';
+        group.add(topHalf);
+
+        // Bottom hemisphere (flipped)
+        const bottomHalf = new THREE.Mesh(hemiGeo.clone(), hemiMat.clone());
+        bottomHalf.rotation.x = Math.PI;
+        bottomHalf.name = 'bottomHalf';
+        group.add(bottomHalf);
+
+        // Inner core (visible when open)
+        const coreGeo = new THREE.IcosahedronGeometry(0.3, 1);
+        const coreMat = new THREE.MeshLambertMaterial({
+          color: 0x00ffff,
+          emissive: 0x00ffff,
+          emissiveIntensity: 1.0,
+        });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.name = 'core';
+        core.visible = false;
+        group.add(core);
+
+        this.mesh = group;
+        break;
+      }
+
+      case EnemySubType.STRIKER: {
         // Fast dive-bomber (cone, white)
-        geometry = new THREE.ConeGeometry(0.3, 1.5, 6);
-        material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const geometry = new THREE.ConeGeometry(0.3, 1.5, 6);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        this.mesh = new THREE.Mesh(geometry, material);
         break;
+      }
 
-      case EnemySubType.SERPENT:
+      case EnemySubType.SERPENT: {
         // Multi-segment boss (dodecahedron, green)
-        geometry = new THREE.DodecahedronGeometry(1.5);
-        material = new THREE.MeshLambertMaterial({ color: 0x00ff88 });
+        const geometry = new THREE.DodecahedronGeometry(1.5);
+        const material = new THREE.MeshLambertMaterial({ color: 0x00ff88 });
+        this.mesh = new THREE.Mesh(geometry, material);
         break;
+      }
 
-      case EnemySubType.GUARDIAN:
+      case EnemySubType.GUARDIAN: {
         // Boss with orbiting shields (icosahedron, dark red)
-        geometry = new THREE.IcosahedronGeometry(1.5);
-        material = new THREE.MeshLambertMaterial({ color: 0x880000 });
+        const geometry = new THREE.IcosahedronGeometry(1.5);
+        const material = new THREE.MeshLambertMaterial({ color: 0x880000 });
+        this.mesh = new THREE.Mesh(geometry, material);
         break;
+      }
 
-      default:
-        geometry = new THREE.SphereGeometry(0.5);
-        material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+      default: {
+        const geometry = new THREE.SphereGeometry(0.5);
+        const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        this.mesh = new THREE.Mesh(geometry, material);
+      }
     }
 
-
-    this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.scale.set(5, 5, 5);
     this.mesh.castShadow = true;
-    this.mesh.receiveShadow = false;
     this.scene.add(this.mesh);
+    this.mesh.position.copy(this.position);
 
     // Calculate collision bounds from the actual mesh
     this.updateCollisionBoundsFromMesh();
@@ -362,6 +470,15 @@ export class Enemy extends BaseEntity {
     // Update firing cooldown
     this.fireCooldownTimer += deltaTime;
 
+    // Orbs only fire when open
+    if (this.enemyType === EnemySubType.ORB) {
+      const behavior = this.movementBehavior;
+      const isOpen = (behavior && 'isOpen' in behavior) ? (behavior as any).isOpen : false;
+      if (!isOpen) {
+        this.fireCooldownTimer = 0;
+      }
+    }
+
     // Attempt to fire at player if in range
     if (this.canFire && this.fireCooldownTimer >= this.fireCooldown) {
       const player = (this.scene as any)?.userData?.['entityManager']?.player;
@@ -387,6 +504,52 @@ export class Enemy extends BaseEntity {
 
     switch (this.enemyType) {
       case EnemySubType.SWOOPER:
+        // Bank into turns
+        if (this.mesh && this.velocity.length() > 0.1) {
+          this.mesh.rotation.z = -this.velocity.x * 0.03;
+          this.mesh.rotation.x = this.velocity.y * 0.02;
+        }
+        break;
+
+      case EnemySubType.MECH: {
+        if (!this.mesh) break;
+        const leftLeg = this.mesh.getObjectByName('leftLeg');
+        const rightLeg = this.mesh.getObjectByName('rightLeg');
+        if (leftLeg && rightLeg) {
+          const walkCycle = Math.sin(this.elapsedTime * 6.0) * 0.4;
+          leftLeg.rotation.x = walkCycle;
+          rightLeg.rotation.x = -walkCycle;
+        }
+        const torso = this.mesh.getObjectByName('torso');
+        if (torso) {
+          torso.position.y = 1.2 + Math.abs(Math.sin(this.elapsedTime * 6.0)) * 0.1;
+        }
+        break;
+      }
+
+      case EnemySubType.ORB: {
+        if (!this.mesh) break;
+        const behavior = this.movementBehavior;
+        const isOpen = (behavior && 'isOpen' in behavior) ? (behavior as any).isOpen : false;
+        const topHalf = this.mesh.getObjectByName('topHalf');
+        const bottomHalf = this.mesh.getObjectByName('bottomHalf');
+        const core = this.mesh.getObjectByName('core');
+
+        const targetSep = isOpen ? 0.5 : 0;
+        if (topHalf) {
+          topHalf.position.y += (targetSep - topHalf.position.y) * 0.1;
+        }
+        if (bottomHalf) {
+          bottomHalf.position.y += (-targetSep - bottomHalf.position.y) * 0.1;
+        }
+        if (core) {
+          core.visible = isOpen;
+          core.rotation.y += 0.05;
+          core.rotation.x += 0.03;
+        }
+        break;
+      }
+
       case EnemySubType.STRIKER:
         // Floating/hovering sin-wave effect
         if (this.mesh) {
@@ -416,7 +579,17 @@ export class Enemy extends BaseEntity {
     }
   }
 
-  protected override handleDamage(_damage: number): void {
+  protected override handleDamage(damage: number): void {
+    // Orbs are invulnerable when closed
+    if (this.enemyType === EnemySubType.ORB) {
+      const behavior = this.movementBehavior;
+      const isOpen = (behavior && 'isOpen' in behavior) ? (behavior as any).isOpen : false;
+      if (!isOpen) {
+        this.health = Math.min(this.maxHealth, this.health + damage);
+        return;
+      }
+    }
+
     // Visual feedback for damage - red silhouette outline
     this.createDamageOutline();
 
