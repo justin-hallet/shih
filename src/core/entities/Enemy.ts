@@ -4,11 +4,29 @@
 
 import * as THREE from 'three';
 import { BaseEntity, IEntity } from '../Entity';
-import { EntityType, EnemySubType, AnimationType, EntityState } from '../types';
+import { EntityType, EnemySubType, ProjectileSubType, AnimationType, EntityState } from '../types';
+import type { MovementBehavior, MovementContext } from '../enemies/MovementBehavior';
+import {
+  SwooperMovement, MechMovement, OrbMovement,
+  StrikerMovement, SerpentMovement, GuardianMovement,
+} from '../enemies/MovementBehavior';
 
 export class Enemy extends BaseEntity {
   public readonly enemyType: EnemySubType;
   public attackDamage: number;
+
+  // Firing system
+  protected fireCooldown: number = 2.0;
+  protected fireCooldownTimer: number = 0;
+  protected canFire: boolean = false;
+  protected projectileType: ProjectileSubType = ProjectileSubType.BULLET;
+  protected projectilesPerShot: number = 1;
+  protected spreadAngle: number = 0;
+
+  // Movement behavior system
+  protected movementBehavior: MovementBehavior | null = null;
+  protected spawnPosition: THREE.Vector3 = new THREE.Vector3();
+  protected elapsedTime: number = 0;
 
   // Health bar display
   private healthBarGroup?: THREE.Group;
@@ -36,8 +54,39 @@ export class Enemy extends BaseEntity {
     this.initializeByType();
     this.createMesh();
 
+    // Initialize movement behavior and record spawn position
+    this.spawnPosition.copy(this.position);
+    this.initializeMovement();
+
     // Enemies are immediately active
     this.state = EntityState.ACTIVE;
+  }
+
+  public setMovementBehavior(behavior: MovementBehavior): void {
+    this.movementBehavior = behavior;
+  }
+
+  protected initializeMovement(): void {
+    switch (this.enemyType) {
+      case EnemySubType.SWOOPER:
+        this.movementBehavior = new SwooperMovement(Math.random() > 0.5);
+        break;
+      case EnemySubType.MECH:
+        this.movementBehavior = new MechMovement();
+        break;
+      case EnemySubType.ORB:
+        this.movementBehavior = new OrbMovement(new THREE.Vector3());
+        break;
+      case EnemySubType.STRIKER:
+        this.movementBehavior = new StrikerMovement();
+        break;
+      case EnemySubType.SERPENT:
+        this.movementBehavior = new SerpentMovement();
+        break;
+      case EnemySubType.GUARDIAN:
+        this.movementBehavior = new GuardianMovement();
+        break;
+    }
   }
 
   private initializeByType(): void {
@@ -46,31 +95,60 @@ export class Enemy extends BaseEntity {
         this.health = this.maxHealth = 60;
         this.attackDamage = 0.3;
         this.velocity.z = -4.0;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.PLASMA;
+        this.fireCooldown = 3.0;
+        this.projectilesPerShot = 1;
         break;
       case EnemySubType.MECH:
         this.health = this.maxHealth = 150;
         this.attackDamage = 0.5;
         this.velocity.z = -2.0;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.MISSILE;
+        this.fireCooldown = 4.0;
+        this.projectilesPerShot = 2;
+        this.spreadAngle = 0.2;
         break;
       case EnemySubType.ORB:
         this.health = this.maxHealth = 40;
         this.attackDamage = 0.3;
         this.velocity.z = -3.0;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.PLASMA;
+        this.fireCooldown = 5.0;
+        this.projectilesPerShot = 3;
+        this.spreadAngle = 0.4;
         break;
       case EnemySubType.STRIKER:
         this.health = this.maxHealth = 50;
         this.attackDamage = 0.4;
         this.velocity.z = -6.0;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.MISSILE;
+        this.fireCooldown = 2.5;
+        this.projectilesPerShot = 2;
+        this.spreadAngle = 0.15;
         break;
       case EnemySubType.SERPENT:
         this.health = this.maxHealth = 800;
         this.attackDamage = 1.5;
         this.velocity.z = -1.5;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.FIREBALL;
+        this.fireCooldown = 3.0;
+        this.projectilesPerShot = 5;
+        this.spreadAngle = 0.6;
         break;
       case EnemySubType.GUARDIAN:
         this.health = this.maxHealth = 600;
         this.attackDamage = 1.0;
         this.velocity.z = -1.0;
+        this.canFire = true;
+        this.projectileType = ProjectileSubType.PLASMA;
+        this.fireCooldown = 4.0;
+        this.projectilesPerShot = 8;
+        this.spreadAngle = Math.PI * 2;
         break;
     }
   }
@@ -226,7 +304,75 @@ export class Enemy extends BaseEntity {
     }
   }
 
+  protected fireProjectile(targetPosition: THREE.Vector3): void {
+    if (this.fireCooldownTimer < this.fireCooldown || !this.canFire) return;
+    if (this.state !== EntityState.ACTIVE) return;
+    if (!this.scene || !this.mesh) return;
+
+    this.fireCooldownTimer = 0;
+
+    const entityManager = (this.scene as any)?.userData?.['entityManager'];
+    if (!entityManager) return;
+
+    for (let i = 0; i < this.projectilesPerShot; i++) {
+      const direction = new THREE.Vector3()
+        .subVectors(targetPosition, this.position)
+        .normalize();
+
+      // Apply spread for multi-shot
+      if (this.projectilesPerShot > 1 && this.spreadAngle > 0) {
+        const angleOffset = this.spreadAngle * ((i / (this.projectilesPerShot - 1)) - 0.5);
+        const axis = new THREE.Vector3(0, 1, 0);
+        direction.applyAxisAngle(axis, angleOffset);
+      }
+
+      entityManager.spawnProjectile(
+        this.projectileType,
+        'enemy',
+        { x: this.position.x, y: this.position.y, z: this.position.z },
+        { x: direction.x, y: direction.y, z: direction.z },
+      );
+    }
+  }
+
   protected onUpdate(deltaTime: number): void {
+    // Update elapsed time
+    this.elapsedTime += deltaTime;
+
+    // Update movement behavior
+    if (this.movementBehavior) {
+      const player = (this.scene as any)?.userData?.['entityManager']?.player;
+      const gameState = (this.scene as any)?.userData?.['gameState'];
+      const ctx: MovementContext = {
+        position: this.position,
+        playerPosition: player?.position || new THREE.Vector3(),
+        spawnPosition: this.spawnPosition,
+        deltaTime,
+        elapsedTime: this.elapsedTime,
+        railsSpeed: gameState?.railsSpeed || 50,
+      };
+      this.movementBehavior.update(ctx, this.velocity);
+
+      if (this.movementBehavior.shouldDespawn(ctx)) {
+        this.state = EntityState.DEAD;
+        return;
+      }
+    }
+
+    // Update firing cooldown
+    this.fireCooldownTimer += deltaTime;
+
+    // Attempt to fire at player if in range
+    if (this.canFire && this.fireCooldownTimer >= this.fireCooldown) {
+      const player = (this.scene as any)?.userData?.['entityManager']?.player;
+      if (player && player.state === EntityState.ACTIVE) {
+        const distToPlayer = this.position.distanceTo(player.position);
+        if (distToPlayer < 150) {
+          this.fireProjectile(player.position.clone());
+        }
+      }
+    }
+
     // Update health bar position and display
     this.updateHealthBarPosition();
     this.updateHealthBarDisplay();
