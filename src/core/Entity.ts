@@ -54,6 +54,8 @@ export abstract class BaseEntity implements IEntity {
   protected scene: THREE.Scene | undefined;
   protected originalMaterial?: THREE.Material;
   protected static audioManager?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected static outlinePass?: any;
 
   constructor(
     type: EntityType,
@@ -189,6 +191,11 @@ export abstract class BaseEntity implements IEntity {
     return BaseEntity.audioManager;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static setOutlinePass(outlinePass: any): void {
+    BaseEntity.outlinePass = outlinePass;
+  }
+
   protected hasOutlineEffect: boolean = false;
 
   protected applyEmissiveMaterial(emissiveColor: THREE.Color): void {
@@ -221,22 +228,16 @@ export abstract class BaseEntity implements IEntity {
   }
 
   protected createOutlineEffect(color: THREE.Color): void {
-    if (!this.hasOutlineEffect && this.scene && this.mesh) {
-      const outlinePass = this.scene.userData?.['outlinePass'];
-      if (outlinePass) {
-        outlinePass.addOutlineObject(this.mesh, color);
-        this.hasOutlineEffect = true;
-      }
+    if (!this.hasOutlineEffect && this.mesh && BaseEntity.outlinePass) {
+      BaseEntity.outlinePass.addOutlineObject(this.mesh, color);
+      this.hasOutlineEffect = true;
     }
   }
 
   protected removeOutlineEffect(): void {
-    if (this.hasOutlineEffect && this.scene && this.mesh) {
-      const outlinePass = this.scene.userData?.['outlinePass'];
-      if (outlinePass) {
-        outlinePass.removeOutlineObject(this.mesh);
-        this.hasOutlineEffect = false;
-      }
+    if (this.hasOutlineEffect && this.mesh && BaseEntity.outlinePass) {
+      BaseEntity.outlinePass.removeOutlineObject(this.mesh);
+      this.hasOutlineEffect = false;
     }
   }
 }

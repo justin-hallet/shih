@@ -128,16 +128,6 @@ export class CameraController {
     return params.useMouse;
   }
 
-  public getCameraDistance(): number {
-    const params = this.cameraParams[this.currentMode];
-    return params.distance;
-  }
-
-  public getCameraHeight(): number {
-    const params = this.cameraParams[this.currentMode];
-    return params.height;
-  }
-
   // Get camera mode display name for UI
   public static getCameraModeDisplayName(mode: CameraMode): string {
     switch (mode) {

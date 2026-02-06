@@ -21,15 +21,17 @@ import { BiomeManager } from './core/world/BiomeManager';
 import { Player } from './core/entities/Player';
 import { BaseEntity } from './core/Entity';
 import { ProceduralGenerationSettings } from './core/world/types';
-import { EntityType, PowerUpSubType, ProjectileSubType } from './core/types';
 import { CameraController } from './core/CameraController';
 import { AudioManager } from './core/AudioManager';
 import { PowerUp } from './core/entities/PowerUp';
 import { Enemy } from './core/entities/Enemy';
 import { GameOverlay } from './components/GameOverlay';
 import { ScoreManager } from './core/ScoreManager';
-import { InputManager, InputAction } from './core/InputManager';
+import { InputManager } from './core/InputManager';
+import { InputController, Action } from './core/InputController';
 import { GameState } from './core/GameState';
+import { PlayerController } from './core/PlayerController';
+import { CombatSystem } from './core/CombatSystem';
 import './styles/hud.css';
 import './styles/overlay.css';
 
@@ -159,41 +161,6 @@ directionalLight.shadow.camera.far = 1000;
 (directionalLight.shadow.camera as THREE.OrthographicCamera).bottom = -500;
 directionalLight.shadow.bias = -0.0003;
 scene.add(directionalLight);
-
-// Keep light and its shadow frustum centered around the camera/player
-function updateShadowRig(): void {
-  const up = new THREE.Vector3(0, 1, 0);
-  const forward = new THREE.Vector3();
-  camera.getWorldDirection(forward);
-  forward.normalize();
-  const right = new THREE.Vector3().crossVectors(forward, up).normalize();
-
-  // Position light slightly behind and above the camera, offset to one side
-  const lightPos = new THREE.Vector3()
-    .copy(camera.position)
-    .addScaledVector(forward, -150)
-    .addScaledVector(up, 180)
-    .addScaledVector(right, -80);
-  directionalLight.position.copy(lightPos);
-
-  // Look at player if available, otherwise a point in front of camera
-  const targetPos = player
-    ? player.position
-    : new THREE.Vector3().copy(camera.position).addScaledVector(forward, 100);
-  directionalLight.target.position.copy(targetPos);
-  directionalLight.target.updateMatrixWorld();
-
-  // Dynamic shadow camera extents based on camera height and speed
-  const halfSize = Math.min(800, Math.max(300, camera.position.y * 8));
-  const ortho = directionalLight.shadow.camera as THREE.OrthographicCamera;
-  ortho.left = -halfSize;
-  ortho.right = halfSize;
-  ortho.top = halfSize;
-  ortho.bottom = -halfSize;
-  ortho.near = 1;
-  ortho.far = halfSize * 4;
-  ortho.updateProjectionMatrix();
-}
 
 // Replace the loading div with our Three.js canvas
 const appDiv = document.getElementById('app');
@@ -428,23 +395,24 @@ settingsPanel.setSSAOPass(ssaoPass);
 settingsPanel.setAudioManager(audioManager);
 settingsPanel.setCollisionDebugRenderer(collisionDebugRenderer);
 
-// Set up debug panel callbacks
+// Set up debug panel callbacks (wired after InputController is created below)
+// These closures capture `inputController` which is assigned after worldGenerator init.
 settingsPanel.setWeaponChangeCallback((weaponType: number) => {
-  handleAction(`set_weapon_${weaponType}` as Action, false);
+  inputController.handleAction(`set_weapon_${weaponType}` as Action, false);
 });
 
 settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
   if (type === 'debugObstacles') {
     if (gameState.debugObstacles !== enabled) {
-      handleAction('toggle_debug_obstacles', false);
+      inputController.handleAction('toggle_debug_obstacles', false);
     }
   } else if (type === 'debugEnemies') {
     if (gameState.debugEnemies !== enabled) {
-      handleAction('toggle_debug_enemies', false);
+      inputController.handleAction('toggle_debug_enemies', false);
     }
   } else if (type === 'debugPowerups') {
     if (gameState.debugPowerups !== enabled) {
-      handleAction('toggle_debug_powerups', false);
+      inputController.handleAction('toggle_debug_powerups', false);
     }
   }
 });
@@ -452,11 +420,11 @@ settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
 settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
   if (type === 'wireframe') {
     if (gameState.showWireframe !== enabled) {
-      handleAction('toggle_wireframe', false);
+      inputController.handleAction('toggle_wireframe', false);
     }
   } else if (type === 'surface') {
     if (gameState.showSurface !== enabled) {
-      handleAction('toggle_surface', false);
+      inputController.handleAction('toggle_surface', false);
     }
   }
 });
@@ -498,12 +466,14 @@ settingsPanel.setVisualEffectPresetChangeCallback((preset: string) => {
   console.log(`🎨 Visual effect preset changed to: ${preset}`);
 });
 
-// Keep scene.userData assignments for object references (consumed by other files, migrated in Task 5)
+// Set outline pass on BaseEntity so entities can create/remove outline effects
+BaseEntity.setOutlinePass(outlinePass);
+
+// Expose references on scene.userData for entity-layer code that reads them
+// (Player.ts reads hud, EntityManager.ts reads collisionDebugRenderer)
 scene.userData['hud'] = hud;
 scene.userData['entityManager'] = entityManager;
 scene.userData['camera'] = camera;
-scene.userData['outlinePass'] = outlinePass;
-scene.userData['ssaoPass'] = ssaoPass;
 scene.userData['collisionDebugRenderer'] = collisionDebugRenderer;
 
 // Configure procedural generation settings
@@ -563,6 +533,7 @@ console.log(`📦 Max chunks: ${proceduralSettings.maxLoadedChunks}`);
 // Initialize Procedural World Generation System
 const biomeManager = new BiomeManager();
 const worldGenerator = new WorldGenerator(scene, entityManager, proceduralSettings);
+scene.userData['worldGenerator'] = worldGenerator; // Player.ts reads this for death sequence terrain lookup
 
 // Temporarily disable directional culling if it's causing performance issues
 // worldGenerator.disableDirectionalCulling();
@@ -663,306 +634,10 @@ Enemy.setAudioManager(audioManager);
 // Initialize world generation around player
 worldGenerator.updatePlayerPosition(new THREE.Vector3(tileCenter, 2, tileCenter));
 
-// Manual Player Controls - configurable key → action mapping
-type Action =
-  | 'ascend'
-  | 'descend'
-  | 'left_movement'
-  | 'right_movement'
-  | 'fire'
-  | 'speed_up'
-  | 'speed_down'
-  | 'toggle_wireframe'
-  | 'toggle_surface'
-  | 'set_weapon_1'
-  | 'set_weapon_2'
-  | 'set_weapon_3'
-  | 'set_weapon_4'
-  | 'set_weapon_5'
-  | 'toggle_debug_obstacles'
-  | 'toggle_debug_enemies'
-  | 'toggle_debug_powerups'
-  | 'switch_model'
-  | 'toggle_cell_shading'
-  | 'adjust_edge_threshold'
-  | 'adjust_color_levels'
-  | 'toggle_debug_panel'
-  | 'toggle_collision_debug'
-  | 'cycle_powerup_debug'
-  | 'debug_hurt'
-  | 'debug_kill';
-
-const KeyBindings: Record<string, Action> = {
-  // Movement
-  KeyW: 'ascend',
-  ArrowUp: 'ascend',
-  Numpad8: 'ascend',
-  KeyS: 'descend',
-  ArrowDown: 'descend',
-  Numpad2: 'descend',
-  KeyA: 'left_movement',
-  ArrowLeft: 'left_movement',
-  Numpad4: 'left_movement',
-  KeyD: 'right_movement',
-  ArrowRight: 'right_movement',
-  Numpad6: 'right_movement',
-  // Fire
-  Space: 'fire',
-  Enter: 'fire',
-  ShiftLeft: 'fire',
-  ShiftRight: 'fire',
-  Numpad5: 'fire',
-  // Speed adjust
-  Equal: 'speed_up', // '+' (requires Shift on US keyboards)
-  NumpadAdd: 'speed_up',
-  Minus: 'speed_down',
-  NumpadSubtract: 'speed_down',
-  // Visualization toggles
-  KeyO: 'toggle_wireframe',
-  KeyF: 'toggle_surface',
-  // Debug weapon level
-  Digit1: 'set_weapon_1',
-  Digit2: 'set_weapon_2',
-  Digit3: 'set_weapon_3',
-  Digit4: 'set_weapon_4',
-  Digit5: 'set_weapon_5',
-  // Debug bloom overrides
-  Digit6: 'toggle_debug_obstacles',
-  Digit7: 'toggle_debug_enemies',
-  Digit8: 'toggle_debug_powerups',
-  Digit9: 'toggle_collision_debug',
-  // Model switching
-  KeyM: 'switch_model',
-  // Cell shading controls
-  KeyC: 'toggle_cell_shading',
-  KeyV: 'adjust_edge_threshold',
-  KeyB: 'adjust_color_levels',
-  // Debug panel
-  Backquote: 'toggle_debug_panel', // ~ key
-  // PowerUp debug
-  KeyP: 'cycle_powerup_debug', // P key
-  // Debug damage/life
-  KeyH: 'debug_hurt', // H key - apply random damage
-  KeyK: 'debug_kill', // K key - remove a life
-};
-
-const mouseY = 0;
-
-// Keyboard event listeners using bindings
-// Note: Movement actions (left_movement, right_movement, ascend, descend, fire, switch_model)
-// are routed through InputManager. This function only handles debug/config actions.
-function handleAction(action: Action, isDown: boolean) {
-  // One-shot on keyup for toggles
-  if (!isDown) {
-    if (action === 'toggle_wireframe') {
-      gameState.showWireframe = !gameState.showWireframe;
-      toggleTerrainVisualization();
-      scene.userData['showWireframe'] = gameState.showWireframe;
-    } else if (action === 'toggle_surface') {
-      gameState.showSurface = !gameState.showSurface;
-      toggleTerrainVisualization();
-      scene.userData['showSurface'] = gameState.showSurface;
-    } else if (action.startsWith('set_weapon_')) {
-      const level = parseInt(action.split('_')[2] || '1', 10);
-      if (player) {
-        (player as any).weaponLevel = level;
-        hud?.updateWeaponLevel(level);
-      }
-    } else if (action === 'toggle_debug_obstacles') {
-      gameState.debugObstacles = !gameState.debugObstacles;
-      applyDebugBloomOverride(EntityType.OBSTACLE, gameState.debugObstacles, 0xff00ff, true); // bright pink
-    } else if (action === 'toggle_debug_enemies') {
-      gameState.debugEnemies = !gameState.debugEnemies;
-      applyDebugBloomOverride(EntityType.ENEMY, gameState.debugEnemies, 0xff0000, true); // bright red
-    } else if (action === 'toggle_debug_powerups') {
-      gameState.debugPowerups = !gameState.debugPowerups;
-      applyDebugBloomOverride(EntityType.POWERUP, gameState.debugPowerups, 0x00ff00, false); // bright green
-    } else if (action === 'switch_model') {
-      if (player) {
-        (player as any).switchToNextModel();
-      }
-    } else if (action === 'toggle_cell_shading') {
-      // Toggle cell shading pass enabled/disabled
-      cellShadingPass.enabled = !cellShadingPass.enabled;
-    } else if (action === 'adjust_edge_threshold') {
-      // Cycle through edge threshold values
-      const currentThreshold = cellShadingPass.getEdgeThreshold();
-      const thresholds = [0.05, 0.1, 0.15, 0.2, 0.3];
-      const currentIndex = thresholds.indexOf(currentThreshold);
-      const nextIndex = (currentIndex + 1) % thresholds.length;
-      cellShadingPass.setEdgeThreshold(thresholds[nextIndex]);
-    } else if (action === 'adjust_color_levels') {
-      // Cycle through color quantization levels
-      const currentLevels = cellShadingPass.getColorLevels();
-      const levels = [3, 4, 5, 6, 8];
-      const currentIndex = levels.indexOf(currentLevels);
-      const nextIndex = (currentIndex + 1) % levels.length;
-      cellShadingPass.setColorLevels(levels[nextIndex]);
-    } else if (action === 'toggle_debug_panel') {
-      settingsPanel.toggle();
-    } else if (action === 'toggle_collision_debug') {
-      gameState.collisionDebugEnabled = !collisionDebugRenderer.isEnabled();
-      collisionDebugRenderer.setEnabled(gameState.collisionDebugEnabled);
-    } else if (action === 'cycle_powerup_debug') {
-      // Cycle through powerup debug modes
-      const modes = ['auto', 'ammo', 'shield', 'weapon_upgrade', 'speed', 'life'] as const;
-      const current = worldGenerator.getPowerUpDebugOverride();
-      const currentIndex = modes.indexOf(current as any);
-      const nextIndex = (currentIndex + 1) % modes.length;
-      worldGenerator.setPowerUpDebugOverride(modes[nextIndex]);
-    } else if (action === 'debug_hurt') {
-      // Apply random damage to player (0.5 to 2.0 damage)
-      if (player) {
-        const randomDamage = 0.5 + Math.random() * 1.5;
-        console.log(`🩸 Debug: Applying ${randomDamage.toFixed(2)} damage to player`);
-        player.onDamage(randomDamage);
-      }
-    } else if (action === 'debug_kill') {
-      // Trigger proper death sequence (with animation)
-      if (player && !gameState.playerInDeathSequence) {
-        console.log('💀 Debug: Triggering player death sequence');
-        player.die();
-      } else if (gameState.playerInDeathSequence) {
-        console.log('⚠️ Debug: Death sequence already in progress, ignoring K press');
-      }
-    }
-  }
-}
-
-// Apply/restore outline effect for a whole entity type using the new outline pass
-function applyDebugBloomOverride(
-  type: EntityType,
-  enable: boolean,
-  emissiveHex: number,
-  _forceDisableBloomOnRestore: boolean,
-): void {
-  const ents = gameState.entityManager?.getEntitiesByType(type) as
-    | any[]
-    | undefined;
-  if (!ents) return;
-
-  const outlineColor = new THREE.Color(emissiveHex);
-
-  for (const e of ents) {
-    const meshObject = e.mesh as THREE.Object3D | undefined;
-    if (!meshObject) continue;
-
-    if (enable) {
-      // Add object to outline pass with the specified debug color
-      outlinePass.addOutlineObject(meshObject, outlineColor);
-    } else {
-      // For PowerUps, restore their original outline color instead of removing entirely
-      if (type === EntityType.POWERUP) {
-        // Get the PowerUp's original outline color based on its type
-        const powerUpType = (e as any).powerUpType;
-        const originalColor = getPowerUpOutlineColor(powerUpType);
-        if (originalColor) {
-          outlinePass.addOutlineObject(meshObject, originalColor);
-        }
-      } else {
-        // For other entities (Obstacles, Enemies), remove outline entirely
-        outlinePass.removeOutlineObject(meshObject);
-      }
-    }
-  }
-}
-
-// Helper function to get PowerUp's original outline color
-function getPowerUpOutlineColor(powerUpType: keyof typeof PowerUpSubType): THREE.Color | null {
-  // These colors should match the ones in PowerUp.ts applyBloomMaterial method
-  const bloomColors: Record<keyof typeof PowerUpSubType, number> = {
-    AMMO: 0xffee66, // bright yellow
-    SHIELD: 0x66ccff, // blue
-    LIFE: 0xff3333, // red
-    SPEED: 0x33ff33, // green
-    WEAPON_UPGRADE: 0xffaa44, // orange
-  };
-
-  const colorHex = bloomColors[powerUpType];
-  return colorHex ? new THREE.Color(colorHex) : null;
-}
-
-window.addEventListener('keydown', event => {
-  // Check if we're on desktop and the game overlay is in 'new' state (showing play button)
-  if (!isMobileDevice() && gameOverlay.getState() === 'new') {
-    // Any keypress should trigger the play button on desktop
-    gameOverlay.triggerPlay();
-    event.preventDefault();
-    return;
-  }
-
-  const action = KeyBindings[event.code];
-  if (action) {
-    // Route movement/fire actions to InputManager
-    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model'];
-    if (inputActions.includes(action)) {
-      inputManager.setActionState(action as InputAction, true);
-    } else {
-      // Keep debug/config actions in handleAction
-      handleAction(action, true);
-    }
-
-    if (
-      action === 'fire' ||
-      action === 'ascend' ||
-      action === 'descend' ||
-      action.startsWith('turn') ||
-      action.startsWith('strafe')
-    ) {
-      event.preventDefault();
-    }
-  }
-});
-
-window.addEventListener('keyup', event => {
-  const action = KeyBindings[event.code];
-  if (action) {
-    // Route movement/fire actions to InputManager
-    const inputActions: string[] = ['left_movement', 'right_movement', 'ascend', 'descend', 'fire', 'switch_model'];
-    if (inputActions.includes(action)) {
-      inputManager.setActionState(action as InputAction, false);
-    } else {
-      // Keep debug/config actions in handleAction
-      handleAction(action, false);
-    }
-
-    if (action === 'speed_up') {
-      // Cancel any active speed boost when manually adjusting speed
-      if (gameState.speedBoostTimeout) {
-        clearTimeout(gameState.speedBoostTimeout);
-        gameState.speedBoostTimeout = null;
-        gameState.originalSpeedLevel = null;
-      }
-
-      const newLevel = Math.min(5, gameState.speedLevel + 1);
-      gameState.speedLevel = newLevel;
-      gameState.railsSpeed = gameState.getSpeedFromLevel(newLevel);
-      hud?.updateSpeed(newLevel);
-    } else if (action === 'speed_down') {
-      // Cancel any active speed boost when manually adjusting speed
-      if (gameState.speedBoostTimeout) {
-        clearTimeout(gameState.speedBoostTimeout);
-        gameState.speedBoostTimeout = null;
-        gameState.originalSpeedLevel = null;
-      }
-
-      const newLevel = Math.max(1, gameState.speedLevel - 1);
-      gameState.speedLevel = newLevel;
-      gameState.railsSpeed = gameState.getSpeedFromLevel(newLevel);
-      hud?.updateSpeed(newLevel);
-    }
-    event.preventDefault();
-  }
-});
-
 // Prevent context menu on right click
 window.addEventListener('contextmenu', event => {
   event.preventDefault();
 });
-
-// Demo: Player shooting projectiles
-let lastShotTime = 0;
-const shotCooldown = 0.1; // 10 bullets per second
 
 // Position camera to follow behind player (much closer, player lower in frame)
 camera.position.set(0, 3, 5);
@@ -994,24 +669,30 @@ gameState.outlinePass = outlinePass;
 gameState.ssaoPass = ssaoPass;
 gameState.collisionDebugRenderer = collisionDebugRenderer;
 
+// Expose gameState on scene.userData so entity-layer code (Player.ts) can access it
+scene.userData['gameState'] = gameState;
+
 // Persist visualization flags on scene so new tiles can read them
 scene.userData['showWireframe'] = gameState.showWireframe;
 scene.userData['showSurface'] = gameState.showSurface;
-// Apply initial state to any already-added terrain
-function applyVisualizationToScene() {
-  scene.traverse(child => {
-    if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
-      child.visible = !!gameState.showSurface;
-      for (const sub of child.children) {
-        if (sub instanceof THREE.LineSegments && sub.userData['isTerrainWireframe']) {
-          sub.visible = !!gameState.showWireframe;
-          sub.renderOrder = 1;
-        }
-      }
-    }
-  });
-}
-applyVisualizationToScene();
+
+// Initialize InputController (keyboard bindings, key listeners, debug/config actions)
+const inputController = new InputController({
+  gameState,
+  inputManager,
+  cellShadingPass,
+  settingsPanel,
+  collisionDebugRenderer,
+  outlinePass,
+  worldGenerator,
+  scene,
+  hud,
+  gameOverlay,
+  isMobileDevice,
+});
+
+// Apply initial visualization state to any already-added terrain
+inputController.applyVisualizationToScene();
 
 // Initialize demo player
 const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
@@ -1046,28 +727,28 @@ hud?.updateWeaponLevel(startingWeapon);
 hud?.updateAmmo(startingAmmo);
 hud?.updateSpeed(startingSpeedLevel);
 
+// Initialize PlayerController (movement, altitude, animation, ammo auto-spawn, projectile ground-kill)
+const playerController = new PlayerController(
+  gameState,
+  worldGenerator,
+  entityManager,
+  cameraController,
+  camera,
+  directionalLight,
+  {
+    minFloorClearance: MIN_FLOOR_CLEARANCE,
+    maxFlightHeight: MAX_FLIGHT_HEIGHT,
+  },
+);
+
+// Initialize CombatSystem (projectile spawning, cooldown, weapon mapping, audio)
+const combatSystem = new CombatSystem(gameState, entityManager, audioManager);
+
 const clock = new THREE.Clock();
 let fpsAccumulator = 0;
 let fpsFrames = 0;
 let fpsLastReport = 0;
 
-// Function to toggle terrain visualization
-function toggleTerrainVisualization() {
-  // Update scene-level flags so future tiles inherit current settings
-  scene.userData['showWireframe'] = gameState.showWireframe;
-  scene.userData['showSurface'] = gameState.showSurface;
-  scene.traverse(child => {
-    // Handle surface mesh visibility
-    if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
-      child.visible = gameState.showSurface;
-    }
-    // Handle wireframe visibility (now a sibling, not a child)
-    if (child instanceof THREE.LineSegments && child.userData['isTerrainWireframe']) {
-      child.visible = gameState.showWireframe;
-      child.renderOrder = 1;
-    }
-  });
-}
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1139,7 +820,7 @@ function animate() {
     gameState.lastPlayerPosition.copy(playerPos);
 
     // Update camera controller with mouse input and let it handle positioning
-    cameraController.setMouseRotation(gameState.mouseX, mouseY);
+    cameraController.setMouseRotation(gameState.mouseX, 0);
     cameraController.update();
 
     // Check for biome changes
@@ -1159,178 +840,14 @@ function animate() {
   // Update world generation system
   worldGenerator.update();
 
-  // MANUAL PLAYER CONTROLS
+  // Player movement, animation, altitude, ammo auto-spawn, projectile ground-kill
   if (player) {
-    // Update the shadow rig so shadows follow the camera/player
-    updateShadowRig();
-    const turnRate = 2;
-    const moveSpeed = 100; // Units per second (strafe)
-    const flySpeed = 50; // Vertical movement speed
-
-    // Calculate ground distance for animation logic (used throughout this block)
-    const terrainHeight = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
-    const groundDistance = player.position.y - terrainHeight;
-
-    // Handle left/right movement based on movement style
-    let isStrafing = false;
-    let strafeDirection: 'left' | 'right' | null = null;
-    let isTurning = false;
-    let turnDirection: 'left' | 'right' | null = null;
-
-    if (player.getInputState('left_movement')) {
-      if (gameState.movementStrafe) {
-        // Strafe mode - move sideways
-        const left = new THREE.Vector3(-1, 0, 0);
-        left.applyQuaternion(camera.quaternion);
-        left.multiplyScalar(moveSpeed * deltaTime);
-        player.position.add(left);
-        isStrafing = true;
-        strafeDirection = 'left';
-      } else if (cameraController.getMouseControlEnabled()) {
-        // Turn mode - rotate camera (only if camera allows mouse control)
-        gameState.mouseX += turnRate * deltaTime;
-        isTurning = true;
-        turnDirection = 'left';
-      }
-    }
-
-    if (player.getInputState('right_movement')) {
-      if (gameState.movementStrafe) {
-        // Strafe mode - move sideways
-        const right = new THREE.Vector3(1, 0, 0);
-        right.applyQuaternion(camera.quaternion);
-        right.multiplyScalar(moveSpeed * deltaTime);
-        player.position.add(right);
-        isStrafing = true;
-        strafeDirection = 'right';
-      } else if (cameraController.getMouseControlEnabled()) {
-        // Turn mode - rotate camera (only if camera allows mouse control)
-        gameState.mouseX -= turnRate * deltaTime;
-        isTurning = true;
-        turnDirection = 'right';
-      }
-    }
-
-    // Also consider turning as strafing when near ground (for animation)
-    if (!isStrafing && groundDistance < 2.0) {
-      if (isTurning && turnDirection) {
-        isStrafing = true;
-        strafeDirection = turnDirection;
-      }
-    }
-
-    // Track vertical movement for jump animation
-    const isAscending = player.getInputState('ascend');
-    const isDescending = player.getInputState('descend');
-
-    // Use the isTurning and turnDirection from movement handling above
-
-    // Update player animation states
-    (player as any).setStrafing(isStrafing, strafeDirection);
-    (player as any).setGroundDistance(groundDistance);
-    (player as any).setVerticalMovement(isAscending, isDescending);
-    (player as any).setTurning(isTurning, turnDirection);
-
-    // Up/down (W/Up and S/Down) - adjust desired distance above terrain
-    if (player.getInputState('ascend')) {
-      gameState.playerDistanceAbove += flySpeed * deltaTime;
-      // Cap at max flight height
-      const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
-      const maxDistanceAbove = MAX_FLIGHT_HEIGHT - terrainY;
-      gameState.playerDistanceAbove = Math.min(gameState.playerDistanceAbove, maxDistanceAbove);
-    }
-    if (player.getInputState('descend')) {
-      gameState.playerDistanceAbove -= flySpeed * deltaTime;
-      // Don't go below minimum clearance
-      gameState.playerDistanceAbove = Math.max(gameState.playerDistanceAbove, MIN_FLOOR_CLEARANCE);
-    }
-
-    // If ammo has reached 0, spawn an ammo power-up ahead of the player
-    if ((player as any).ammo <= 0) {
-      const fwd = new THREE.Vector3();
-      camera.getWorldDirection(fwd);
-      fwd.y = 0;
-      fwd.normalize();
-      const spawn = {
-        x: player.position.x + fwd.x * 4,
-        y: player.position.y,
-        z: player.position.z + fwd.z * 4,
-      };
-      entityManager.spawnPowerUp(PowerUpSubType.AMMO, spawn);
-      // Give the player enough ammo for several shots so they can continue fighting
-      (player as any).ammo = 5.0; // 10 shots worth (0.5 per shot)
-    }
-
-    // Every frame: maintain desired distance above terrain
-    const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
-    player.position.y = terrainY + gameState.playerDistanceAbove;
-
-    // Update player's ground distance for animation state
-    const distanceFromGround = player.position.y - terrainY;
-    player.setGroundDistance(distanceFromGround);
-
-    // Kill projectiles that hit the floor
-    const projectiles = entityManager.getEntitiesByType(EntityType.PROJECTILE) as any[];
-    for (const p of projectiles) {
-      const groundY = worldGenerator.getTerrainHeightAt(p.position.x, p.position.z);
-      if (p.position.y <= groundY + 0.05) {
-        p.die?.();
-      }
-    }
+    playerController.update(player, deltaTime);
   }
 
-  // Demo: Player automatically shoots
-  const currentTime = Date.now() * 0.001;
-  if (player && currentTime - lastShotTime >= shotCooldown) {
-    if (player.getInputState('fire') && player.shoot()) {
-      // Spawn projectile from player position
-      // Use the player's horizontal travel direction (constant Y)
-      const forward = new THREE.Vector3(gameState.lastForwardDir.x, 0, gameState.lastForwardDir.z).normalize();
-
-      // Offset spawn a bit ahead of player and at chest height
-      const playerHeight = 7.2; // Approximate height of scaled player model (180 * 0.04)
-      const spawnPos = {
-        x: player.position.x + forward.x * 0.6,
-        y: player.position.y + playerHeight * 0.6, // 60% of player height for chest/weapon level
-        z: player.position.z + forward.z * 0.6,
-      };
-
-      // Map weapon level to projectile subtype
-      const weaponLevel = ((player as any).weaponLevel || 1) as number;
-      const projType =
-        weaponLevel === 1
-          ? ProjectileSubType.BULLET
-          : weaponLevel === 2
-            ? ProjectileSubType.MISSILE
-            : weaponLevel === 3
-              ? ProjectileSubType.LASER
-              : weaponLevel === 4
-                ? ProjectileSubType.PLASMA
-                : ProjectileSubType.FIREBALL;
-
-      const proj = entityManager.spawnProjectile(projType, 'player', spawnPos, {
-        x: forward.x, // Same direction as player movement
-        y: 0, // constant height
-        z: forward.z, // Same direction as player movement
-      });
-      // Set projectile to 2x player's current rails speed and 2s lifetime
-      const railsSpeed = gameState.lastRailsSpeed || gameState.railsSpeed || 50;
-      proj.speed = railsSpeed * 2.2; // ensure clearly faster than player
-      proj.lifetime = 2.0;
-      proj.velocity.x = forward.x * proj.speed; // Same direction as player movement but faster
-      proj.velocity.y = 0; // constant height
-      proj.velocity.z = forward.z * proj.speed; // Same direction as player movement but faster
-      lastShotTime = currentTime;
-
-      // Play shooting sound
-      audioManager.playShootSound(
-        weaponLevel,
-        new THREE.Vector3(spawnPos.x, spawnPos.y, spawnPos.z),
-      );
-
-      // Reflect ammo change in HUD (ammo may be fractional but HUD shows int)
-      hud?.updateAmmo(Math.floor((player as any).ammo || 0));
-    }
+  // Combat: projectile spawning, cooldown, audio, HUD ammo
+  if (player) {
+    combatSystem.update(player);
   }
 
   // Update HUD based on actual gameplay events

@@ -83,6 +83,11 @@ export class GameState {
   ): void {
     this.gameOver = false;
     this.playerInDeathSequence = false;
+    if (this.speedBoostTimeout) {
+      clearTimeout(this.speedBoostTimeout);
+      this.speedBoostTimeout = null;
+    }
+    this.originalSpeedLevel = null;
     this.speedLevel = startingSpeedLevel;
     this.railsSpeed = this.getSpeedFromLevel(startingSpeedLevel);
     this.gameStage = 1;

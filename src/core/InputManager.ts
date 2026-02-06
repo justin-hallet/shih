@@ -86,11 +86,5 @@ export class InputManager {
     this.setActionState('fire', firing);
   }
 
-  public reset(): void {
-    // Reset all action states to false
-    this.actionStates.forEach((_, action) => {
-      this.setActionState(action, false);
-    });
-  }
 }
 

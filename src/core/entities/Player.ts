@@ -7,6 +7,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { BaseEntity } from '../Entity';
 import { EntityType, AnimationType, EntityState } from '../types';
 import { InputHandler, InputAction } from '../InputManager';
+import type { GameState } from '../GameState';
 
 export class Player extends BaseEntity implements InputHandler {
   // Player-specific properties
@@ -750,42 +751,45 @@ export class Player extends BaseEntity implements InputHandler {
         }
         break;
 
-      case 'speed':
+      case 'speed': {
         // Only handle positive speed boosts for now
         if (amount > 0) {
+          const gs = sceneUser.gameState as GameState | undefined;
+          if (!gs) break;
+
           // Cancel any existing speed boost timeout
-          if (sceneUser.speedBoostTimeout) {
-            clearTimeout(sceneUser.speedBoostTimeout);
+          if (gs.speedBoostTimeout) {
+            clearTimeout(gs.speedBoostTimeout);
           }
 
           // Store original speed level if not already boosted
-          if (!sceneUser.originalSpeedLevel) {
-            sceneUser.originalSpeedLevel = sceneUser.speedLevel || 1;
+          if (!gs.originalSpeedLevel) {
+            gs.originalSpeedLevel = gs.speedLevel || 1;
           }
 
           // Apply speed boost: always +1 from original level (not current)
-          const originalLevel = sceneUser.originalSpeedLevel;
+          const originalLevel = gs.originalSpeedLevel;
           const boostedLevel = Math.min(5, originalLevel + amount);
 
-          sceneUser.speedLevel = boostedLevel;
-          const baseSpeed = sceneUser.baseSpeed || 50;
-          sceneUser.railsSpeed = baseSpeed * boostedLevel;
+          gs.speedLevel = boostedLevel;
+          gs.railsSpeed = gs.getSpeedFromLevel(boostedLevel);
           hud?.updateSpeed(boostedLevel);
 
           // Random duration between 5-10 seconds
           const duration = 5000 + Math.random() * 5000;
-          sceneUser.speedBoostTimeout = setTimeout(() => {
+          gs.speedBoostTimeout = setTimeout(() => {
             // Restore original speed level
-            sceneUser.speedLevel = originalLevel;
-            sceneUser.railsSpeed = baseSpeed * originalLevel;
+            gs.speedLevel = originalLevel;
+            gs.railsSpeed = gs.getSpeedFromLevel(originalLevel);
             hud?.updateSpeed(originalLevel);
 
             // Clear boost state
-            sceneUser.speedBoostTimeout = null;
-            sceneUser.originalSpeedLevel = null;
+            gs.speedBoostTimeout = null;
+            gs.originalSpeedLevel = null;
           }, duration);
         }
         break;
+      }
 
       case 'weapon':
         if (amount > 0) {
@@ -925,10 +929,13 @@ export class Player extends BaseEntity implements InputHandler {
   }
 
   private triggerGameOver(): void {
-    // Stop rails movement
+    // Stop rails movement via gameState
     const sceneUser = (this.scene as any)?.userData || {};
-    sceneUser.railsSpeed = 0;
-    sceneUser.gameOver = true;
+    const gs = sceneUser.gameState as GameState | undefined;
+    if (gs) {
+      gs.railsSpeed = 0;
+      gs.gameOver = true;
+    }
 
     // Stop player movement
     this.velocity.x = 0;
