@@ -32,6 +32,7 @@ import { InputController, Action } from './core/InputController';
 import { GameState } from './core/GameState';
 import { PlayerController } from './core/PlayerController';
 import { CombatSystem } from './core/CombatSystem';
+import { WaveSpawner } from './core/WaveSpawner';
 import './styles/hud.css';
 import './styles/overlay.css';
 
@@ -676,6 +677,9 @@ scene.userData['gameState'] = gameState;
 scene.userData['showWireframe'] = gameState.showWireframe;
 scene.userData['showSurface'] = gameState.showSurface;
 
+// Initialize WaveSpawner for distance-triggered enemy waves
+const waveSpawner = new WaveSpawner(entityManager, gameState);
+
 // Initialize InputController (keyboard bindings, key listeners, debug/config actions)
 const inputController = new InputController({
   gameState,
@@ -763,6 +767,9 @@ function animate() {
 
   // Update all entities
   entityManager.update(deltaTime);
+
+  // Update wave spawner for distance-triggered enemy waves
+  waveSpawner.update();
 
   // Update procedural world generation
   if (player) {

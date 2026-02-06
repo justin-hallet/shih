@@ -630,15 +630,7 @@ export class WorldGenerator {
 
   private populateChunk(chunk: WorldChunk, biomeConfig: BiomeConfig): void {
     const spawnRules = biomeConfig.spawnRules;
-    const chunkCenter = new THREE.Vector3(
-      chunk.coordinate.x * this.settings.tileSize,
-      0,
-      chunk.coordinate.z * this.settings.tileSize,
-    );
-
-    // Apply difficulty scaling
-    const distance = chunkCenter.length();
-    const difficultyMultiplier = Math.max(1.0, distance / this.difficultyScaling.baseDistance);
+    // chunkCenter and difficultyMultiplier removed — were used by old per-tile enemy spawning (now in WaveSpawner)
 
     // Track total entities spawned in this chunk
     let totalEntitiesSpawned = 0;
@@ -651,14 +643,14 @@ export class WorldGenerator {
       maxEntities - totalEntitiesSpawned,
     );
 
-    // Spawn enemies (with difficulty scaling and remaining limit)
-    totalEntitiesSpawned += this.spawnEnemies(
-      chunk,
-      spawnRules,
-      chunkCenter,
-      difficultyMultiplier,
-      maxEntities - totalEntitiesSpawned,
-    );
+    // Old per-tile enemy spawning — replaced by WaveSpawner
+    // totalEntitiesSpawned += this.spawnEnemies(
+    //   chunk,
+    //   spawnRules,
+    //   chunkCenter,
+    //   difficultyMultiplier,
+    //   maxEntities - totalEntitiesSpawned,
+    // );
 
     // Spawn power-ups (with remaining limit)
     totalEntitiesSpawned += this.spawnPowerUps(
@@ -708,6 +700,8 @@ export class WorldGenerator {
     return spawned;
   }
 
+  // Old per-tile enemy spawning — kept for reference, replaced by WaveSpawner
+  // @ts-ignore: Method retained for reference; call site disabled in favor of WaveSpawner
   private spawnEnemies(
     chunk: WorldChunk,
     spawnRules: BiomeSpawnRules,
