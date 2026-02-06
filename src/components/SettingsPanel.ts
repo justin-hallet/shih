@@ -287,7 +287,7 @@ export class SettingsPanel {
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    title.textContent = '🎨 VISUAL EFFECTS';
+    title.textContent = '🎨 RENDERING';
 
     // Cell Shading Sub-section
     const cellShadingGroup = this.createEffectGroup('Cell Shading', 'cellShading', [
@@ -351,7 +351,7 @@ export class SettingsPanel {
       font-size: 13px;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    title.textContent = '🌈 VISUAL EFFECT PRESETS';
+    title.textContent = '🌈 SCREEN FILTERS';
 
     const presetGroup = this.createDropdownGroup('Effect Preset', [
       {
