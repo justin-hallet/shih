@@ -20,7 +20,7 @@ import { WorldGenerator } from './core/world/WorldGenerator';
 import { BiomeManager } from './core/world/BiomeManager';
 import { Player } from './core/entities/Player';
 import { BaseEntity } from './core/Entity';
-import { ProceduralGenerationSettings, BiomeType } from './core/world/types';
+import { ProceduralGenerationSettings } from './core/world/types';
 import { EntityType, PowerUpSubType, ProjectileSubType } from './core/types';
 import { CameraController } from './core/CameraController';
 import { AudioManager } from './core/AudioManager';
@@ -29,14 +29,12 @@ import { Enemy } from './core/entities/Enemy';
 import { GameOverlay } from './components/GameOverlay';
 import { ScoreManager } from './core/ScoreManager';
 import { InputManager, InputAction } from './core/InputManager';
+import { GameState } from './core/GameState';
 import './styles/hud.css';
 import './styles/overlay.css';
 
 // eslint-disable-next-line no-console
 console.log('🚀 Space Harrier: Infinite Horizons - Starting up...');
-
-// Movement settings
-let movementStrafe = true; // true = strafe mode, false = turn mode
 
 // Layout settings
 let layoutStyle: 'auto' | 'mobile' | 'desktop' = 'auto'; // User override for layout
@@ -263,10 +261,10 @@ function startGame() {
 // Game over function
 function handleGameOver() {
   // Set game over flag
-  scene.userData['gameOver'] = true;
+  gameState.gameOver = true;
 
   // Stop player movement
-  scene.userData['railsSpeed'] = 0;
+  gameState.railsSpeed = 0;
 
   // Transition to game over state
   gameOverlay.setState('gameover');
@@ -328,37 +326,9 @@ function resetGame() {
   scoreManager.reset();
 
   // 7. Reset main game state
-  resetMainGameState(initialPosition);
+  gameState.resetForNewGame(startingSpeedLevel, HOVER_HEIGHT, initialPosition);
 
   console.log('✅ Game reset complete!');
-}
-
-/**
- * Reset main.ts specific game state variables
- */
-function resetMainGameState(initialPosition: { x: number; y: number; z: number }) {
-  // Reset game flags
-  scene.userData['gameOver'] = false;
-  scene.userData['playerInDeathSequence'] = false;
-  scene.userData['speedLevel'] = startingSpeedLevel;
-  scene.userData['railsSpeed'] = getSpeedFromLevel(startingSpeedLevel);
-
-  // Reset game state tracking
-  gameStage = 1;
-  distanceTraveled = 0;
-  frameCount = 0;
-  lastBiome = null;
-
-  // Reset player tracking position
-  lastPlayerPosition.x = initialPosition.x;
-  lastPlayerPosition.y = initialPosition.y;
-  lastPlayerPosition.z = initialPosition.z;
-
-  // Reset player distance above terrain
-  playerDistanceAbove = HOVER_HEIGHT;
-
-  // Reset mouse rotation
-  mouseX = 0;
 }
 
 // Game overlay is already initialized above
@@ -370,7 +340,6 @@ renderer.domElement.style.height = '100vh';
 
 // Initialize HUD overlay
 let hud: HUD | null = null;
-let gameStage = 1;
 
 // Initialize Entity System with higher limits for infinite world
 const entityManager = new EntityManager({
@@ -418,14 +387,14 @@ Player.setGameOverCallback(handleGameOver);
 // Set death/respawn callbacks for Player class
 Player.setOnDeathCallback(() => {
   console.log('🛑 Player death event - stopping rails movement');
-  scene.userData['railsSpeed'] = 0; // Stop forward movement during death sequence
-  scene.userData['playerInDeathSequence'] = true; // Prevent rails speed reset
+  gameState.railsSpeed = 0; // Stop forward movement during death sequence
+  gameState.playerInDeathSequence = true; // Prevent rails speed reset
 });
 
 Player.setOnRespawnCallback(() => {
   console.log('🚀 Player respawn event - resuming rails movement');
-  scene.userData['playerInDeathSequence'] = false; // Allow rails speed reset
-  scene.userData['railsSpeed'] = getSpeedFromLevel(scene.userData['speedLevel'] || 1); // Resume movement
+  gameState.playerInDeathSequence = false; // Allow rails speed reset
+  gameState.railsSpeed = gameState.getSpeedFromLevel(gameState.speedLevel); // Resume movement
 });
 
 // Initialize Game Overlay
@@ -466,18 +435,15 @@ settingsPanel.setWeaponChangeCallback((weaponType: number) => {
 
 settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
   if (type === 'debugObstacles') {
-    const currentFlag = scene.userData['debugObstacles'] || false;
-    if (currentFlag !== enabled) {
+    if (gameState.debugObstacles !== enabled) {
       handleAction('toggle_debug_obstacles', false);
     }
   } else if (type === 'debugEnemies') {
-    const currentFlag = scene.userData['debugEnemies'] || false;
-    if (currentFlag !== enabled) {
+    if (gameState.debugEnemies !== enabled) {
       handleAction('toggle_debug_enemies', false);
     }
   } else if (type === 'debugPowerups') {
-    const currentFlag = scene.userData['debugPowerups'] || false;
-    if (currentFlag !== enabled) {
+    if (gameState.debugPowerups !== enabled) {
       handleAction('toggle_debug_powerups', false);
     }
   }
@@ -485,13 +451,11 @@ settingsPanel.setDebugToggleCallback((type: string, enabled: boolean) => {
 
 settingsPanel.setDisplayToggleCallback((type: string, enabled: boolean) => {
   if (type === 'wireframe') {
-    if (showWireframe !== enabled) {
-      // showWireframe = enabled;
+    if (gameState.showWireframe !== enabled) {
       handleAction('toggle_wireframe', false);
     }
   } else if (type === 'surface') {
-    if (showSurface !== enabled) {
-      // showSurface = enabled;
+    if (gameState.showSurface !== enabled) {
       handleAction('toggle_surface', false);
     }
   }
@@ -534,14 +498,13 @@ settingsPanel.setVisualEffectPresetChangeCallback((preset: string) => {
   console.log(`🎨 Visual effect preset changed to: ${preset}`);
 });
 
-// Ensure userData exists
-(scene as any).userData = (scene as any).userData || {};
-(scene as any).userData['hud'] = hud;
-(scene as any).userData['entityManager'] = entityManager;
-(scene as any).userData['camera'] = camera;
-(scene as any).userData['outlinePass'] = outlinePass;
-(scene as any).userData['ssaoPass'] = ssaoPass;
-(scene as any).userData['collisionDebugRenderer'] = collisionDebugRenderer;
+// Keep scene.userData assignments for object references (consumed by other files, migrated in Task 5)
+scene.userData['hud'] = hud;
+scene.userData['entityManager'] = entityManager;
+scene.userData['camera'] = camera;
+scene.userData['outlinePass'] = outlinePass;
+scene.userData['ssaoPass'] = ssaoPass;
+scene.userData['collisionDebugRenderer'] = collisionDebugRenderer;
 
 // Configure procedural generation settings
 const CHUNK_GRID_SIZE = 7; //  grid of chunks around player for better coverage
@@ -611,8 +574,6 @@ const HOVER_HEIGHT = 2.0; // default hover height above terrain
 const MIN_FLOOR_CLEARANCE = 0.5; // minimal clearance when flying down toward the floor
 const MAX_FLIGHT_HEIGHT = 150; // maximum height player can fly (absolute world height)
 
-// Player's desired distance above terrain
-let playerDistanceAbove = HOVER_HEIGHT;
 let player: any; // Will be initialized in startGame()
 
 // Connect mobile settings button to settings panel
@@ -681,7 +642,7 @@ settingsPanel.setControlsChangeCallback((type: string, value: boolean | string) 
   if (type === 'leftHandedControls') {
     virtualController.setLeftHanded(value as boolean);
   } else if (type === 'movementStrafe') {
-    movementStrafe = value as boolean;
+    gameState.movementStrafe = value as boolean;
   } else if (type === 'invertY') {
     // Propagate invert Y setting to input manager
     inputManager.setInvertY(value as boolean);
@@ -785,30 +746,6 @@ const KeyBindings: Record<string, Action> = {
   KeyK: 'debug_kill', // K key - remove a life
 };
 
-// Terrain visualization state
-let showWireframe = false;
-let showSurface = true;
-
-// Persist visualization flags on scene so new tiles can read them
-scene.userData['showWireframe'] = showWireframe;
-scene.userData['showSurface'] = showSurface;
-// Apply initial state to any already-added terrain
-function applyVisualizationToScene() {
-  scene.traverse(child => {
-    if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
-      child.visible = !!showSurface;
-      for (const sub of child.children) {
-        if (sub instanceof THREE.LineSegments && sub.userData['isTerrainWireframe']) {
-          sub.visible = !!showWireframe;
-          sub.renderOrder = 1;
-        }
-      }
-    }
-  });
-}
-applyVisualizationToScene();
-
-let mouseX = 0;
 const mouseY = 0;
 
 // Keyboard event listeners using bindings
@@ -818,13 +755,13 @@ function handleAction(action: Action, isDown: boolean) {
   // One-shot on keyup for toggles
   if (!isDown) {
     if (action === 'toggle_wireframe') {
-      showWireframe = !showWireframe;
+      gameState.showWireframe = !gameState.showWireframe;
       toggleTerrainVisualization();
-      scene.userData['showWireframe'] = showWireframe;
+      scene.userData['showWireframe'] = gameState.showWireframe;
     } else if (action === 'toggle_surface') {
-      showSurface = !showSurface;
+      gameState.showSurface = !gameState.showSurface;
       toggleTerrainVisualization();
-      scene.userData['showSurface'] = showSurface;
+      scene.userData['showSurface'] = gameState.showSurface;
     } else if (action.startsWith('set_weapon_')) {
       const level = parseInt(action.split('_')[2] || '1', 10);
       if (player) {
@@ -832,17 +769,14 @@ function handleAction(action: Action, isDown: boolean) {
         hud?.updateWeaponLevel(level);
       }
     } else if (action === 'toggle_debug_obstacles') {
-      const flag = !(scene.userData['debugObstacles'] || false);
-      scene.userData['debugObstacles'] = flag;
-      applyDebugBloomOverride(EntityType.OBSTACLE, flag, 0xff00ff, true); // bright pink
+      gameState.debugObstacles = !gameState.debugObstacles;
+      applyDebugBloomOverride(EntityType.OBSTACLE, gameState.debugObstacles, 0xff00ff, true); // bright pink
     } else if (action === 'toggle_debug_enemies') {
-      const flag = !(scene.userData['debugEnemies'] || false);
-      scene.userData['debugEnemies'] = flag;
-      applyDebugBloomOverride(EntityType.ENEMY, flag, 0xff0000, true); // bright red
+      gameState.debugEnemies = !gameState.debugEnemies;
+      applyDebugBloomOverride(EntityType.ENEMY, gameState.debugEnemies, 0xff0000, true); // bright red
     } else if (action === 'toggle_debug_powerups') {
-      const flag = !(scene.userData['debugPowerups'] || false);
-      scene.userData['debugPowerups'] = flag;
-      applyDebugBloomOverride(EntityType.POWERUP, flag, 0x00ff00, false); // bright green
+      gameState.debugPowerups = !gameState.debugPowerups;
+      applyDebugBloomOverride(EntityType.POWERUP, gameState.debugPowerups, 0x00ff00, false); // bright green
     } else if (action === 'switch_model') {
       if (player) {
         (player as any).switchToNextModel();
@@ -867,9 +801,8 @@ function handleAction(action: Action, isDown: boolean) {
     } else if (action === 'toggle_debug_panel') {
       settingsPanel.toggle();
     } else if (action === 'toggle_collision_debug') {
-      const enabled = !collisionDebugRenderer.isEnabled();
-      collisionDebugRenderer.setEnabled(enabled);
-      scene.userData['collisionDebugEnabled'] = enabled;
+      gameState.collisionDebugEnabled = !collisionDebugRenderer.isEnabled();
+      collisionDebugRenderer.setEnabled(gameState.collisionDebugEnabled);
     } else if (action === 'cycle_powerup_debug') {
       // Cycle through powerup debug modes
       const modes = ['auto', 'ammo', 'shield', 'weapon_upgrade', 'speed', 'life'] as const;
@@ -886,10 +819,10 @@ function handleAction(action: Action, isDown: boolean) {
       }
     } else if (action === 'debug_kill') {
       // Trigger proper death sequence (with animation)
-      if (player && !scene.userData['playerInDeathSequence']) {
+      if (player && !gameState.playerInDeathSequence) {
         console.log('💀 Debug: Triggering player death sequence');
         player.die();
-      } else if (scene.userData['playerInDeathSequence']) {
+      } else if (gameState.playerInDeathSequence) {
         console.log('⚠️ Debug: Death sequence already in progress, ignoring K press');
       }
     }
@@ -903,7 +836,7 @@ function applyDebugBloomOverride(
   emissiveHex: number,
   _forceDisableBloomOnRestore: boolean,
 ): void {
-  const ents = (scene.userData['entityManager'] as any)?.getEntitiesByType(type) as
+  const ents = gameState.entityManager?.getEntitiesByType(type) as
     | any[]
     | undefined;
   if (!ents) return;
@@ -995,29 +928,27 @@ window.addEventListener('keyup', event => {
 
     if (action === 'speed_up') {
       // Cancel any active speed boost when manually adjusting speed
-      if (scene.userData['speedBoostTimeout']) {
-        clearTimeout(scene.userData['speedBoostTimeout']);
-        scene.userData['speedBoostTimeout'] = null;
-        scene.userData['originalSpeedLevel'] = null;
+      if (gameState.speedBoostTimeout) {
+        clearTimeout(gameState.speedBoostTimeout);
+        gameState.speedBoostTimeout = null;
+        gameState.originalSpeedLevel = null;
       }
 
-      const currentLevel = scene.userData['speedLevel'] || 1;
-      const newLevel = Math.min(5, currentLevel + 1);
-      scene.userData['speedLevel'] = newLevel;
-      scene.userData['railsSpeed'] = getSpeedFromLevel(newLevel);
+      const newLevel = Math.min(5, gameState.speedLevel + 1);
+      gameState.speedLevel = newLevel;
+      gameState.railsSpeed = gameState.getSpeedFromLevel(newLevel);
       hud?.updateSpeed(newLevel);
     } else if (action === 'speed_down') {
       // Cancel any active speed boost when manually adjusting speed
-      if (scene.userData['speedBoostTimeout']) {
-        clearTimeout(scene.userData['speedBoostTimeout']);
-        scene.userData['speedBoostTimeout'] = null;
-        scene.userData['originalSpeedLevel'] = null;
+      if (gameState.speedBoostTimeout) {
+        clearTimeout(gameState.speedBoostTimeout);
+        gameState.speedBoostTimeout = null;
+        gameState.originalSpeedLevel = null;
       }
 
-      const currentLevel = scene.userData['speedLevel'] || 1;
-      const newLevel = Math.max(1, currentLevel - 1);
-      scene.userData['speedLevel'] = newLevel;
-      scene.userData['railsSpeed'] = getSpeedFromLevel(newLevel);
+      const newLevel = Math.max(1, gameState.speedLevel - 1);
+      gameState.speedLevel = newLevel;
+      gameState.railsSpeed = gameState.getSpeedFromLevel(newLevel);
       hud?.updateSpeed(newLevel);
     }
     event.preventDefault();
@@ -1047,17 +978,40 @@ const startingAmmo = 150; // 0-250
 // Level 1 = current default speed (50), levels 2-5 are multipliers
 const baseSpeed = 50; // Base speed for level 1
 const startingSpeedLevel = 1; // Default to level 1 (minimum)
-(scene as any).userData['speedLevel'] = startingSpeedLevel;
-(scene as any).userData['baseSpeed'] = baseSpeed;
 
-// Calculate actual speed from level
-function getSpeedFromLevel(level: number): number {
-  return baseSpeed * level;
+// Initialize typed game state (replaces scene.userData string keys)
+const gameState = new GameState({
+  baseSpeed,
+  startingSpeedLevel,
+  hoverHeight: HOVER_HEIGHT,
+});
+
+// Set cross-system references on gameState
+gameState.hud = hud;
+gameState.entityManager = entityManager;
+gameState.camera = camera;
+gameState.outlinePass = outlinePass;
+gameState.ssaoPass = ssaoPass;
+gameState.collisionDebugRenderer = collisionDebugRenderer;
+
+// Persist visualization flags on scene so new tiles can read them
+scene.userData['showWireframe'] = gameState.showWireframe;
+scene.userData['showSurface'] = gameState.showSurface;
+// Apply initial state to any already-added terrain
+function applyVisualizationToScene() {
+  scene.traverse(child => {
+    if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
+      child.visible = !!gameState.showSurface;
+      for (const sub of child.children) {
+        if (sub instanceof THREE.LineSegments && sub.userData['isTerrainWireframe']) {
+          sub.visible = !!gameState.showWireframe;
+          sub.renderOrder = 1;
+        }
+      }
+    }
+  });
 }
-
-// Initialize actual speed
-const startingSpeed = getSpeedFromLevel(startingSpeedLevel);
-(scene as any).userData['railsSpeed'] = startingSpeed;
+applyVisualizationToScene();
 
 // Initialize demo player
 const initialTerrainY = worldGenerator.getTerrainHeightAt(tileCenter, tileCenter);
@@ -1092,12 +1046,6 @@ hud?.updateWeaponLevel(startingWeapon);
 hud?.updateAmmo(startingAmmo);
 hud?.updateSpeed(startingSpeedLevel);
 
-// Game state tracking
-let frameCount = 0;
-let lastBiome: BiomeType | null = null;
-let distanceTraveled = 0;
-const lastPlayerPosition = new THREE.Vector3(0, 5, 0);
-
 const clock = new THREE.Clock();
 let fpsAccumulator = 0;
 let fpsFrames = 0;
@@ -1106,16 +1054,16 @@ let fpsLastReport = 0;
 // Function to toggle terrain visualization
 function toggleTerrainVisualization() {
   // Update scene-level flags so future tiles inherit current settings
-  scene.userData['showWireframe'] = showWireframe;
-  scene.userData['showSurface'] = showSurface;
+  scene.userData['showWireframe'] = gameState.showWireframe;
+  scene.userData['showSurface'] = gameState.showSurface;
   scene.traverse(child => {
     // Handle surface mesh visibility
     if (child instanceof THREE.Mesh && child.userData['isTerrain']) {
-      child.visible = showSurface;
+      child.visible = gameState.showSurface;
     }
     // Handle wireframe visibility (now a sibling, not a child)
     if (child instanceof THREE.LineSegments && child.userData['isTerrainWireframe']) {
-      child.visible = showWireframe;
+      child.visible = gameState.showWireframe;
       child.renderOrder = 1;
     }
   });
@@ -1125,7 +1073,7 @@ function animate() {
   requestAnimationFrame(animate);
 
   const deltaTime = clock.getDelta();
-  frameCount++;
+  gameState.frameCount++;
   fpsAccumulator += deltaTime;
   fpsFrames++;
 
@@ -1144,31 +1092,31 @@ function animate() {
     audioManager.processAudioQueue();
 
     // Rails shooter constant forward motion parallel to the floor (yaw only)
-    const forwardDir = new THREE.Vector3(-Math.sin(mouseX), 0, -Math.cos(mouseX)).normalize();
+    const forwardDir = new THREE.Vector3(-Math.sin(gameState.mouseX), 0, -Math.cos(gameState.mouseX)).normalize();
 
     // Don't reset rails speed if game is over or player is in death sequence
     if (
-      !scene.userData['gameOver'] &&
-      !scene.userData['playerInDeathSequence'] &&
-      !(scene.userData['railsSpeed'] > 0)
+      !gameState.gameOver &&
+      !gameState.playerInDeathSequence &&
+      !(gameState.railsSpeed > 0)
     ) {
-      scene.userData['railsSpeed'] = 50;
+      gameState.railsSpeed = 50;
     }
-    const currentSpeed = scene.userData['railsSpeed'] || 0;
+    const currentSpeed = gameState.railsSpeed;
 
     // Set player velocity instead of directly modifying position for smooth movement
     // Only move if game is not over
-    if (!scene.userData['gameOver']) {
+    if (!gameState.gameOver) {
       player.velocity.x = forwardDir.x * currentSpeed;
       player.velocity.z = forwardDir.z * currentSpeed;
     }
     // Keep existing Y velocity for vertical movement
 
     // Update player rotation to match movement direction
-    (player as any).setRotation(mouseX);
+    (player as any).setRotation(gameState.mouseX);
     // Cache the last travel direction and speed for consistent projectile emission
-    scene.userData['lastForwardDir'] = { x: forwardDir.x, y: 0, z: forwardDir.z };
-    scene.userData['lastRailsSpeed'] = currentSpeed;
+    gameState.lastForwardDir = { x: forwardDir.x, y: 0, z: forwardDir.z };
+    gameState.lastRailsSpeed = currentSpeed;
     // Space Harrier perspective: Allow manual altitude control
     // (Removed fixed altitude - now controlled by Q/E keys)
 
@@ -1176,34 +1124,34 @@ function animate() {
     worldGenerator.updatePlayerPosition(playerPos);
 
     // Update world generator with movement mode and forward direction for chunk culling optimization
-    worldGenerator.setMovementMode(movementStrafe);
+    worldGenerator.setMovementMode(gameState.movementStrafe);
     worldGenerator.setPlayerForwardDirection(forwardDir);
 
     // Track distance traveled for scoring
-    const frameDistance = playerPos.distanceTo(lastPlayerPosition);
-    distanceTraveled += frameDistance;
+    const frameDistance = playerPos.distanceTo(gameState.lastPlayerPosition);
+    gameState.distanceTraveled += frameDistance;
 
     // Add distance-based score (1 point per unit)
     if (frameDistance > 0) {
       scoreManager.addDistanceScore(frameDistance);
     }
 
-    lastPlayerPosition.copy(playerPos);
+    gameState.lastPlayerPosition.copy(playerPos);
 
     // Update camera controller with mouse input and let it handle positioning
-    cameraController.setMouseRotation(mouseX, mouseY);
+    cameraController.setMouseRotation(gameState.mouseX, mouseY);
     cameraController.update();
 
     // Check for biome changes
     const currentBiome = biomeManager.getBiomeAt(player.position.x, player.position.z);
-    if (lastBiome !== currentBiome) {
-      lastBiome = currentBiome;
+    if (gameState.lastBiome !== currentBiome) {
+      gameState.lastBiome = currentBiome;
       const biomeConfig = biomeManager.getBiome(currentBiome);
 
       // Update stage based on biome exploration
       if (hud && biomeConfig) {
-        gameStage++;
-        hud.updateStage(gameStage);
+        gameState.gameStage++;
+        hud.updateStage(gameState.gameStage);
       }
     }
   }
@@ -1230,7 +1178,7 @@ function animate() {
     let turnDirection: 'left' | 'right' | null = null;
 
     if (player.getInputState('left_movement')) {
-      if (movementStrafe) {
+      if (gameState.movementStrafe) {
         // Strafe mode - move sideways
         const left = new THREE.Vector3(-1, 0, 0);
         left.applyQuaternion(camera.quaternion);
@@ -1240,14 +1188,14 @@ function animate() {
         strafeDirection = 'left';
       } else if (cameraController.getMouseControlEnabled()) {
         // Turn mode - rotate camera (only if camera allows mouse control)
-        mouseX += turnRate * deltaTime;
+        gameState.mouseX += turnRate * deltaTime;
         isTurning = true;
         turnDirection = 'left';
       }
     }
 
     if (player.getInputState('right_movement')) {
-      if (movementStrafe) {
+      if (gameState.movementStrafe) {
         // Strafe mode - move sideways
         const right = new THREE.Vector3(1, 0, 0);
         right.applyQuaternion(camera.quaternion);
@@ -1257,7 +1205,7 @@ function animate() {
         strafeDirection = 'right';
       } else if (cameraController.getMouseControlEnabled()) {
         // Turn mode - rotate camera (only if camera allows mouse control)
-        mouseX -= turnRate * deltaTime;
+        gameState.mouseX -= turnRate * deltaTime;
         isTurning = true;
         turnDirection = 'right';
       }
@@ -1285,16 +1233,16 @@ function animate() {
 
     // Up/down (W/Up and S/Down) - adjust desired distance above terrain
     if (player.getInputState('ascend')) {
-      playerDistanceAbove += flySpeed * deltaTime;
+      gameState.playerDistanceAbove += flySpeed * deltaTime;
       // Cap at max flight height
       const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
       const maxDistanceAbove = MAX_FLIGHT_HEIGHT - terrainY;
-      playerDistanceAbove = Math.min(playerDistanceAbove, maxDistanceAbove);
+      gameState.playerDistanceAbove = Math.min(gameState.playerDistanceAbove, maxDistanceAbove);
     }
     if (player.getInputState('descend')) {
-      playerDistanceAbove -= flySpeed * deltaTime;
+      gameState.playerDistanceAbove -= flySpeed * deltaTime;
       // Don't go below minimum clearance
-      playerDistanceAbove = Math.max(playerDistanceAbove, MIN_FLOOR_CLEARANCE);
+      gameState.playerDistanceAbove = Math.max(gameState.playerDistanceAbove, MIN_FLOOR_CLEARANCE);
     }
 
     // If ammo has reached 0, spawn an ammo power-up ahead of the player
@@ -1315,7 +1263,7 @@ function animate() {
 
     // Every frame: maintain desired distance above terrain
     const terrainY = worldGenerator.getTerrainHeightAt(player.position.x, player.position.z);
-    player.position.y = terrainY + playerDistanceAbove;
+    player.position.y = terrainY + gameState.playerDistanceAbove;
 
     // Update player's ground distance for animation state
     const distanceFromGround = player.position.y - terrainY;
@@ -1337,8 +1285,7 @@ function animate() {
     if (player.getInputState('fire') && player.shoot()) {
       // Spawn projectile from player position
       // Use the player's horizontal travel direction (constant Y)
-      const lastDirObj = scene.userData['lastForwardDir'] || { x: 0, y: 0, z: -1 };
-      const forward = new THREE.Vector3(lastDirObj.x, 0, lastDirObj.z).normalize();
+      const forward = new THREE.Vector3(gameState.lastForwardDir.x, 0, gameState.lastForwardDir.z).normalize();
 
       // Offset spawn a bit ahead of player and at chest height
       const playerHeight = 7.2; // Approximate height of scaled player model (180 * 0.04)
@@ -1367,9 +1314,7 @@ function animate() {
         z: forward.z, // Same direction as player movement
       });
       // Set projectile to 2x player's current rails speed and 2s lifetime
-      const railsSpeed = (scene.userData['lastRailsSpeed'] ||
-        scene.userData['railsSpeed'] ||
-        50) as number;
+      const railsSpeed = gameState.lastRailsSpeed || gameState.railsSpeed || 50;
       proj.speed = railsSpeed * 2.2; // ensure clearly faster than player
       proj.lifetime = 2.0;
       proj.velocity.x = forward.x * proj.speed; // Same direction as player movement but faster
@@ -1401,7 +1346,7 @@ function animate() {
     }
 
     // Add stage transition effect when entering new biomes
-    if (lastBiome && frameCount % 10 === 0) {
+    if (gameState.lastBiome && gameState.frameCount % 10 === 0) {
       const stageElement = document.getElementById('current-stage');
       if (stageElement && stageElement.classList.contains('stage-updated')) {
         stageElement.classList.remove('stage-updated');
@@ -1410,7 +1355,7 @@ function animate() {
   }
 
   // Log world generation stats periodically
-  if (frameCount % 300 === 0) {
+  if (gameState.frameCount % 300 === 0) {
     // Less frequent logging to reduce console spam
     const stats = worldGenerator.getGenerationStats();
     const streamingState = worldGenerator.getStreamingState();
@@ -1426,7 +1371,7 @@ function animate() {
     );
 
     // Update HUD speed readout with current rails speed
-    hud?.updateSpeed((scene.userData['speedLevel'] || 1) as number);
+    hud?.updateSpeed(gameState.speedLevel);
     // eslint-disable-next-line no-console
     console.log(`🎯 Entities: ${entityManager.getEntityCount()} total`);
     // eslint-disable-next-line no-console
@@ -1441,7 +1386,7 @@ function animate() {
     );
     // eslint-disable-next-line no-console
     console.log(
-      `🌍 Terrain below: ${terrainHeight.toFixed(1)}m, Biome: ${lastBiome}, Distance: ${distanceTraveled.toFixed(1)}m`,
+      `🌍 Terrain below: ${terrainHeight.toFixed(1)}m, Biome: ${gameState.lastBiome}, Distance: ${gameState.distanceTraveled.toFixed(1)}m`,
     );
     // eslint-disable-next-line no-console
     console.log(
