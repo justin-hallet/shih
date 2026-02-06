@@ -340,14 +340,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'grunt',
+          type: 'swooper',
           probability: 0.6,
           maxPerTile: 8,
           difficultyScaling: true,
           patrolRoutes: false,
         },
         {
-          type: 'tank',
+          type: 'mech',
           probability: 0.2,
           maxPerTile: 2,
           difficultyScaling: true,
@@ -401,14 +401,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'flyer',
+          type: 'striker',
           probability: 0.5,
           maxPerTile: 6,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'soldier',
+          type: 'mech',
           probability: 0.4,
           maxPerTile: 4,
           difficultyScaling: true,
@@ -455,14 +455,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'dragon',
+          type: 'serpent',
           probability: 0.3,
           maxPerTile: 2,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'flyer',
+          type: 'striker',
           probability: 0.6,
           maxPerTile: 8,
           difficultyScaling: true,
@@ -516,14 +516,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'soldier',
+          type: 'mech',
           probability: 0.7,
           maxPerTile: 12,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'tank',
+          type: 'mech',
           probability: 0.4,
           maxPerTile: 3,
           difficultyScaling: true,
@@ -571,14 +571,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'grunt',
+          type: 'swooper',
           probability: 0.5,
           maxPerTile: 4,
           difficultyScaling: true,
           patrolRoutes: false,
         },
         {
-          type: 'boss',
+          type: 'guardian',
           probability: 0.05,
           maxPerTile: 1,
           difficultyScaling: true,
@@ -619,14 +619,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'dragon',
+          type: 'serpent',
           probability: 0.3,
           maxPerTile: 2,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'grunt',
+          type: 'swooper',
           probability: 0.6,
           maxPerTile: 5,
           difficultyScaling: true,
@@ -667,14 +667,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'soldier',
+          type: 'mech',
           probability: 0.7,
           maxPerTile: 4,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'tank',
+          type: 'mech',
           probability: 0.2,
           maxPerTile: 1,
           difficultyScaling: true,
@@ -715,14 +715,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'flyer',
+          type: 'striker',
           probability: 0.6,
           maxPerTile: 6,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'grunt',
+          type: 'swooper',
           probability: 0.4,
           maxPerTile: 3,
           difficultyScaling: true,
@@ -776,14 +776,14 @@ export class BiomeManager {
 
       enemyRules: [
         {
-          type: 'dragon',
+          type: 'serpent',
           probability: 0.4,
           maxPerTile: 2,
           difficultyScaling: true,
           patrolRoutes: true,
         },
         {
-          type: 'flyer',
+          type: 'striker',
           probability: 0.5,
           maxPerTile: 4,
           difficultyScaling: true,

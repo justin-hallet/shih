@@ -25,12 +25,12 @@ export class ScoreManager {
 
   // Enemy type scoring multipliers: 10 * (1-X) where X is enemy difficulty
   private readonly enemyScoreMultipliers: Record<EnemySubType, number> = {
-    [EnemySubType.GRUNT]: 10 * 1, // 10 points - basic enemy
-    [EnemySubType.SOLDIER]: 10 * 2, // 20 points - tougher enemy
-    [EnemySubType.TANK]: 10 * 3, // 30 points - armored enemy
-    [EnemySubType.FLYER]: 10 * 4, // 40 points - aerial enemy
-    [EnemySubType.DRAGON]: 10 * 5, // 50 points - boss-level enemy
-    [EnemySubType.BOSS]: 10 * 6, // 60 points - ultimate boss
+    [EnemySubType.SWOOPER]: 10 * 1, // 10 points - aerial formation flyer
+    [EnemySubType.ORB]: 10 * 2, // 20 points - splitting orb
+    [EnemySubType.STRIKER]: 10 * 3, // 30 points - fast dive-bomber
+    [EnemySubType.MECH]: 10 * 4, // 40 points - ground walker
+    [EnemySubType.SERPENT]: 10 * 5, // 50 points - multi-segment boss
+    [EnemySubType.GUARDIAN]: 10 * 6, // 60 points - shielded boss
   };
 
   constructor() {

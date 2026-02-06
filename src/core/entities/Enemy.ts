@@ -1,5 +1,5 @@
 /**
- * Enemy Entity - Various enemy types (grunt, soldier, flyer, tank, boss, dragon)
+ * Enemy Entity - Various enemy types (swooper, mech, orb, striker, serpent, guardian)
  */
 
 import * as THREE from 'three';
@@ -42,48 +42,35 @@ export class Enemy extends BaseEntity {
 
   private initializeByType(): void {
     switch (this.enemyType) {
-      case EnemySubType.GRUNT:
-        this.health = 60;
-        this.maxHealth = 60;
-        this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
-        this.velocity.z = -3.0; // Moving toward player
-        break;
-
-      case EnemySubType.SOLDIER:
-        this.health = 100;
-        this.maxHealth = 100;
-        this.attackDamage = 0.2 + Math.random() * 0.3; // 0.2-0.5 random damage
-        this.velocity.z = -2.5;
-        break;
-
-      case EnemySubType.FLYER:
-        this.health = 80;
-        this.maxHealth = 80;
-        this.attackDamage = 0.1 + Math.random() * 0.4; // 0.1-0.5 random damage
+      case EnemySubType.SWOOPER:
+        this.health = this.maxHealth = 60;
+        this.attackDamage = 0.3;
         this.velocity.z = -4.0;
-        this.position.y += 2.0; // Start higher
         break;
-
-      case EnemySubType.TANK:
-        this.health = 300;
-        this.maxHealth = 300;
-        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss-level)
+      case EnemySubType.MECH:
+        this.health = this.maxHealth = 150;
+        this.attackDamage = 0.5;
+        this.velocity.z = -2.0;
+        break;
+      case EnemySubType.ORB:
+        this.health = this.maxHealth = 40;
+        this.attackDamage = 0.3;
+        this.velocity.z = -3.0;
+        break;
+      case EnemySubType.STRIKER:
+        this.health = this.maxHealth = 50;
+        this.attackDamage = 0.4;
+        this.velocity.z = -6.0;
+        break;
+      case EnemySubType.SERPENT:
+        this.health = this.maxHealth = 800;
+        this.attackDamage = 1.5;
         this.velocity.z = -1.5;
         break;
-
-      case EnemySubType.BOSS:
-        this.health = 1000;
-        this.maxHealth = 1000;
-        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
+      case EnemySubType.GUARDIAN:
+        this.health = this.maxHealth = 600;
+        this.attackDamage = 1.0;
         this.velocity.z = -1.0;
-        break;
-
-      case EnemySubType.DRAGON:
-        this.health = 500;
-        this.maxHealth = 500;
-        this.attackDamage = 1.0 + Math.random() * 1.0; // 1.0-2.0 random damage (boss)
-        this.velocity.z = -2.0;
-        this.position.y += 3.0; // Start high like a dragon
         break;
     }
   }
@@ -95,40 +82,40 @@ export class Enemy extends BaseEntity {
     let material: THREE.Material;
 
     switch (this.enemyType) {
-      case EnemySubType.GRUNT:
-        // Simple grunt representation
-        geometry = new THREE.CapsuleGeometry(0.3, 1.0, 4, 8);
-        material = new THREE.MeshLambertMaterial({ color: 0xff4444 });
-        break;
-
-      case EnemySubType.SOLDIER:
-        // Soldier representation (larger capsule)
-        geometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
-        material = new THREE.MeshLambertMaterial({ color: 0xff6600 });
-        break;
-
-      case EnemySubType.FLYER:
-        // Flying enemy (diamond shape)
+      case EnemySubType.SWOOPER:
+        // Aerial formation flyer (octahedron, magenta)
         geometry = new THREE.OctahedronGeometry(0.6);
         material = new THREE.MeshLambertMaterial({ color: 0xff00ff });
         break;
 
-      case EnemySubType.TANK:
-        // Tank representation (large box)
-        geometry = new THREE.BoxGeometry(2.5, 1.5, 3.0);
-        material = new THREE.MeshLambertMaterial({ color: 0x666666 });
+      case EnemySubType.MECH:
+        // Ground walker/leaper (box, gray)
+        geometry = new THREE.BoxGeometry(1.2, 1.5, 0.8);
+        material = new THREE.MeshLambertMaterial({ color: 0x888888 });
         break;
 
-      case EnemySubType.BOSS:
-        // Boss representation (large imposing shape)
-        geometry = new THREE.DodecahedronGeometry(2.0);
-        material = new THREE.MeshLambertMaterial({ color: 0x880000 });
+      case EnemySubType.ORB:
+        // Splits apart, opens to fire (sphere, cyan)
+        geometry = new THREE.SphereGeometry(0.6);
+        material = new THREE.MeshLambertMaterial({ color: 0x00ffff });
         break;
 
-      case EnemySubType.DRAGON:
-        // Dragon representation (elongated diamond)
-        geometry = new THREE.ConeGeometry(1.0, 4.0, 8);
+      case EnemySubType.STRIKER:
+        // Fast dive-bomber (cone, white)
+        geometry = new THREE.ConeGeometry(0.3, 1.5, 6);
+        material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        break;
+
+      case EnemySubType.SERPENT:
+        // Multi-segment boss (dodecahedron, green)
+        geometry = new THREE.DodecahedronGeometry(1.5);
         material = new THREE.MeshLambertMaterial({ color: 0x00ff88 });
+        break;
+
+      case EnemySubType.GUARDIAN:
+        // Boss with orbiting shields (icosahedron, dark red)
+        geometry = new THREE.IcosahedronGeometry(1.5);
+        material = new THREE.MeshLambertMaterial({ color: 0x880000 });
         break;
 
       default:
@@ -253,16 +240,17 @@ export class Enemy extends BaseEntity {
     const time = Date.now() * 0.001;
 
     switch (this.enemyType) {
-      case EnemySubType.FLYER:
-      case EnemySubType.DRAGON:
-        // Floating/hovering effect
+      case EnemySubType.SWOOPER:
+      case EnemySubType.STRIKER:
+        // Floating/hovering sin-wave effect
         if (this.mesh) {
           this.mesh.position.y += Math.sin(time * 4.0) * 0.5 * deltaTime;
         }
         break;
 
-      case EnemySubType.BOSS:
-        // Boss pulsing effect
+      case EnemySubType.SERPENT:
+      case EnemySubType.GUARDIAN:
+        // Pulsing scale effect
         if (this.mesh) {
           const scale = 1.0 + Math.sin(time * 2.0) * 0.1;
           this.mesh.scale.setScalar(scale);
@@ -319,7 +307,7 @@ export class Enemy extends BaseEntity {
     Enemy.scoreManager?.addEnemyKillScore(this.enemyType);
 
     // Boss death effects
-    if (this.enemyType === EnemySubType.BOSS || this.enemyType === EnemySubType.DRAGON) {
+    if (this.enemyType === EnemySubType.GUARDIAN || this.enemyType === EnemySubType.SERPENT) {
       // More dramatic death animation for bosses
       if (this.mesh) {
         this.mesh.rotation.x = Math.random() * Math.PI;

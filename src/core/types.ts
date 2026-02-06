@@ -58,12 +58,12 @@ export enum PowerUpSubType {
 
 // Enemy sub-types
 export enum EnemySubType {
-  GRUNT = 'grunt',
-  SOLDIER = 'soldier',
-  TANK = 'tank',
-  FLYER = 'flyer',
-  DRAGON = 'dragon',
-  BOSS = 'boss',
+  SWOOPER = 'swooper',     // Aerial formation flyer, fires energy balls
+  MECH = 'mech',           // Ground walker/leaper, fires missiles
+  ORB = 'orb',             // Splits apart, opens to fire, invulnerable when closed
+  STRIKER = 'striker',     // Fast dive-bomber, fires missiles on approach
+  SERPENT = 'serpent',     // Multi-segment boss, only head takes damage
+  GUARDIAN = 'guardian',   // Boss with orbiting shields protecting core
 }
 
 // Obstacle sub-types

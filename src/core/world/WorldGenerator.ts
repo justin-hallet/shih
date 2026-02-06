@@ -121,11 +121,11 @@ export class WorldGenerator {
         ],
         enemies: [
           {
-            type: 'grunt',
+            type: 'swooper',
             position: new THREE.Vector3(5, 0, 10),
           },
           {
-            type: 'soldier',
+            type: 'mech',
             position: new THREE.Vector3(-10, 0, 5),
           },
         ],
@@ -167,7 +167,7 @@ export class WorldGenerator {
         ],
         enemies: [
           {
-            type: 'flyer',
+            type: 'striker',
             position: new THREE.Vector3(0, 10, 0),
           },
         ],
@@ -203,15 +203,15 @@ export class WorldGenerator {
         ],
         enemies: [
           {
-            type: 'tank',
+            type: 'mech',
             position: new THREE.Vector3(0, 0, 30),
           },
           {
-            type: 'soldier',
+            type: 'mech',
             position: new THREE.Vector3(15, 0, 20),
           },
           {
-            type: 'soldier',
+            type: 'mech',
             position: new THREE.Vector3(-15, 0, 20),
           },
         ],
