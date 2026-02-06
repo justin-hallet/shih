@@ -593,6 +593,33 @@ export class Enemy extends BaseEntity {
       }
     }
 
+    // Clamp enemy position to terrain — enemies must not go through the floor
+    const worldGen = (this.scene as any)?.userData?.['worldGenerator'];
+    if (worldGen?.getTerrainHeightAt) {
+      const terrainY: number = worldGen.getTerrainHeightAt(this.position.x, this.position.z);
+      if (this.enemyType === EnemySubType.MECH) {
+        // Ground walkers: clamp to terrain as floor (allows leaps above, but not below)
+        if (this.position.y <= terrainY) {
+          this.position.y = terrainY;
+          if (this.velocity.y < 0) {
+            this.velocity.y = 0;
+          }
+          // Reset leap state when landing on terrain
+          if (this.movementBehavior && 'isLeaping' in this.movementBehavior) {
+            (this.movementBehavior as any).isLeaping = false;
+          }
+        }
+      } else {
+        // Flying enemies must not go below terrain + small clearance
+        if (this.position.y < terrainY + 0.5) {
+          this.position.y = terrainY + 0.5;
+          if (this.velocity.y < 0) {
+            this.velocity.y = 0;
+          }
+        }
+      }
+    }
+
     // Update firing cooldown
     this.fireCooldownTimer += deltaTime;
 

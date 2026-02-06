@@ -66,7 +66,7 @@ export class SwooperMovement implements MovementBehavior {
 export class MechMovement implements MovementBehavior {
   private leapTimer: number = 0;
   private leapInterval: number = 4.0;
-  private isLeaping: boolean = false;
+  public isLeaping: boolean = false;
   private strafeDir: number = 1;
   private strafeSwitchTimer: number = 0;
 
@@ -95,17 +95,10 @@ export class MechMovement implements MovementBehavior {
     }
 
     if (this.isLeaping) {
-      // Apply gravity
+      // Apply gravity — terrain clamping in Enemy.onUpdate() handles landing
       velocity.y -= 40 * ctx.deltaTime;
-
-      // Land when returning to ground level
-      if (ctx.position.y <= ctx.spawnPosition.y && velocity.y < 0) {
-        velocity.y = 0;
-        ctx.position.y = ctx.spawnPosition.y;
-        this.isLeaping = false;
-      }
     } else {
-      // Stay on ground
+      // On ground — no vertical movement
       velocity.y = 0;
     }
   }
